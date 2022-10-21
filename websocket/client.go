@@ -20,7 +20,7 @@ const (
 	pingPeriod = (pongWait * 9) / 10
 
 	// Maximum message size allowed from peer.
-	maxMessageSize = 1024
+	// maxMessageSize = 1024
 )
 
 func NewClient(conn *websocket.Conn, hub *Hub) (*Client, error) {
@@ -43,21 +43,21 @@ type Client struct {
 }
 
 func (c *Client) Go() {
-	go c.clientReader()
+	// go c.clientReader()
 	go c.clientWriter()
 }
 
-// clientReader waits for options changes from the client. The client can at any time
-// change the log level and binary name it watches.
-func (c *Client) clientReader() {
-	defer func() {
-		c.hub.unregister <- c
-		c.conn.Close()
-	}()
-	c.conn.SetReadLimit(maxMessageSize)
-	c.conn.SetReadDeadline(time.Now().Add(pongWait))
-	c.conn.SetPongHandler(func(string) error { c.conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
-}
+// // clientReader waits for options changes from the client. The client can at any time
+// // change the log level and binary name it watches.
+// func (c *Client) clientReader() {
+// 	defer func() {
+// 		c.hub.unregister <- c
+// 		c.conn.Close()
+// 	}()
+// 	c.conn.SetReadLimit(maxMessageSize)
+// 	c.conn.SetReadDeadline(time.Now().Add(pongWait))
+// 	c.conn.SetPongHandler(func(string) error { c.conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
+// }
 
 // clientWriter
 func (c *Client) clientWriter() {

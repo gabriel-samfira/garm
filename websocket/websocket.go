@@ -3,6 +3,7 @@ package websocket
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 )
 
@@ -79,6 +80,7 @@ func (h *Hub) Register(client *Client) error {
 
 func (h *Hub) Write(msg []byte) (int, error) {
 	toSend := string(msg)
+	log.Printf("writing: %s", toSend)
 	select {
 	case <-time.After(5 * time.Second):
 		return 0, fmt.Errorf("timed out sending message to client")

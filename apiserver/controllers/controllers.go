@@ -141,6 +141,11 @@ func (a *APIController) WSHandler(writer http.ResponseWriter, req *http.Request)
 		return
 	}
 
+	if a.hub == nil {
+		handleError(writer, gErrors.NewBadRequestError("log streamer is disabled"))
+		return
+	}
+
 	conn, err := a.upgrader.Upgrade(writer, req, nil)
 	if err != nil {
 		log.Printf("error upgrading to websockets: %v", err)
