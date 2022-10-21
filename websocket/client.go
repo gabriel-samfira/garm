@@ -20,7 +20,7 @@ const (
 	pingPeriod = (pongWait * 9) / 10
 
 	// Maximum message size allowed from peer.
-	// maxMessageSize = 1024
+	maxMessageSize = 1024
 )
 
 func NewClient(conn *websocket.Conn, hub *Hub) (*Client, error) {
@@ -29,7 +29,7 @@ func NewClient(conn *websocket.Conn, hub *Hub) (*Client, error) {
 		id:   clientID.String(),
 		conn: conn,
 		hub:  hub,
-		send: make(chan string, 1024),
+		send: make(chan []byte, 1024*1024),
 	}, nil
 }
 
@@ -37,27 +37,36 @@ type Client struct {
 	id   string
 	conn *websocket.Conn
 	// Buffered channel of outbound messages.
-	send chan string
+	send chan []byte
 
 	hub *Hub
 }
 
 func (c *Client) Go() {
-	// go c.clientReader()
+	go c.clientReader()
 	go c.clientWriter()
 }
 
-// // clientReader waits for options changes from the client. The client can at any time
-// // change the log level and binary name it watches.
-// func (c *Client) clientReader() {
-// 	defer func() {
-// 		c.hub.unregister <- c
-// 		c.conn.Close()
-// 	}()
-// 	c.conn.SetReadLimit(maxMessageSize)
-// 	c.conn.SetReadDeadline(time.Now().Add(pongWait))
-// 	c.conn.SetPongHandler(func(string) error { c.conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
-// }
+// clientReader waits for options changes from the client. The client can at any time
+// change the log level and binary name it watches.
+func (c *Client) clientReader() {
+	defer func() {
+		c.hub.unregister <- c
+		c.conn.Close()
+	}()
+	c.conn.SetReadLimit(maxMessageSize)
+	c.conn.SetReadDeadline(time.Now().Add(pongWait))
+	c.conn.SetPongHandler(func(string) error { c.conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
+	for {
+		mt, _, err := c.conn.ReadMessage()
+		if err != nil {
+			break
+		}
+		if mt == websocket.CloseMessage {
+			break
+		}
+	}
+}
 
 // clientWriter
 func (c *Client) clientWriter() {
@@ -76,7 +85,7 @@ func (c *Client) clientWriter() {
 				return
 			}
 
-			if err := c.conn.WriteJSON(message); err != nil {
+			if err := c.conn.WriteMessage(websocket.TextMessage, message); err != nil {
 				log.Printf("error sending message: %v", err)
 				return
 			}

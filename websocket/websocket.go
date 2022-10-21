@@ -3,14 +3,13 @@ package websocket
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 )
 
 func NewHub(ctx context.Context) *Hub {
 	return &Hub{
 		clients:    map[string]*Client{},
-		broadcast:  make(chan string, 100),
+		broadcast:  make(chan []byte, 100*1024),
 		register:   make(chan *Client, 100),
 		unregister: make(chan *Client, 100),
 		ctx:        ctx,
@@ -27,7 +26,7 @@ type Hub struct {
 	clients map[string]*Client
 
 	// Inbound messages from the clients.
-	broadcast chan string
+	broadcast chan []byte
 
 	// Register requests from the clients.
 	register chan *Client
@@ -79,12 +78,10 @@ func (h *Hub) Register(client *Client) error {
 }
 
 func (h *Hub) Write(msg []byte) (int, error) {
-	toSend := string(msg)
-	log.Printf("writing: %s", toSend)
 	select {
 	case <-time.After(5 * time.Second):
 		return 0, fmt.Errorf("timed out sending message to client")
-	case h.broadcast <- toSend:
+	case h.broadcast <- msg:
 
 	}
 	return len(msg), nil
