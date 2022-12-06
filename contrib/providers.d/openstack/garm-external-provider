@@ -7,9 +7,25 @@ if [ ! -t 0 ]
 then
     INPUT=$(cat -)
 fi
+echo ${INPUT}
+
 MYPATH=$(realpath ${BASH_SOURCE[0]})
 MYDIR=$(dirname "${MYPATH}")
 TEMPLATES="$MYDIR/cloudconfig"
+BIN_DIR="$MYDIR/bin"
+export PATH=$PATH:$BIN_DIR
+
+function ensureYq() {
+    set +e
+    yqBin=$(which yq)
+    set -e
+    if [ -z $yqBin ];then
+        mkdir -p $BIN_DIR
+        wget -O $BIN_DIR/yq https://github.com/mikefarah/yq/releases/download/v4.30.5/yq_linux_amd64
+        chmod +x $BIN_DIR/yq
+    fi
+}
+
 
 # Defaults
 # set this variable to 0 in the provider config to disable.
@@ -195,6 +211,18 @@ function callbackToken() {
     echo "${CB_TK}"
 }
 
+function caCertBundle() {
+    # ca-cert-bundle
+    BUNDLE=$(echo "$INPUT" | jq -c -r '."ca-cert-bundle"')
+    if [ -z "$BUNDLE" -o "$BUNDLE" == "null" ];then
+        echo ""
+    else
+        # the bootstrap params define the CA bundle as []byte
+        # Which gets encoded to base64 when serialized to json
+        echo "${BUNDLE} | base64 -d"
+    fi
+}
+
 function instanceName() {
     NAME=$(echo "$INPUT" | jq -c -r '.name')
     checkValNotNull "${NAME}" "name" || return $?
@@ -233,7 +261,11 @@ function getCloudConfig() {
     -e "s|GH_RUNNER_LABELS|${LABELS}|g" > ${TMP_SCRIPT}
 
     AS_B64=$(base64 -w0 ${TMP_SCRIPT})
-    echo "${CC_TPL}" | sed "s|RUNNER_INSTALL_B64|${AS_B64}|g" > ${TMP_CC}
+    CA_BUNDLE=$(caCertBundle)
+    echo "${CC_TPL}" | yq -r '.write_files[0].content = '${AS_B64}'' > ${TMP_CC}
+    if [ ! -z "${CA_BUNDLE}" ];then
+        yq -i -r '."ca-certs".trusted += '${CA_BUNDLE}'' ${TMP_CC}
+    fi
     echo "${TMP_CC}"
 }
 
@@ -384,6 +416,9 @@ function StopServer() {
 
     openstack server stop "${instance_id}"
 }
+
+# Make sure the yq binary is installed.
+ensureYq
 
 case "$GARM_COMMAND" in
     "CreateInstance")

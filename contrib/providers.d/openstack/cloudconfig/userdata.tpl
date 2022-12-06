@@ -29,3 +29,7 @@ write_files:
       owner: root:root
       path: /install_runner.sh
       permissions: "755"
+ca-certs:
+    remove-defaults: false
+    trusted: []
+
