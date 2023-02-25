@@ -50,6 +50,54 @@ secret = ")9gk_4A6KrXz9D2u`0@MPea*sd6W`%@5MAWpWWJ3P3EqW~qB!!(Vd$FhNc*eU4vG"
 # TTL for this token is 24h.
 time_to_live = "8760h"
 
+[embeded_etcd]
+# name is the unique name of this garm instance in relation to the other instances
+# that make up the cluster. Once set, this should not be changed.
+name = "garm-01"
+
+# cluster_token is the embeded etcd initial cluster token, used during bootstrap.
+cluster_token = "P&OU56?PKpZSKpr6j5jOMXPQYvY>KjJsX0R~Qa6h)`J!U5$Q~gOpKCfJ&9)Vcuri"
+
+# peer_listen_addresses are the addresses on which this instance will listen for cluster
+# peer connections. No loopback addresses should be specified here. If this option is not
+# explicitly set, garm will default to ["0.0.0.0:2380"] (all interfaces).
+peer_listen_addresses = ["10.0.9.171"]
+
+# peer_advertise_addresses are a set of addresses which will be advertised to the other
+# cluster peers. These can be IP addresses or hostnames. The IP addresses specified here,
+# do not need to be present on the system. Addresses may be a floating/virtual IP that is
+# SNATed to this instance.
+# NOTE: This option defaults to "localhost:2380". This is suitable only fot single
+# node deployments. Set it to a non-loopback address if you plan to cluster this instance.
+peer_advertise_addresses = ["10.0.9.171"]
+
+# client_listen_addresses are addresses on which this instance will listen for client
+# connections. You may specify a loopback address here, as there may be local clients
+# that may want to connect. If this option is not explicitly set, garm will default to
+# ["0.0.0.0:2379"] (all interfaces)
+client_listen_addresses = ["127.0.0.1", "10.0.9.171"]
+
+# client_advertise_addresses are a set of addresses which will be advertised to clients.
+# These can be IP addresses or hostnames. The IP addresses specified here, do not need to
+# be present on the system. Addresses may be a floating/virtual IP that is SNATed to this
+# instance.
+# NOTE: This option defaults to "localhost:2379". This is suitable only fot single
+# node deployments. Set it to a non-loopback address if you plan to cluster this instance.
+client_advertise_addresses = ["10.0.9.171"]
+
+  # These options are mandatory. The embeded etcd instance requires valid server and client
+  # x509 certificates. Peer and client connections are encrypted, and connecting requires
+  # client x509 authentication. Both server and client certificates should have the
+  # x509.ExtKeyUsageClientAuth extension set.
+  [embeded_etcd.peer_tls]
+  cert = "/etc/garm/certs/peers/garm-01/peer-cert.pem"
+  key = "/etc/garm/certs/peers/garm-01/peer-key.pem"
+  ca_cert = "/etc/garm/certs/ca/ca-cert.pem"
+  [embeded_etcd.client_tls]
+  cert = "/etc/garm/certs/peers/garm-01/client-cert.pem"
+  key = "/etc/garm/certs/peers/garm-01/client-key.pem"
+  ca_cert = "/etc/garm/certs/ca/ca-cert.pem"
+
 [apiserver]
   # Bind the API to this IP
   bind = "0.0.0.0"
