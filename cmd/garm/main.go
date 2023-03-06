@@ -69,7 +69,6 @@ func main() {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), signals...)
 	defer stop()
-	fmt.Println(ctx)
 
 	cfg, err := config.NewConfig(*conf)
 	if err != nil {
