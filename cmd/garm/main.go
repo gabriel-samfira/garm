@@ -136,14 +136,13 @@ func main() {
 		log.Fatal(err)
 	}
 
-	metricsMiddleware, err := auth.NewMetricsMiddleware(cfg.JWTAuth)
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	router := routers.NewAPIRouter(controller, multiWriter, jwtMiddleware, initMiddleware, instanceMiddleware)
 
 	if cfg.Metrics.Enable {
+		metricsMiddleware, err := auth.NewMetricsMiddleware(cfg.JWTAuth)
+		if err != nil {
+			log.Fatal(err)
+		}
 		log.Printf("registering prometheus metrics collectors")
 		if err := metrics.RegisterCollectors(runner); err != nil {
 			log.Fatal(err)

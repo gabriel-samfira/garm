@@ -149,6 +149,22 @@ func GetLoggingWriter(cfg *config.Config) (io.Writer, error) {
 	return writer, nil
 }
 
+// GetLogFileWriter will return a new io.Writer that can be used as a target
+// for logging.
+func GetLogFileWriter(targetLogFile string) (io.Writer, error) {
+	if targetLogFile == "" {
+		return nil, fmt.Errorf("missing log file path")
+	}
+
+	writer := &lumberjack.Logger{
+		Filename:   targetLogFile,
+		MaxSize:    100,
+		MaxBackups: 3,
+		MaxAge:     28,
+	}
+	return writer, nil
+}
+
 func ConvertFileToBase64(file string) (string, error) {
 	bytes, err := os.ReadFile(file)
 	if err != nil {
