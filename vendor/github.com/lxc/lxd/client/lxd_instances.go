@@ -20,6 +20,7 @@ import (
 	"github.com/lxc/lxd/shared/ioprogress"
 	"github.com/lxc/lxd/shared/tcp"
 	"github.com/lxc/lxd/shared/units"
+	"github.com/lxc/lxd/shared/ws"
 )
 
 // Instance handling functions.
@@ -561,15 +562,13 @@ func (r *ProtocolLXD) tryCreateInstance(req api.InstancesPost, urls []string, op
 
 // CreateInstanceFromImage is a convenience function to make it easier to create a instance from an existing image.
 func (r *ProtocolLXD) CreateInstanceFromImage(source ImageServer, image api.Image, req api.InstancesPost) (RemoteOperation, error) {
-	// Set the minimal source fields
-	req.Source.Type = "image"
+	info, err := r.getSourceImageConnectionInfo(source, image, &req.Source)
+	if err != nil {
+		return nil, err
+	}
 
-	// Optimization for the local image case
-	if r.isSameServer(source) {
-		// Always use fingerprints for local case
-		req.Source.Fingerprint = image.Fingerprint
-		req.Source.Alias = ""
-
+	// If the source server is the same as the target server, create the instance directly.
+	if info == nil {
 		op, err := r.CreateInstance(req)
 		if err != nil {
 			return nil, err
@@ -587,36 +586,6 @@ func (r *ProtocolLXD) CreateInstanceFromImage(source ImageServer, image api.Imag
 		}()
 
 		return &rop, nil
-	}
-
-	// Minimal source fields for remote image
-	req.Source.Mode = "pull"
-
-	// If we have an alias and the image is public, use that
-	if req.Source.Alias != "" && image.Public {
-		req.Source.Fingerprint = ""
-	} else {
-		req.Source.Fingerprint = image.Fingerprint
-		req.Source.Alias = ""
-	}
-
-	// Get source server connection information
-	info, err := source.GetConnectionInfo()
-	if err != nil {
-		return nil, err
-	}
-
-	req.Source.Protocol = info.Protocol
-	req.Source.Certificate = info.Certificate
-
-	// Generate secret token if needed
-	if !image.Public {
-		secret, err := source.GetImageSecret(image.Fingerprint)
-		if err != nil {
-			return nil, err
-		}
-
-		req.Source.Secret = secret
 	}
 
 	return r.tryCreateInstance(req, info.Addresses, nil)
@@ -1066,8 +1035,8 @@ func (r *ProtocolLXD) ExecInstance(instanceName string, exec api.InstanceExecPos
 
 				// And attach stdin and stdout to it
 				go func() {
-					shared.WebsocketSendStream(conn, args.Stdin, -1)
-					<-shared.WebsocketRecvStream(args.Stdout, conn)
+					ws.MirrorRead(context.Background(), conn, args.Stdin)
+					<-ws.MirrorWrite(context.Background(), conn, args.Stdout)
 					_ = conn.Close()
 
 					if args.DataDone != nil {
@@ -1081,7 +1050,7 @@ func (r *ProtocolLXD) ExecInstance(instanceName string, exec api.InstanceExecPos
 			}
 		} else {
 			// Handle non-interactive sessions
-			dones := map[int]chan bool{}
+			dones := make(map[int]chan struct{})
 			conns := []*websocket.Conn{}
 
 			// Handle stdin
@@ -1092,7 +1061,7 @@ func (r *ProtocolLXD) ExecInstance(instanceName string, exec api.InstanceExecPos
 				}
 
 				conns = append(conns, conn)
-				dones[0] = shared.WebsocketSendStream(conn, args.Stdin, -1)
+				dones[0] = ws.MirrorRead(context.Background(), conn, args.Stdin)
 			}
 
 			// Handle stdout
@@ -1103,7 +1072,7 @@ func (r *ProtocolLXD) ExecInstance(instanceName string, exec api.InstanceExecPos
 				}
 
 				conns = append(conns, conn)
-				dones[1] = shared.WebsocketRecvStream(args.Stdout, conn)
+				dones[1] = ws.MirrorWrite(context.Background(), conn, args.Stdout)
 			}
 
 			// Handle stderr
@@ -1114,7 +1083,7 @@ func (r *ProtocolLXD) ExecInstance(instanceName string, exec api.InstanceExecPos
 				}
 
 				conns = append(conns, conn)
-				dones[2] = shared.WebsocketRecvStream(args.Stderr, conn)
+				dones[2] = ws.MirrorWrite(context.Background(), conn, args.Stderr)
 			}
 
 			// Wait for everything to be done
@@ -2237,8 +2206,8 @@ func (r *ProtocolLXD) ConsoleInstance(instanceName string, console api.InstanceC
 
 	// And attach stdin and stdout to it
 	go func() {
-		shared.WebsocketSendStream(conn, args.Terminal, -1)
-		<-shared.WebsocketRecvStream(args.Terminal, conn)
+		ws.MirrorRead(context.Background(), conn, args.Terminal)
+		<-ws.MirrorWrite(context.Background(), conn, args.Terminal)
 		_ = conn.Close()
 	}()
 
@@ -2324,8 +2293,9 @@ func (r *ProtocolLXD) ConsoleInstanceDynamic(instanceName string, console api.In
 		}
 
 		// Attach reader/writer.
-		shared.WebsocketSendStream(conn, rwc, -1)
-		<-shared.WebsocketRecvStream(rwc, conn)
+		readDone, writeDone := ws.Mirror(context.Background(), conn, rwc)
+		<-readDone
+		<-writeDone
 		_ = conn.Close()
 
 		return nil
@@ -2551,7 +2521,7 @@ func (r *ProtocolLXD) GetInstanceBackupFile(instanceName string, name string, re
 	}
 
 	// Start the request
-	response, doneCh, err := cancel.CancelableDownload(req.Canceler, r.http, request)
+	response, doneCh, err := cancel.CancelableDownload(req.Canceler, r.DoHTTP, request)
 	if err != nil {
 		return nil, err
 	}
@@ -2625,7 +2595,7 @@ func (r *ProtocolLXD) proxyMigration(targetOp *operation, targetSecrets map[stri
 	}
 
 	proxies[api.SecretNameControl] = &proxy{
-		done:       shared.WebsocketProxy(sourceConn, targetConn),
+		done:       ws.Proxy(sourceConn, targetConn),
 		sourceConn: sourceConn,
 		targetConn: targetConn,
 	}
@@ -2650,7 +2620,7 @@ func (r *ProtocolLXD) proxyMigration(targetOp *operation, targetSecrets map[stri
 		proxies[name] = &proxy{
 			sourceConn: sourceConn,
 			targetConn: targetConn,
-			done:       shared.WebsocketProxy(sourceConn, targetConn),
+			done:       ws.Proxy(sourceConn, targetConn),
 		}
 	}
 

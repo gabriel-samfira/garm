@@ -52,6 +52,8 @@ type ProtocolLXD struct {
 
 	clusterTarget string
 	project       string
+
+	oidcClient *oidcClient
 }
 
 // Disconnect gets rid of any background goroutines.
@@ -152,6 +154,10 @@ func (r *ProtocolLXD) DoHTTP(req *http.Request) (*http.Response, error) {
 		return r.bakeryClient.Do(req)
 	}
 
+	if r.oidcClient != nil {
+		return r.oidcClient.do(req)
+	}
+
 	return r.http.Do(req)
 }
 
@@ -159,6 +165,7 @@ func (r *ProtocolLXD) DoHTTP(req *http.Request) (*http.Response, error) {
 // User-Agent (if r.httpUserAgent is set).
 // X-LXD-authenticated (if r.requireAuthenticated is set).
 // Bakery authentication header and cookie (if r.bakeryClient is set).
+// OIDC Authorization header (if r.oidcClient is set).
 func (r *ProtocolLXD) addClientHeaders(req *http.Request) {
 	if r.httpUserAgent != "" {
 		req.Header.Set("User-Agent", r.httpUserAgent)
@@ -174,6 +181,10 @@ func (r *ProtocolLXD) addClientHeaders(req *http.Request) {
 		for _, cookie := range r.http.Jar.Cookies(req.URL) {
 			req.AddCookie(cookie)
 		}
+	}
+
+	if r.oidcClient != nil {
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", r.oidcClient.getAccessToken()))
 	}
 }
 
@@ -462,16 +473,6 @@ func (r *ProtocolLXD) websocket(path string) (*websocket.Conn, error) {
 	return r.rawWebsocket(url)
 }
 
-func (r *ProtocolLXD) setupBakeryClient() {
-	r.bakeryClient = httpbakery.NewClient()
-	r.bakeryClient.Client = r.http
-	if r.bakeryInteractor != nil {
-		for _, interactor := range r.bakeryInteractor {
-			r.bakeryClient.AddInteractor(interactor)
-		}
-	}
-}
-
 // WithContext returns a client that will add context.Context.
 func (r *ProtocolLXD) WithContext(ctx context.Context) InstanceServer {
 	rr := r
@@ -490,4 +491,52 @@ func (r *ProtocolLXD) getUnderlyingHTTPTransport() (*http.Transport, error) {
 	default:
 		return nil, fmt.Errorf("Unexpected http.Transport type, %T", r)
 	}
+}
+
+// getSourceImageConnectionInfo returns the connection information for the source image.
+// The returned `info` is nil if the source image is local. In this process, the `instSrc`
+// is also updated with the minimal source fields.
+func (r *ProtocolLXD) getSourceImageConnectionInfo(source ImageServer, image api.Image, instSrc *api.InstanceSource) (info *ConnectionInfo, err error) {
+	// Set the minimal source fields
+	instSrc.Type = "image"
+
+	// Optimization for the local image case
+	if r.isSameServer(source) {
+		// Always use fingerprints for local case
+		instSrc.Fingerprint = image.Fingerprint
+		instSrc.Alias = ""
+		return nil, nil
+	}
+
+	// Minimal source fields for remote image
+	instSrc.Mode = "pull"
+
+	// If we have an alias and the image is public, use that
+	if instSrc.Alias != "" && image.Public {
+		instSrc.Fingerprint = ""
+	} else {
+		instSrc.Fingerprint = image.Fingerprint
+		instSrc.Alias = ""
+	}
+
+	// Get source server connection information
+	info, err = source.GetConnectionInfo()
+	if err != nil {
+		return nil, err
+	}
+
+	instSrc.Protocol = info.Protocol
+	instSrc.Certificate = info.Certificate
+
+	// Generate secret token if needed
+	if !image.Public {
+		secret, err := source.GetImageSecret(image.Fingerprint)
+		if err != nil {
+			return nil, err
+		}
+
+		instSrc.Secret = secret
+	}
+
+	return info, nil
 }

@@ -57,13 +57,14 @@ func NewConfig(cfgFile string) (*Config, error) {
 }
 
 type Config struct {
-	Default   Default    `toml:"default" json:"default"`
-	APIServer APIServer  `toml:"apiserver,omitempty" json:"apiserver,omitempty"`
-	Metrics   Metrics    `toml:"metrics,omitempty" json:"metrics,omitempty"`
-	Database  Database   `toml:"database,omitempty" json:"database,omitempty"`
-	Providers []Provider `toml:"provider,omitempty" json:"provider,omitempty"`
-	Github    []Github   `toml:"github,omitempty"`
-	JWTAuth   JWTAuth    `toml:"jwt_auth" json:"jwt-auth"`
+	Default    Default    `toml:"default" json:"default"`
+	APIServer  APIServer  `toml:"apiserver,omitempty" json:"apiserver,omitempty"`
+	Metrics    Metrics    `toml:"metrics,omitempty" json:"metrics,omitempty"`
+	Database   Database   `toml:"database,omitempty" json:"database,omitempty"`
+	Providers  []Provider `toml:"provider,omitempty" json:"provider,omitempty"`
+	Github     []Github   `toml:"github,omitempty"`
+	JWTAuth    JWTAuth    `toml:"jwt_auth" json:"jwt-auth"`
+	EtcdClient EtcdClient `toml:"etcd_client" json:"etcd-client"`
 }
 
 // Validate validates the config
