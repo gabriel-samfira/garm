@@ -95,6 +95,7 @@ At this point, we have a valid config file, but we still need to add `provider` 
 ## The provider section
 
 This is where you have a decision to make. GARM has a number of providers you can leverage. At the time of this writing, we have support for:
+=======
 
 * LXD
 * Azure

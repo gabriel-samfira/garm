@@ -1,13 +1,16 @@
 # Provider configuration
 
-Garm was designed to be extensible. The database layer as well as the providers are defined as interfaces. Currently there are two providers:
+GARM was designed to be extensible. Providers can be written either as built-in plugins or as external executables. The built-in plugins are written in Go, and they are compiled into the ```garm``` binary. External providers are executables that implement the needed interface to create/delete/list compute systems that are used by ```garm``` to create runners.
 
-* [LXD](https://linuxcontainers.org/lxd/introduction/)
-* External
+GARM currently ships with one built-in provider for [LXD](https://linuxcontainers.org/lxd/introduction/) and the external provider interface which allows you to write your own provider in any language you want.
 
-LXD is the simplest cloud-like system you can easily set up on any GNU/Linux machine, which enables you to create both containers and Virtual Machines. The ```external``` provider is a special type of provider, which delegates functionality to external executables.
+- [LXD provider](#lxd-provider)
+    - [LXD remotes](#lxd-remotes)
+    - [LXD Security considerations](#lxd-security-considerations)
+- [External provider](#external-provider)
+    - [Available external providers](#available-external-providers)
 
-## The LXD provider
+## LXD provider
 
 Garm leverages the virtual machines feature of LXD to create the runners. Here is a sample config section for an LXD provider:
 
@@ -102,11 +105,19 @@ You can also create your own image remote, where you can host your own custom im
 
 Image remotes in the ```garm``` config, is a map of strings to remote settings. The name of the remote is the last bit of string in the section header. For example, the following section ```[provider.lxd.image_remotes.ubuntu_daily]```, defines the image remote named **ubuntu_daily**. Use this name to reference images inside that remote.
 
-## The External provider
+You can also use locally uploaded images. Check out the [performance considerations](./performance_considerations.md) page for details on how to customize local images and use them with garm.
+
+### LXD Security considerations
+
+Garm does not apply any ACLs of any kind to the instances it creates. That task remains in the responsibility of the user. [Here is a guide for creating ACLs in LXD](https://linuxcontainers.org/lxd/docs/master/howto/network_acls/). You can of course use ```iptables``` or ```nftables``` to create any rules you wish. I recommend you create a separate isolated lxd bridge for runners, and secure it using ACLs/iptables/nftables.
+
+You must make sure that the code that runs as part of the workflows is trusted, and if that cannot be done, you must make sure that any malicious code that will be pulled in by the actions and run as part of a workload, is as contained as possible. There is a nice article about [securing your workflow runs here](https://blog.gitguardian.com/github-actions-security-cheat-sheet/).
+
+## External provider
 
 The external provider is a special kind of provider. It delegates the functionality needed to create the runners to external executables. These executables can be either binaries or scripts. As long as they adhere to the needed interface, they can be used to create runners in any target IaaS. This is identical to what ```containerd``` does with ```CNIs```.
 
-There is currently one external provider for [OpenStack](https://www.openstack.org/) available in the [contrib folder of this repository](../contrib/providers.d/openstack). The provider is written in ```bash``` and it is just a sample. A production ready provider would need more error checking and idempotency, but it serves as an example of what can be done. As it stands, it is functional.
+There are currently two sample external providers available in the [contrib folder of this repository](../contrib/providers.d/). The providers are written in ```bash``` and are meant as examples of how a provider could be written in ```bash```. Production ready providers would need more error checking and idempotency, but they serve as an example of what can be done. As it stands, they are functional.
 
 The configuration for an external provider is quite simple:
 
@@ -127,13 +138,24 @@ provider_type = "external"
   provider_executable = "/etc/garm/providers.d/openstack/garm-external-provider"
 ```
 
-The external provider has three options:
+The external provider has two options:
 
 * ```provider_executable```
 * ```config_file```
 
 The ```provider_executable``` option is the absolute path to an executable that implements the provider logic. Garm will delegate all provider operations to this executable. This executable can be anything (bash, python, perl, go, etc). See [Writing an external provider](./external_provider.md) for more details.
 
-The ```config_file``` option is a path on disk to an arbitrary file, that is passed to the external executable via the environment variable ```GARM_PROVIDER_CONFIG_FILE```. This file is only relevant to the external provider. Garm itself does not read it. In the case of the OpenStack provider, this file contains access information for an OpenStack cloud (what you would typically find in a ```keystonerc``` file) as well as some provider specific options like whether or not to boot from volume and which tenant network to use. You can check out the [sample config file](../contrib/providers.d/openstack/keystonerc) in this repository.
+The ```config_file``` option is a path on disk to an arbitrary file, that is passed to the external executable via the environment variable ```GARM_PROVIDER_CONFIG_FILE```. This file is only relevant to the external provider. Garm itself does not read it. In the case of the sample OpenStack provider, this file contains access information for an OpenStack cloud (what you would typically find in a ```keystonerc``` file) as well as some provider specific options like whether or not to boot from volume and which tenant network to use. You can check out the [sample config file](../contrib/providers.d/openstack/keystonerc) in this repository.
 
 If you want to implement an external provider, you can use this file for anything you need to pass into the binary when ```garm``` calls it to execute a particular operation.
+
+### Available external providers
+
+For non testing purposes, there are two external providers currently available:
+
+* [OpenStack](https://github.com/cloudbase/garm-provider-openstack)
+* [Azure](https://github.com/cloudbase/garm-provider-azure)
+
+Details on how to install and configure them are available in their respective repositories.
+
+If you wrote a provider and would like to add it to the above list, feel free to open a PR.
