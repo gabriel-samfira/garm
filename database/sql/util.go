@@ -26,6 +26,7 @@ import (
 	runnerErrors "github.com/cloudbase/garm-provider-common/errors"
 	commonParams "github.com/cloudbase/garm-provider-common/params"
 	"github.com/cloudbase/garm-provider-common/util"
+	dbCommon "github.com/cloudbase/garm/database/common"
 	"github.com/cloudbase/garm/params"
 )
 
@@ -416,4 +417,13 @@ func (s *sqlDatabase) hasGithubEntity(tx *gorm.DB, entityType params.GithubEntit
 		return errors.Wrap(err, "fetching entity from database")
 	}
 	return nil
+}
+
+func (s *sqlDatabase) sendNotify(entityType dbCommon.DatabaseEntityType, op dbCommon.OperationType, payload interface{}) {
+	message := dbCommon.ChangePayload{
+		Operation:  op,
+		Payload:    payload,
+		EntityType: entityType,
+	}
+	s.producer.Notify(message)
 }

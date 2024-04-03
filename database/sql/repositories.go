@@ -24,10 +24,17 @@ import (
 
 	runnerErrors "github.com/cloudbase/garm-provider-common/errors"
 	"github.com/cloudbase/garm-provider-common/util"
+	"github.com/cloudbase/garm/database/common"
 	"github.com/cloudbase/garm/params"
 )
 
-func (s *sqlDatabase) CreateRepository(_ context.Context, owner, name, credentialsName, webhookSecret string, poolBalancerType params.PoolBalancerType) (params.Repository, error) {
+func (s *sqlDatabase) CreateRepository(_ context.Context, owner, name, credentialsName, webhookSecret string, poolBalancerType params.PoolBalancerType) (param params.Repository, err error) {
+	defer func() {
+		if err == nil {
+			s.sendNotify(common.RepositoryEntityType, common.CreateOperation, param)
+		}
+	}()
+
 	if webhookSecret == "" {
 		return params.Repository{}, errors.New("creating repo: missing secret")
 	}
@@ -48,7 +55,7 @@ func (s *sqlDatabase) CreateRepository(_ context.Context, owner, name, credentia
 		return params.Repository{}, errors.Wrap(q.Error, "creating repository")
 	}
 
-	param, err := s.sqlToCommonRepository(newRepo)
+	param, err = s.sqlToCommonRepository(newRepo)
 	if err != nil {
 		return params.Repository{}, errors.Wrap(err, "creating repository")
 	}
@@ -89,11 +96,17 @@ func (s *sqlDatabase) ListRepositories(_ context.Context) ([]params.Repository, 
 	return ret, nil
 }
 
-func (s *sqlDatabase) DeleteRepository(ctx context.Context, repoID string) error {
+func (s *sqlDatabase) DeleteRepository(ctx context.Context, repoID string) (err error) {
 	repo, err := s.getRepoByID(ctx, repoID)
 	if err != nil {
 		return errors.Wrap(err, "fetching repo")
 	}
+
+	defer func() {
+		if err == nil {
+			s.sendNotify(common.RepositoryEntityType, common.DeleteOperation, repo)
+		}
+	}()
 
 	q := s.conn.Unscoped().Delete(&repo)
 	if q.Error != nil && !errors.Is(q.Error, gorm.ErrRecordNotFound) {
@@ -103,7 +116,13 @@ func (s *sqlDatabase) DeleteRepository(ctx context.Context, repoID string) error
 	return nil
 }
 
-func (s *sqlDatabase) UpdateRepository(ctx context.Context, repoID string, param params.UpdateEntityParams) (params.Repository, error) {
+func (s *sqlDatabase) UpdateRepository(ctx context.Context, repoID string, param params.UpdateEntityParams) (newParams params.Repository, err error) {
+	defer func() {
+		if err == nil {
+			s.sendNotify(common.RepositoryEntityType, common.UpdateOperation, newParams)
+		}
+	}()
+
 	repo, err := s.getRepoByID(ctx, repoID)
 	if err != nil {
 		return params.Repository{}, errors.Wrap(err, "fetching repo")
@@ -130,7 +149,7 @@ func (s *sqlDatabase) UpdateRepository(ctx context.Context, repoID string, param
 		return params.Repository{}, errors.Wrap(q.Error, "saving repo")
 	}
 
-	newParams, err := s.sqlToCommonRepository(repo)
+	newParams, err = s.sqlToCommonRepository(repo)
 	if err != nil {
 		return params.Repository{}, errors.Wrap(err, "saving repo")
 	}

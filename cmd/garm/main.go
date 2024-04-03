@@ -40,6 +40,7 @@ import (
 	"github.com/cloudbase/garm/config"
 	"github.com/cloudbase/garm/database"
 	"github.com/cloudbase/garm/database/common"
+	"github.com/cloudbase/garm/database/watcher"
 	"github.com/cloudbase/garm/metrics"
 	"github.com/cloudbase/garm/runner" //nolint:typecheck
 	runnerMetrics "github.com/cloudbase/garm/runner/metrics"
@@ -150,6 +151,7 @@ func main() {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), signals...)
 	defer stop()
+	watcher.InitWatcher(ctx)
 
 	cfg, err := config.NewConfig(*conf)
 	if err != nil {
