@@ -16,6 +16,7 @@ package pool
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"math"
@@ -35,6 +36,7 @@ import (
 	"github.com/cloudbase/garm-provider-common/util"
 	"github.com/cloudbase/garm/auth"
 	dbCommon "github.com/cloudbase/garm/database/common"
+	"github.com/cloudbase/garm/database/watcher"
 	"github.com/cloudbase/garm/params"
 	"github.com/cloudbase/garm/runner/common"
 	garmUtil "github.com/cloudbase/garm/util"
@@ -69,7 +71,7 @@ type urls struct {
 }
 
 func NewEntityPoolManager(ctx context.Context, entity params.GithubEntity, cfgInternal params.Internal, providers map[string]common.Provider, store dbCommon.Store) (common.PoolManager, error) {
-	ctx = garmUtil.WithContext(ctx, slog.Any("pool_mgr", entity.String()), slog.Any("pool_type", params.GithubEntityTypeRepository))
+	ctx = garmUtil.WithContext(ctx, slog.Any("pool_mgr", entity.String()), slog.Any("pool_type", entity.EntityType))
 	ghc, err := garmUtil.GithubClient(ctx, entity, cfgInternal.GithubCredentialsDetails)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting github client")
@@ -125,9 +127,10 @@ type basePoolManager struct {
 
 	urls urls
 
-	mux    sync.Mutex
-	wg     *sync.WaitGroup
-	keyMux *keyMutex
+	mux        sync.Mutex
+	wg         *sync.WaitGroup
+	keyMux     *keyMutex
+	dbConsumer dbCommon.Consumer
 }
 
 func (r *basePoolManager) HandleWorkflowJob(job params.WorkflowJob) error {
@@ -1515,6 +1518,25 @@ func (r *basePoolManager) cleanupOrphanedRunners(runners []*github.Runner) error
 	return nil
 }
 
+func (r *basePoolManager) consumeDBEvents() {
+	for {
+		select {
+		case msg, ok := <-r.dbConsumer.Watch():
+			if !ok {
+				slog.InfoContext(r.ctx, "db consumer channel closed")
+				return
+			}
+			asJs, _ := json.MarshalIndent(msg, "", "  ")
+			slog.InfoContext(r.ctx, "received message from db consumer", "message", string(asJs))
+		case <-r.quit:
+			return
+		case <-r.ctx.Done():
+			return
+		}
+
+	}
+}
+
 func (r *basePoolManager) Start() error {
 	initialToolUpdate := make(chan struct{}, 1)
 	go func() {
@@ -1524,6 +1546,15 @@ func (r *basePoolManager) Start() error {
 		}
 		initialToolUpdate <- struct{}{}
 	}()
+
+	slog.InfoContext(r.ctx, "registering db consumer")
+	poolWatcherForDB := fmt.Sprintf("pool:%s", r.entity.ID)
+	consumer, err := watcher.RegisterConsumer(poolWatcherForDB, WithEntityFilter(r.entity))
+	if err != nil {
+		return errors.Wrap(err, "registering consumer")
+	}
+	r.dbConsumer = consumer
+	go r.consumeDBEvents()
 
 	go func() {
 		select {
