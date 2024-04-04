@@ -1577,7 +1577,6 @@ func (r *basePoolManager) consumeDBEvents() {
 		case <-r.ctx.Done():
 			return
 		}
-
 	}
 }
 
