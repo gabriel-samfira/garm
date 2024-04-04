@@ -1,8 +1,10 @@
 package common
 
-type DatabaseEntityType string
-type OperationType string
-type PayloadFilterFunc func(ChangePayload) bool
+type (
+	DatabaseEntityType string
+	OperationType      string
+	PayloadFilterFunc  func(ChangePayload) bool
+)
 
 const (
 	RepositoryEntityType   DatabaseEntityType = "repository"

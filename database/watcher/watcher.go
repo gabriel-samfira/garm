@@ -24,18 +24,18 @@ func InitWatcher(ctx context.Context) {
 	databaseWatcher = w
 }
 
-func RegisterProducer(ID string) (common.Producer, error) {
+func RegisterProducer(id string) (common.Producer, error) {
 	if databaseWatcher == nil {
 		return nil, common.ErrWatcherNotInitialized
 	}
-	return databaseWatcher.RegisterProducer(ID)
+	return databaseWatcher.RegisterProducer(id)
 }
 
-func RegisterConsumer(ID string, filters ...common.PayloadFilterFunc) (common.Consumer, error) {
+func RegisterConsumer(id string, filters ...common.PayloadFilterFunc) (common.Consumer, error) {
 	if databaseWatcher == nil {
 		return nil, common.ErrWatcherNotInitialized
 	}
-	return databaseWatcher.RegisterConsumer(ID, filters...)
+	return databaseWatcher.RegisterConsumer(id, filters...)
 }
 
 type watcher struct {
@@ -48,16 +48,16 @@ type watcher struct {
 	ctx    context.Context
 }
 
-func (w *watcher) RegisterProducer(ID string) (common.Producer, error) {
-	if _, ok := w.producers[ID]; ok {
+func (w *watcher) RegisterProducer(id string) (common.Producer, error) {
+	if _, ok := w.producers[id]; ok {
 		return nil, common.ErrProducerAlreadyRegistered
 	}
 	p := &producer{
-		id:       ID,
+		id:       id,
 		messages: make(chan common.ChangePayload, 1),
 		quit:     make(chan struct{}),
 	}
-	w.producers[ID] = p
+	w.producers[id] = p
 	go w.serviceProducer(p)
 	return p, nil
 }
@@ -83,17 +83,17 @@ func (w *watcher) serviceProducer(prod *producer) {
 	}
 }
 
-func (w *watcher) RegisterConsumer(ID string, filters ...common.PayloadFilterFunc) (common.Consumer, error) {
-	if _, ok := w.consumers[ID]; ok {
+func (w *watcher) RegisterConsumer(id string, filters ...common.PayloadFilterFunc) (common.Consumer, error) {
+	if _, ok := w.consumers[id]; ok {
 		return nil, common.ErrConsumerAlreadyRegistered
 	}
 	c := &consumer{
 		messages: make(chan common.ChangePayload, 1),
 		filters:  filters,
 		quit:     make(chan struct{}),
-		id:       ID,
+		id:       id,
 	}
-	w.consumers[ID] = c
+	w.consumers[id] = c
 	go w.serviceConsumer(c)
 	return c, nil
 }
@@ -115,7 +115,6 @@ func (w *watcher) serviceConsumer(consumer *consumer) {
 			return
 		}
 	}
-
 }
 
 func (w *watcher) Close() {
@@ -131,12 +130,10 @@ func (w *watcher) Close() {
 	for _, p := range w.producers {
 		p.Close()
 	}
-	w.producers = nil
 
 	for _, c := range w.consumers {
 		c.Close()
 	}
-	w.consumers = nil
 }
 
 func (w *watcher) loop() {

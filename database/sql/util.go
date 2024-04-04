@@ -469,6 +469,25 @@ func (s *sqlDatabase) hasGithubEntity(tx *gorm.DB, entityType params.GithubEntit
 	return nil
 }
 
+func (s *sqlDatabase) marshalAndSeal(data interface{}) ([]byte, error) {
+	enc, err := json.Marshal(data)
+	if err != nil {
+		return nil, errors.Wrap(err, "marshalling data")
+	}
+	return util.Seal(enc, []byte(s.cfg.Passphrase))
+}
+
+func (s *sqlDatabase) unsealAndUnmarshal(data []byte, target interface{}) error {
+	decrypted, err := util.Unseal(data, []byte(s.cfg.Passphrase))
+	if err != nil {
+		return errors.Wrap(err, "decrypting data")
+	}
+	if err := json.Unmarshal(decrypted, target); err != nil {
+		return errors.Wrap(err, "unmarshalling data")
+	}
+	return nil
+}
+
 func (s *sqlDatabase) sendNotify(entityType dbCommon.DatabaseEntityType, op dbCommon.OperationType, payload interface{}) {
 	message := dbCommon.ChangePayload{
 		Operation:  op,

@@ -136,6 +136,8 @@ func WithEntityFilter(entity params.GithubEntity) dbCommon.PayloadFilterFunc {
 			ent, ok = payload.Payload.(params.Organization)
 		case dbCommon.EnterpriseEntityType:
 			ent, ok = payload.Payload.(params.Enterprise)
+		default:
+			return false
 		}
 		if !ok {
 			return false
