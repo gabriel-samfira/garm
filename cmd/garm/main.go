@@ -48,6 +48,7 @@ import (
 	garmUtil "github.com/cloudbase/garm/util"
 	"github.com/cloudbase/garm/util/appdefaults"
 	"github.com/cloudbase/garm/websocket"
+	"github.com/cloudbase/garm/workers/controller"
 )
 
 var (
@@ -230,6 +231,11 @@ func main() {
 		log.Fatal(err)
 	}
 
+	entityController := controller.NewController(ctx, db, runner)
+	if err := entityController.Start(); err != nil {
+		log.Fatalf("failed to start controller: %+v", err)
+	}
+
 	authenticator := auth.NewAuthenticator(cfg.JWTAuth, db)
 	controller, err := controllers.NewAPIController(runner, authenticator, hub)
 	if err != nil {
@@ -314,7 +320,13 @@ func main() {
 		}
 	}()
 
-	<-ctx.Done()
+	select {
+	case <-ctx.Done():
+		slog.InfoContext(ctx, "shutting down")
+	case err := <-entityController.Wait():
+		slog.With(slog.Any("error", err)).ErrorContext(ctx, "controller stopped")
+	}
+
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer shutdownCancel()
 	if err := srv.Shutdown(shutdownCtx); err != nil {

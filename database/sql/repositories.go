@@ -128,7 +128,7 @@ func (s *sqlDatabase) DeleteRepository(ctx context.Context, repoID string) (err 
 
 	defer func(repo Repository) {
 		if err == nil {
-			asParam, innerErr := s.sqlToCommonRepository(repo)
+			asParam, innerErr := s.sqlToCommonRepository(repo, true)
 			if innerErr == nil {
 				s.sendNotify(common.RepositoryEntityType, common.DeleteOperation, asParam)
 			}
@@ -209,7 +209,6 @@ func (s *sqlDatabase) UpdateRepository(ctx context.Context, repoID string, param
 	}
 
 	newParams, err = s.sqlToCommonRepository(repo, true)
-
 	if err != nil {
 		return params.Repository{}, errors.Wrap(err, "saving repo")
 	}
