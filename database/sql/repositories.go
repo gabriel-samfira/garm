@@ -126,11 +126,14 @@ func (s *sqlDatabase) DeleteRepository(ctx context.Context, repoID string) (err 
 		return errors.Wrap(err, "fetching repo")
 	}
 
-	defer func() {
+	defer func(repo Repository) {
 		if err == nil {
-			s.sendNotify(common.RepositoryEntityType, common.DeleteOperation, repo)
+			asParam, innerErr := s.sqlToCommonRepository(repo)
+			if innerErr == nil {
+				s.sendNotify(common.RepositoryEntityType, common.DeleteOperation, asParam)
+			}
 		}
-	}()
+	}(repo)
 
 	q := s.conn.Unscoped().Delete(&repo)
 	if q.Error != nil && !errors.Is(q.Error, gorm.ErrRecordNotFound) {
