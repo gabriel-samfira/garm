@@ -10,7 +10,6 @@ import (
 
 	runnerErrors "github.com/cloudbase/garm-provider-common/errors"
 	commonParams "github.com/cloudbase/garm-provider-common/params"
-	dbCommon "github.com/cloudbase/garm/database/common"
 	"github.com/cloudbase/garm/params"
 )
 
@@ -116,32 +115,4 @@ func labelsFromRunner(runner *github.Runner) []string {
 func isManagedRunner(labels []string, controllerID string) bool {
 	runnerControllerID := controllerIDFromLabels(labels)
 	return runnerControllerID == controllerID
-}
-
-type idGetter interface {
-	GetID() string
-}
-
-func WithEntityFilter(entity params.GithubEntity) dbCommon.PayloadFilterFunc {
-	return func(payload dbCommon.ChangePayload) bool {
-		if params.GithubEntityType(payload.EntityType) != entity.EntityType {
-			return false
-		}
-		var ent idGetter
-		var ok bool
-		switch payload.EntityType {
-		case dbCommon.RepositoryEntityType:
-			ent, ok = payload.Payload.(params.Repository)
-		case dbCommon.OrganizationEntityType:
-			ent, ok = payload.Payload.(params.Organization)
-		case dbCommon.EnterpriseEntityType:
-			ent, ok = payload.Payload.(params.Enterprise)
-		default:
-			return false
-		}
-		if !ok {
-			return false
-		}
-		return ent.GetID() == entity.ID
-	}
 }

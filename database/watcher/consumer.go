@@ -18,6 +18,12 @@ type consumer struct {
 	quit   chan struct{}
 }
 
+func (w *consumer) SetFilters(filters ...common.PayloadFilterFunc) {
+	w.mux.Lock()
+	defer w.mux.Unlock()
+	w.filters = filters
+}
+
 func (w *consumer) Watch() <-chan common.ChangePayload {
 	return w.messages
 }

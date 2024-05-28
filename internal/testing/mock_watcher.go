@@ -34,6 +34,9 @@ func (c *MockConsumer) Watch() <-chan common.ChangePayload {
 	return nil
 }
 
+func (c *MockConsumer) SetFilters(_ ...common.PayloadFilterFunc) {
+}
+
 func (c *MockConsumer) Close() {
 }
 

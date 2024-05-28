@@ -10,12 +10,11 @@ import (
 	dbCommon "github.com/cloudbase/garm/database/common"
 	"github.com/cloudbase/garm/database/watcher"
 	"github.com/cloudbase/garm/params"
-	"github.com/cloudbase/garm/runner"
 	"github.com/cloudbase/garm/workers/common"
 	"github.com/cloudbase/garm/workers/controller/entity"
 )
 
-func NewController(ctx context.Context, store dbCommon.Store, r *runner.Runner) common.Worker {
+func NewController(ctx context.Context, store dbCommon.Store) common.Worker {
 	ctx = auth.GetAdminContext(ctx)
 	return &Controller{
 		store:    store,
@@ -23,7 +22,6 @@ func NewController(ctx context.Context, store dbCommon.Store, r *runner.Runner) 
 		entities: map[string]*entity.Worker{},
 		errChan:  make(chan error, 2),
 		stopped:  true,
-		runner:   r,
 	}
 }
 
@@ -38,18 +36,13 @@ type Controller struct {
 	entities map[string]*entity.Worker
 
 	store    dbCommon.Store
-	runner   *runner.Runner
 	consumer dbCommon.Consumer
 }
 
-func (c *Controller) startWorkerForEntity(ent entityGetter) error {
-	ghEntity, err := ent.GetEntity()
-	if err != nil {
-		return fmt.Errorf("cannot get entity: %w", err)
-	}
+func (c *Controller) startWorkerForEntity(ghEntity params.GithubEntity) error {
 	_, ok := c.entities[ghEntity.ID]
 	if !ok {
-		wrk := entity.NewWorker(c.ctx, ghEntity, c.runner)
+		wrk := entity.NewWorker(c.ctx, ghEntity, c.store)
 		c.entities[ghEntity.ID] = wrk
 		if err := wrk.Start(); err != nil {
 			return fmt.Errorf("cannot start worker: %w", err)
@@ -59,31 +52,43 @@ func (c *Controller) startWorkerForEntity(ent entityGetter) error {
 }
 
 func (c *Controller) loadEntities() error {
-	repos, err := c.runner.ListRepositories(c.ctx)
+	repos, err := c.store.ListRepositories(c.ctx)
 	if err != nil {
 		return fmt.Errorf("cannot list repositories: %w", err)
 	}
-	orgs, err := c.runner.ListOrganizations(c.ctx)
+	orgs, err := c.store.ListOrganizations(c.ctx)
 	if err != nil {
 		return fmt.Errorf("cannot list organizations: %w", err)
 	}
-	enterprises, err := c.runner.ListEnterprises(c.ctx)
+	enterprises, err := c.store.ListEnterprises(c.ctx)
 	if err != nil {
 		return fmt.Errorf("cannot list enterprises: %w", err)
 	}
 
 	for _, repo := range repos {
-		if err := c.startWorkerForEntity(repo); err != nil {
+		ghEntity, err := repo.GetEntity()
+		if err != nil {
+			return fmt.Errorf("cannot get github entity: %w", err)
+		}
+		if err := c.startWorkerForEntity(ghEntity); err != nil {
 			return fmt.Errorf("cannot start worker for repository: %w", err)
 		}
 	}
 	for _, org := range orgs {
-		if err := c.startWorkerForEntity(org); err != nil {
+		ghEntity, err := org.GetEntity()
+		if err != nil {
+			return fmt.Errorf("cannot get github entity: %w", err)
+		}
+		if err := c.startWorkerForEntity(ghEntity); err != nil {
 			return fmt.Errorf("cannot start worker for organization: %w", err)
 		}
 	}
 	for _, ent := range enterprises {
-		if err := c.startWorkerForEntity(ent); err != nil {
+		ghEntity, err := ent.GetEntity()
+		if err != nil {
+			return fmt.Errorf("cannot get github entity: %w", err)
+		}
+		if err := c.startWorkerForEntity(ghEntity); err != nil {
 			return fmt.Errorf("cannot start worker for enterprise: %w", err)
 		}
 	}
@@ -106,7 +111,6 @@ func (c *Controller) Start() (err error) {
 	if !c.stopped {
 		return nil
 	}
-
 	slog.InfoContext(c.ctx, "starting controller")
 
 	// Context was canceled, which probably means that GARM
@@ -173,12 +177,7 @@ func (c *Controller) handleEntityEvent(ghEntity params.GithubEntity, op dbCommon
 
 	switch op {
 	case dbCommon.CreateOperation:
-		worker, ok := c.entities[ghEntity.ID]
-		if !ok {
-			worker = entity.NewWorker(c.ctx, ghEntity, c.runner)
-			c.entities[ghEntity.ID] = worker
-		}
-		if err := worker.Start(); err != nil {
+		if err := c.startWorkerForEntity(ghEntity); err != nil {
 			// Something really bad happened, and we couldn't create the worker.
 			// We terminate the controller and allow the error to bubble up
 			// to the main function, which in turn will stop the whole GARM
@@ -199,6 +198,9 @@ func (c *Controller) handleEntityEvent(ghEntity params.GithubEntity, op dbCommon
 		slog.InfoContext(c.ctx, "deleting worker", "entity_id", ghEntity.ID)
 		delete(c.entities, ghEntity.ID)
 	default:
+		// At this level we only care about the entity ID so we can keep track of
+		// the workers. The workers will have a watcher on the specific entity
+		// and will handle the updates.
 		slog.DebugContext(c.ctx, "ignoring operation", slog.Any("operation", op))
 	}
 }

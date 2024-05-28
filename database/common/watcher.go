@@ -32,6 +32,7 @@ type Consumer interface {
 	Watch() <-chan ChangePayload
 	IsClosed() bool
 	Close()
+	SetFilters(filters ...PayloadFilterFunc)
 }
 
 type Producer interface {

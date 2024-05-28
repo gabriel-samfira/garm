@@ -7,15 +7,15 @@ import (
 	"sync"
 
 	"github.com/cloudbase/garm/auth"
+	"github.com/cloudbase/garm/database/common"
 	dbCommon "github.com/cloudbase/garm/database/common"
 	"github.com/cloudbase/garm/database/watcher"
 	"github.com/cloudbase/garm/params"
-	"github.com/cloudbase/garm/runner"
 	garmUtil "github.com/cloudbase/garm/util"
 	workerCommon "github.com/cloudbase/garm/workers/common"
 )
 
-func NewWorker(ctx context.Context, ghEntity params.GithubEntity, r *runner.Runner) *Worker {
+func NewWorker(ctx context.Context, ghEntity params.GithubEntity, store common.Store) *Worker {
 	consumerID := fmt.Sprintf("entity-%s", ghEntity.ID)
 	ctx = garmUtil.WithContext(
 		ctx,
@@ -26,7 +26,7 @@ func NewWorker(ctx context.Context, ghEntity params.GithubEntity, r *runner.Runn
 
 	return &Worker{
 		ghEntity:   ghEntity,
-		runner:     r,
+		store:      store,
 		ctx:        ctx,
 		stopped:    true,
 		consumerID: consumerID,
@@ -41,7 +41,7 @@ type Worker struct {
 	ghEntity   params.GithubEntity
 	consumerID string
 
-	runner   *runner.Runner
+	store    common.Store
 	consumer dbCommon.Consumer
 
 	mux sync.Mutex

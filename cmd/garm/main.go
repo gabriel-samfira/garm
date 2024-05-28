@@ -231,7 +231,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	entityController := controller.NewController(ctx, db, runner)
+	entityController := controller.NewController(ctx, db)
 	if err := entityController.Start(); err != nil {
 		log.Fatalf("failed to start controller: %+v", err)
 	}
