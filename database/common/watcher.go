@@ -7,13 +7,16 @@ type (
 )
 
 const (
-	RepositoryEntityType   DatabaseEntityType = "repository"
-	OrganizationEntityType DatabaseEntityType = "organization"
-	EnterpriseEntityType   DatabaseEntityType = "enterprise"
-	PoolEntityType         DatabaseEntityType = "pool"
-	UserEntityType         DatabaseEntityType = "user"
-	InstanceEntityType     DatabaseEntityType = "instance"
-	JobEntityType          DatabaseEntityType = "job"
+	RepositoryEntityType        DatabaseEntityType = "repository"
+	OrganizationEntityType      DatabaseEntityType = "organization"
+	EnterpriseEntityType        DatabaseEntityType = "enterprise"
+	PoolEntityType              DatabaseEntityType = "pool"
+	UserEntityType              DatabaseEntityType = "user"
+	InstanceEntityType          DatabaseEntityType = "instance"
+	JobEntityType               DatabaseEntityType = "job"
+	ControllerEntityType        DatabaseEntityType = "controller"
+	GithubCredentialsEntityType DatabaseEntityType = "github_credentials"
+	GithubEndpointEntityType    DatabaseEntityType = "github_endpoint"
 )
 
 const (
