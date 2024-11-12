@@ -1,4 +1,4 @@
-// Copyright 2022 Cloudbase Solutions SRL
+// Copyright 2024 Cloudbase Solutions SRL
 //
 //    Licensed under the Apache License, Version 2.0 (the "License"); you may
 //    not use this file except in compliance with the License. You may obtain
@@ -12,7 +12,7 @@
 //    License for the specific language governing permissions and limitations
 //    under the License.
 
-package util
+package github
 
 import (
 	"context"
@@ -38,9 +38,8 @@ type githubClient struct {
 	repo       *github.RepositoriesService
 	enterprise *github.EnterpriseService
 
-	cli *github.Client
-
 	entity params.GithubEntity
+	cli    *github.Client
 }
 
 func (g *githubClient) ListEntityHooks(ctx context.Context, opts *github.ListOptions) (ret []*github.Hook, response *github.Response, err error) {
@@ -447,6 +446,7 @@ func (g *githubClient) GithubBaseURL() *url.URL {
 }
 
 func GithubClient(ctx context.Context, entity params.GithubEntity) (common.GithubClient, error) {
+	// func GithubClient(ctx context.Context, entity params.GithubEntity) (common.GithubClient, error) {
 	httpClient, err := entity.Credentials.GetHTTPClient(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "fetching http client")
@@ -463,8 +463,9 @@ func GithubClient(ctx context.Context, entity params.GithubEntity) (common.Githu
 		org:            ghClient.Organizations,
 		repo:           ghClient.Repositories,
 		enterprise:     ghClient.Enterprise,
-		entity:         entity,
 		cli:            ghClient,
+		entity:         entity,
 	}
+
 	return cli, nil
 }

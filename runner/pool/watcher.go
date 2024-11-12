@@ -28,7 +28,7 @@ func (r *basePoolManager) handleControllerUpdateEvent(controllerInfo params.Cont
 func (r *basePoolManager) getClientOrStub() runnerCommon.GithubClient {
 	var err error
 	var ghc runnerCommon.GithubClient
-	ghc, err = garmUtil.GithubClient(r.ctx, r.entity, r.entity.Credentials)
+	ghc, err = garmUtil.GithubClient(r.ctx, r.entity)
 	if err != nil {
 		slog.WarnContext(r.ctx, "failed to create github client", "error", err)
 		ghc = &stubGithubClient{

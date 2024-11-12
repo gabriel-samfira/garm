@@ -64,7 +64,7 @@ const (
 
 func NewEntityPoolManager(ctx context.Context, entity params.GithubEntity, instanceTokenGetter auth.InstanceTokenGetter, providers map[string]common.Provider, store dbCommon.Store) (common.PoolManager, error) {
 	ctx = garmUtil.WithContext(ctx, slog.Any("pool_mgr", entity.String()), slog.Any("pool_type", entity.EntityType))
-	ghc, err := garmUtil.GithubClient(ctx, entity, entity.Credentials)
+	ghc, err := garmUtil.GithubClient(ctx, entity)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting github client")
 	}
@@ -864,7 +864,7 @@ func (r *basePoolManager) addInstanceToProvider(instance params.Instance) error 
 	bootstrapArgs := commonParams.BootstrapInstance{
 		Name:              instance.Name,
 		Tools:             r.tools,
-		RepoURL:           r.GithubURL(),
+		RepoURL:           r.entity.GithubURL(),
 		MetadataURL:       instance.MetadataURL,
 		CallbackURL:       instance.CallbackURL,
 		InstanceToken:     jwtToken,
@@ -1985,18 +1985,6 @@ func (r *basePoolManager) GetGithubRunners() ([]*github.Runner, error) {
 	}
 
 	return allRunners, nil
-}
-
-func (r *basePoolManager) GithubURL() string {
-	switch r.entity.EntityType {
-	case params.GithubEntityTypeRepository:
-		return fmt.Sprintf("%s/%s/%s", r.entity.Credentials.BaseURL, r.entity.Owner, r.entity.Name)
-	case params.GithubEntityTypeOrganization:
-		return fmt.Sprintf("%s/%s", r.entity.Credentials.BaseURL, r.entity.Owner)
-	case params.GithubEntityTypeEnterprise:
-		return fmt.Sprintf("%s/enterprises/%s", r.entity.Credentials.BaseURL, r.entity.Owner)
-	}
-	return ""
 }
 
 func (r *basePoolManager) GetWebhookInfo(ctx context.Context) (params.HookInfo, error) {

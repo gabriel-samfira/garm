@@ -255,8 +255,8 @@ func (s *sqlDatabase) FindPoolsMatchingAllTags(_ context.Context, entityType par
 }
 
 func (s *sqlDatabase) CreateEntityPool(_ context.Context, entity params.GithubEntity, param params.CreatePoolParams) (pool params.Pool, err error) {
-	if len(param.Tags) == 0 {
-		return params.Pool{}, runnerErrors.NewBadRequestError("no tags specified")
+	if err := param.Validate(); err != nil {
+		return params.Pool{}, fmt.Errorf("failed to validate create params: %w", err)
 	}
 
 	defer func() {

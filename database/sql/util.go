@@ -70,6 +70,7 @@ func (s *sqlDatabase) sqlToParamsInstance(instance Instance) (params.Instance, e
 		JitConfiguration:  jitConfig,
 		GitHubRunnerGroup: instance.GitHubRunnerGroup,
 		AditionalLabels:   labels,
+		ScaleSetID:        instance.ScaleSetID,
 	}
 
 	if instance.Job != nil {
@@ -252,6 +253,57 @@ func (s *sqlDatabase) sqlToCommonPool(pool Pool) (params.Pool, error) {
 		ret.Instances[idx], err = s.sqlToParamsInstance(inst)
 		if err != nil {
 			return params.Pool{}, errors.Wrap(err, "converting instance")
+		}
+	}
+
+	return ret, nil
+}
+
+func (s *sqlDatabase) sqlToCommonScaleSet(scaleSet ScaleSet) (params.ScaleSet, error) {
+	ret := params.ScaleSet{
+		ID:            scaleSet.ID,
+		ScaleSetID:    scaleSet.ScaleSetID,
+		Name:          scaleSet.Name,
+		DisableUpdate: scaleSet.DisableUpdate,
+
+		ProviderName:           scaleSet.ProviderName,
+		MaxRunners:             scaleSet.MaxRunners,
+		MinIdleRunners:         scaleSet.MinIdleRunners,
+		RunnerPrefix:           scaleSet.RunnerPrefix,
+		Image:                  scaleSet.Image,
+		Flavor:                 scaleSet.Flavor,
+		OSArch:                 scaleSet.OSArch,
+		OSType:                 scaleSet.OSType,
+		Enabled:                scaleSet.Enabled,
+		Instances:              make([]params.Instance, len(scaleSet.Instances)),
+		RunnerBootstrapTimeout: scaleSet.RunnerBootstrapTimeout,
+		ExtraSpecs:             json.RawMessage(scaleSet.ExtraSpecs),
+		GitHubRunnerGroup:      scaleSet.GitHubRunnerGroup,
+		State:                  scaleSet.State,
+	}
+
+	if scaleSet.RepoID != nil {
+		ret.RepoID = scaleSet.RepoID.String()
+		if scaleSet.Repository.Owner != "" && scaleSet.Repository.Name != "" {
+			ret.RepoName = fmt.Sprintf("%s/%s", scaleSet.Repository.Owner, scaleSet.Repository.Name)
+		}
+	}
+
+	if scaleSet.OrgID != nil && scaleSet.Organization.Name != "" {
+		ret.OrgID = scaleSet.OrgID.String()
+		ret.OrgName = scaleSet.Organization.Name
+	}
+
+	if scaleSet.EnterpriseID != nil && scaleSet.Enterprise.Name != "" {
+		ret.EnterpriseID = scaleSet.EnterpriseID.String()
+		ret.EnterpriseName = scaleSet.Enterprise.Name
+	}
+
+	var err error
+	for idx, inst := range scaleSet.Instances {
+		ret.Instances[idx], err = s.sqlToParamsInstance(inst)
+		if err != nil {
+			return params.ScaleSet{}, errors.Wrap(err, "converting instance")
 		}
 	}
 
@@ -441,6 +493,26 @@ func (s *sqlDatabase) getPoolByID(tx *gorm.DB, poolID string, preload ...string)
 		return Pool{}, errors.Wrap(q.Error, "fetching org from database")
 	}
 	return pool, nil
+}
+
+func (s *sqlDatabase) getScaleSetByID(tx *gorm.DB, scaleSetID uint, preload ...string) (ScaleSet, error) {
+	var scaleSet ScaleSet
+	q := tx.Model(&ScaleSet{})
+	if len(preload) > 0 {
+		for _, item := range preload {
+			q = q.Preload(item)
+		}
+	}
+
+	q = q.Where("id = ?", scaleSetID).First(&scaleSet)
+
+	if q.Error != nil {
+		if errors.Is(q.Error, gorm.ErrRecordNotFound) {
+			return ScaleSet{}, runnerErrors.ErrNotFound
+		}
+		return ScaleSet{}, errors.Wrap(q.Error, "fetching scale set from database")
+	}
+	return scaleSet, nil
 }
 
 func (s *sqlDatabase) hasGithubEntity(tx *gorm.DB, entityType params.GithubEntityType, entityID string) error {

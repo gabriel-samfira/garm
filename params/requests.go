@@ -156,6 +156,25 @@ type UpdatePoolParams struct {
 	Priority          *uint   `json:"priority,omitempty"`
 }
 
+type UpdateScaleSetParams struct {
+	RunnerPrefix
+
+	Name                   string              `json:"name,omitempty"`
+	Enabled                *bool               `json:"enabled,omitempty"`
+	MaxRunners             *uint               `json:"max_runners,omitempty"`
+	MinIdleRunners         *uint               `json:"min_idle_runners,omitempty"`
+	RunnerBootstrapTimeout *uint               `json:"runner_bootstrap_timeout,omitempty"`
+	Image                  string              `json:"image,omitempty"`
+	Flavor                 string              `json:"flavor,omitempty"`
+	OSType                 commonParams.OSType `json:"os_type,omitempty"`
+	OSArch                 commonParams.OSArch `json:"os_arch,omitempty"`
+	ExtraSpecs             json.RawMessage     `json:"extra_specs,omitempty"`
+	// GithubRunnerGroup is the github runner group in which the runners of this
+	// pool will be added to.
+	// The runner group must be created by someone with access to the enterprise.
+	GitHubRunnerGroup *string `json:"runner_group,omitempty"`
+}
+
 type CreateInstanceParams struct {
 	Name         string                      `json:"name,omitempty"`
 	OSType       commonParams.OSType         `json:"os_type,omitempty"`
@@ -217,6 +236,57 @@ func (p *CreatePoolParams) Validate() error {
 
 	if p.Image == "" {
 		return fmt.Errorf("missing image")
+	}
+
+	return nil
+}
+
+type CreateScaleSetParams struct {
+	RunnerPrefix
+
+	Name          string `json:"name"`
+	DisableUpdate bool   `json:"disable_update"`
+
+	ProviderName           string              `json:"provider_name,omitempty"`
+	MaxRunners             uint                `json:"max_runners,omitempty"`
+	MinIdleRunners         uint                `json:"min_idle_runners,omitempty"`
+	Image                  string              `json:"image,omitempty"`
+	Flavor                 string              `json:"flavor,omitempty"`
+	OSType                 commonParams.OSType `json:"os_type,omitempty"`
+	OSArch                 commonParams.OSArch `json:"os_arch,omitempty"`
+	Tags                   []string            `json:"tags,omitempty"`
+	Enabled                bool                `json:"enabled,omitempty"`
+	RunnerBootstrapTimeout uint                `json:"runner_bootstrap_timeout,omitempty"`
+	ExtraSpecs             json.RawMessage     `json:"extra_specs,omitempty"`
+	// GithubRunnerGroup is the github runner group in which the runners of this
+	// pool will be added to.
+	// The runner group must be created by someone with access to the enterprise.
+	GitHubRunnerGroup string `json:"github-runner-group,omitempty"`
+}
+
+func (s *CreateScaleSetParams) Validate() error {
+	if s.ProviderName == "" {
+		return fmt.Errorf("missing provider")
+	}
+
+	if s.MinIdleRunners > s.MaxRunners {
+		return fmt.Errorf("min_idle_runners cannot be larger than max_runners")
+	}
+
+	if s.MaxRunners == 0 {
+		return fmt.Errorf("max_runners cannot be 0")
+	}
+
+	if s.Flavor == "" {
+		return fmt.Errorf("missing flavor")
+	}
+
+	if s.Image == "" {
+		return fmt.Errorf("missing image")
+	}
+
+	if s.Name == "" {
+		return fmt.Errorf("missing scale set name")
 	}
 
 	return nil

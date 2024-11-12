@@ -472,7 +472,7 @@ func formatPools(pools []params.Pool) {
 		return
 	}
 	t := table.NewWriter()
-	header := table.Row{"ID", "Image", "Flavor", "Tags", "Belongs to", "Level", "Enabled", "Runner Prefix", "Priority"}
+	header := table.Row{"ID", "Image", "Flavor", "Tags", "Belongs to", "Level", "Enabled", "Runner Prefix", "Provider", "Priority"}
 	t.AppendHeader(header)
 
 	for _, pool := range pools {
@@ -494,7 +494,7 @@ func formatPools(pools []params.Pool) {
 			belongsTo = pool.EnterpriseName
 			level = "enterprise"
 		}
-		t.AppendRow(table.Row{pool.ID, pool.Image, pool.Flavor, strings.Join(tags, " "), belongsTo, level, pool.Enabled, pool.GetRunnerPrefix(), pool.Priority})
+		t.AppendRow(table.Row{pool.ID, pool.Image, pool.Flavor, strings.Join(tags, " "), belongsTo, level, pool.Enabled, pool.GetRunnerPrefix(), pool.ProviderName, pool.Priority})
 		t.AppendSeparator()
 	}
 	fmt.Println(t.Render())

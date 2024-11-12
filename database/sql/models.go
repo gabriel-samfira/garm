@@ -86,6 +86,57 @@ type Pool struct {
 	Priority  uint       `gorm:"index:idx_pool_priority"`
 }
 
+type Event struct {
+	gorm.Model
+
+	EventType  params.EventType `gorm:"index:eventType"`
+	EventLevel params.EventLevel
+	Message    string `gorm:"type:text"`
+}
+
+// ScaleSet represents a github scale set. Scale sets are almost identical to pools with a few
+// notable exceptions:
+//   - Labels are no longer relevant
+//   - Workflows will use the scaleset name to target runners.
+//   - A scale set is a stand alone unit. If a workflow targets a scale set, no other runner will pick up that job.
+type ScaleSet struct {
+	gorm.Model
+
+	ScaleSetID    uint64 `gorm:"index:idx_scale_set"`
+	Name          string `gorm:"index:idx_name"`
+	DisableUpdate bool
+
+	State params.ScaleSetState
+
+	ProviderName           string `gorm:"index:idx_pool_type"`
+	RunnerPrefix           string
+	MaxRunners             uint
+	MinIdleRunners         uint
+	RunnerBootstrapTimeout uint
+	Image                  string `gorm:"index:idx_pool_type"`
+	Flavor                 string `gorm:"index:idx_pool_type"`
+	OSType                 commonParams.OSType
+	OSArch                 commonParams.OSArch
+	Enabled                bool
+	// ExtraSpecs is an opaque json that gets sent to the provider
+	// as part of the bootstrap params for instances. It can contain
+	// any kind of data needed by providers.
+	ExtraSpecs        datatypes.JSON
+	GitHubRunnerGroup string
+
+	RepoID     *uuid.UUID `gorm:"index"`
+	Repository Repository `gorm:"foreignKey:RepoID;"`
+
+	OrgID        *uuid.UUID   `gorm:"index"`
+	Organization Organization `gorm:"foreignKey:OrgID"`
+
+	EnterpriseID *uuid.UUID `gorm:"index"`
+	Enterprise   Enterprise `gorm:"foreignKey:EnterpriseID"`
+
+	Instances      []Instance `gorm:"foreignKey:ScaleSetID"`
+	StatusMessages []Event    `gorm:"many2many:status_updates"`
+}
+
 type Repository struct {
 	Base
 
@@ -186,6 +237,9 @@ type Instance struct {
 
 	PoolID uuid.UUID
 	Pool   Pool `gorm:"foreignKey:PoolID"`
+
+	ScaleSetID uint
+	ScaleSet   ScaleSet `gorm:"foreignKey:ScaleSetID"`
 
 	StatusMessages []InstanceStatusUpdate `gorm:"foreignKey:InstanceID;constraint:OnDelete:CASCADE,OnUpdate:CASCADE;"`
 
