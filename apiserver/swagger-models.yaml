@@ -130,6 +130,22 @@ definitions:
         import:
             package: github.com/cloudbase/garm/params
             alias: garm_params
+  ScaleSets:
+    type: array
+    x-go-type:
+        type: ScaleSet
+        import:
+            package: github.com/cloudbase/garm/params
+            alias: garm_params
+    items:
+        $ref: '#/definitions/ScaleSet'
+  ScaleSet:
+    type: object
+    x-go-type:
+        type: ScaleSet
+        import:
+            package: github.com/cloudbase/garm/params
+            alias: garm_params
   Repositories:
     type: array
     x-go-type:
@@ -213,10 +229,24 @@ definitions:
         import:
             package: github.com/cloudbase/garm/params
             alias: garm_params
+  CreateScaleSetParams:
+    type: object
+    x-go-type:
+        type: CreateScaleSetParams
+        import:
+            package: github.com/cloudbase/garm/params
+            alias: garm_params
   UpdatePoolParams:
     type: object
     x-go-type:
         type: UpdatePoolParams
+        import:
+            package: github.com/cloudbase/garm/params
+            alias: garm_params
+  UpdateScaleSetParams:
+    type: object
+    x-go-type:
+        type: UpdateScaleSetParams
         import:
             package: github.com/cloudbase/garm/params
             alias: garm_params
@@ -227,13 +257,6 @@ definitions:
         import:
             package: github.com/cloudbase/garm/apiserver/params
             alias: apiserver_params
-  CreateInstanceParams:
-    type: object
-    x-go-type:
-        type: CreateInstanceParams
-        import:
-            package: github.com/cloudbase/garm/params
-            alias: garm_params
   UpdateGithubEndpointParams:
     type: object
     x-go-type:

@@ -172,3 +172,33 @@ func (s *ScaleSetClient) DeleteRunnerScaleSet(ctx context.Context, runnerScaleSe
 	resp.Body.Close()
 	return nil
 }
+
+func (s *ScaleSetClient) GetRunnerGroupByName(ctx context.Context, runnerGroup string) (params.RunnerGroup, error) {
+	path := fmt.Sprintf("_apis/runtime/runnergroups/?groupName=%s", runnerGroup)
+	req, err := s.newActionsRequest(ctx, http.MethodGet, path, nil)
+	if err != nil {
+		return params.RunnerGroup{}, err
+	}
+
+	resp, err := s.Do(req)
+	if err != nil {
+		return params.RunnerGroup{}, fmt.Errorf("failed to make request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var runnerGroupList params.RunnerGroupList
+	err = json.NewDecoder(resp.Body).Decode(&runnerGroupList)
+	if err != nil {
+		return params.RunnerGroup{}, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	if runnerGroupList.Count == 0 {
+		return params.RunnerGroup{}, runnerErrors.NewNotFoundError("runner group %s does not exist", runnerGroup)
+	}
+
+	if runnerGroupList.Count > 1 {
+		return params.RunnerGroup{}, runnerErrors.NewConflictError("multiple runner groups exist with the same name (%s)", runnerGroup)
+	}
+
+	return runnerGroupList.RunnerGroups[0], nil
+}

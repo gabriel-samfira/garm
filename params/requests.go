@@ -172,7 +172,9 @@ type UpdateScaleSetParams struct {
 	// GithubRunnerGroup is the github runner group in which the runners of this
 	// pool will be added to.
 	// The runner group must be created by someone with access to the enterprise.
-	GitHubRunnerGroup *string `json:"runner_group,omitempty"`
+	GitHubRunnerGroup *string        `json:"runner_group,omitempty"`
+	State             *ScaleSetState `json:"state"`
+	ExtendedState     *string        `json:"extended_state"`
 }
 
 type CreateInstanceParams struct {
@@ -246,6 +248,7 @@ type CreateScaleSetParams struct {
 
 	Name          string `json:"name"`
 	DisableUpdate bool   `json:"disable_update"`
+	ScaleSetID    int    `json:"scale_set_id"`
 
 	ProviderName           string              `json:"provider_name,omitempty"`
 	MaxRunners             uint                `json:"max_runners,omitempty"`

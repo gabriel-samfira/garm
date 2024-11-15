@@ -12,11 +12,6 @@ import (
 	garmUtil "github.com/cloudbase/garm/util"
 )
 
-// entityGetter is implemented by all github entities (repositories, organizations and enterprises)
-type entityGetter interface {
-	GetEntity() (params.GithubEntity, error)
-}
-
 func (r *basePoolManager) handleControllerUpdateEvent(controllerInfo params.ControllerInfo) {
 	r.mux.Lock()
 	defer r.mux.Unlock()
@@ -139,7 +134,7 @@ func (r *basePoolManager) handleWatcherEvent(event common.ChangePayload) {
 		}
 		r.handleControllerUpdateEvent(controllerInfo)
 	case dbEntityType:
-		entity, ok := event.Payload.(entityGetter)
+		entity, ok := event.Payload.(params.EntityGetter)
 		if !ok {
 			slog.ErrorContext(r.ctx, "failed to cast payload to entity")
 			return

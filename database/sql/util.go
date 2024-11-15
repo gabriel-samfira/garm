@@ -15,6 +15,7 @@
 package sql
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -280,6 +281,7 @@ func (s *sqlDatabase) sqlToCommonScaleSet(scaleSet ScaleSet) (params.ScaleSet, e
 		ExtraSpecs:             json.RawMessage(scaleSet.ExtraSpecs),
 		GitHubRunnerGroup:      scaleSet.GitHubRunnerGroup,
 		State:                  scaleSet.State,
+		ExtendedState:          scaleSet.ExtendedState,
 	}
 
 	if scaleSet.RepoID != nil {
@@ -575,4 +577,28 @@ func (s *sqlDatabase) sendNotify(entityType dbCommon.DatabaseEntityType, op dbCo
 		EntityType: entityType,
 	}
 	return s.producer.Notify(message)
+}
+
+func (s *sqlDatabase) GetGithubEntity(_ context.Context, entityType params.GithubEntityType, entityID string) (params.GithubEntity, error) {
+	var ghEntity params.EntityGetter
+	var err error
+	switch entityType {
+	case params.GithubEntityTypeEnterprise:
+		ghEntity, err = s.GetEnterpriseByID(s.ctx, entityID)
+	case params.GithubEntityTypeOrganization:
+		ghEntity, err = s.GetOrganizationByID(s.ctx, entityID)
+	case params.GithubEntityTypeRepository:
+		ghEntity, err = s.GetRepositoryByID(s.ctx, entityID)
+	default:
+		return params.GithubEntity{}, errors.Wrap(runnerErrors.ErrBadRequest, "invalid entity type")
+	}
+	if err != nil {
+		return params.GithubEntity{}, errors.Wrap(err, "failed to get ")
+	}
+
+	entity, err := ghEntity.GetEntity()
+	if err != nil {
+		return params.GithubEntity{}, errors.Wrap(err, "failed to get entity")
+	}
+	return entity, nil
 }

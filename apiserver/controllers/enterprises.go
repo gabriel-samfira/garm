@@ -277,6 +277,62 @@ func (a *APIController) CreateEnterprisePoolHandler(w http.ResponseWriter, r *ht
 	}
 }
 
+// swagger:route POST /enterprises/{enterpriseID}/scalesets enterprises scalesets CreateEnterpriseScaleSet
+//
+// Create enterprise pool with the parameters given.
+//
+//	Parameters:
+//	  + name: enterpriseID
+//	    description: Enterprise ID.
+//	    type: string
+//	    in: path
+//	    required: true
+//
+//	  + name: Body
+//	    description: Parameters used when creating the enterprise scale set.
+//	    type: CreatePoolParams
+//	    in: body
+//	    required: true
+//
+//	Responses:
+//	  200: Pool
+//	  default: APIErrorResponse
+func (a *APIController) CreateEnterpriseScaleSetHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	vars := mux.Vars(r)
+	enterpriseID, ok := vars["enterpriseID"]
+	if !ok {
+		w.WriteHeader(http.StatusBadRequest)
+		if err := json.NewEncoder(w).Encode(params.APIErrorResponse{
+			Error:   "Bad Request",
+			Details: "No enterprise ID specified",
+		}); err != nil {
+			slog.With(slog.Any("error", err)).ErrorContext(ctx, "failed to encode response")
+		}
+		return
+	}
+
+	var scaleSetData runnerParams.CreateScaleSetParams
+	if err := json.NewDecoder(r.Body).Decode(&scaleSetData); err != nil {
+		slog.With(slog.Any("error", err)).ErrorContext(ctx, "failed to decode")
+		handleError(ctx, w, gErrors.ErrBadRequest)
+		return
+	}
+
+	scaleSet, err := a.r.CreateEntityScaleSet(ctx, runnerParams.GithubEntityTypeEnterprise, enterpriseID, scaleSetData)
+	if err != nil {
+		slog.With(slog.Any("error", err)).ErrorContext(ctx, "error creating enterprise scale set")
+		handleError(ctx, w, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(scaleSet); err != nil {
+		slog.With(slog.Any("error", err)).ErrorContext(ctx, "failed to encode response")
+	}
+}
+
 // swagger:route GET /enterprises/{enterpriseID}/pools enterprises pools ListEnterprisePools
 //
 // List enterprise pools.

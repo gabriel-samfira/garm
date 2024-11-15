@@ -89,7 +89,7 @@ type Pool struct {
 type Event struct {
 	gorm.Model
 
-	EventType  params.EventType `gorm:"index:eventType"`
+	EventType  params.EventType `gorm:"index:event_type_idx"`
 	EventLevel params.EventLevel
 	Message    string `gorm:"type:text"`
 }
@@ -102,19 +102,25 @@ type Event struct {
 type ScaleSet struct {
 	gorm.Model
 
-	ScaleSetID    uint64 `gorm:"index:idx_scale_set"`
+	// ScaleSetID is the github ID of the scale set. This field may not be set if
+	// the scale set was ceated in GARM but has not yet been created in GitHub.
+	ScaleSetID    int    `gorm:"index:idx_scale_set"`
 	Name          string `gorm:"index:idx_name"`
 	DisableUpdate bool
 
+	// State stores the provisioning state of the scale set in GitHub
 	State params.ScaleSetState
+	// ExtendedState stores a more detailed message regarding the State.
+	// If an error occurs, the reason for the error will be stored here.
+	ExtendedState string
 
-	ProviderName           string `gorm:"index:idx_pool_type"`
+	ProviderName           string
 	RunnerPrefix           string
 	MaxRunners             uint
 	MinIdleRunners         uint
 	RunnerBootstrapTimeout uint
-	Image                  string `gorm:"index:idx_pool_type"`
-	Flavor                 string `gorm:"index:idx_pool_type"`
+	Image                  string
+	Flavor                 string
 	OSType                 commonParams.OSType
 	OSArch                 commonParams.OSArch
 	Enabled                bool

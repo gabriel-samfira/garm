@@ -32,6 +32,24 @@ func (_m *Store) AddInstanceEvent(ctx context.Context, instanceName string, even
 	return r0
 }
 
+// AddScaleSetEvent provides a mock function with given fields: ctx, scaleSet, event, eventLevel, statusMessage
+func (_m *Store) AddScaleSetEvent(ctx context.Context, scaleSet uint, event params.EventType, eventLevel params.EventLevel, statusMessage string) error {
+	ret := _m.Called(ctx, scaleSet, event, eventLevel, statusMessage)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AddScaleSetEvent")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uint, params.EventType, params.EventLevel, string) error); ok {
+		r0 = rf(ctx, scaleSet, event, eventLevel, statusMessage)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // BreakLockJobIsQueued provides a mock function with given fields: ctx, jobID
 func (_m *Store) BreakLockJobIsQueued(ctx context.Context, jobID int64) error {
 	ret := _m.Called(ctx, jobID)
@@ -127,6 +145,34 @@ func (_m *Store) CreateEntityPool(ctx context.Context, entity params.GithubEntit
 
 	if rf, ok := ret.Get(1).(func(context.Context, params.GithubEntity, params.CreatePoolParams) error); ok {
 		r1 = rf(ctx, entity, param)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// CreateEntityScaleSet provides a mock function with given fields: _a0, entity, param
+func (_m *Store) CreateEntityScaleSet(_a0 context.Context, entity params.GithubEntity, param params.CreateScaleSetParams) (params.ScaleSet, error) {
+	ret := _m.Called(_a0, entity, param)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreateEntityScaleSet")
+	}
+
+	var r0 params.ScaleSet
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, params.GithubEntity, params.CreateScaleSetParams) (params.ScaleSet, error)); ok {
+		return rf(_a0, entity, param)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, params.GithubEntity, params.CreateScaleSetParams) params.ScaleSet); ok {
+		r0 = rf(_a0, entity, param)
+	} else {
+		r0 = ret.Get(0).(params.ScaleSet)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, params.GithubEntity, params.CreateScaleSetParams) error); ok {
+		r1 = rf(_a0, entity, param)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -510,6 +556,24 @@ func (_m *Store) DeleteRepository(ctx context.Context, repoID string) error {
 	return r0
 }
 
+// DeleteScaleSetByID provides a mock function with given fields: ctx, scaleSetID
+func (_m *Store) DeleteScaleSetByID(ctx context.Context, scaleSetID uint) error {
+	ret := _m.Called(ctx, scaleSetID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteScaleSetByID")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uint) error); ok {
+		r0 = rf(ctx, scaleSetID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // FindPoolsMatchingAllTags provides a mock function with given fields: ctx, entityType, entityID, tags
 func (_m *Store) FindPoolsMatchingAllTags(ctx context.Context, entityType params.GithubEntityType, entityID string, tags []string) ([]params.Pool, error) {
 	ret := _m.Called(ctx, entityType, entityID, tags)
@@ -729,6 +793,34 @@ func (_m *Store) GetGithubEndpoint(ctx context.Context, name string) (params.Git
 
 	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
 		r1 = rf(ctx, name)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetGithubEntity provides a mock function with given fields: _a0, entityType, entityID
+func (_m *Store) GetGithubEntity(_a0 context.Context, entityType params.GithubEntityType, entityID string) (params.GithubEntity, error) {
+	ret := _m.Called(_a0, entityType, entityID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetGithubEntity")
+	}
+
+	var r0 params.GithubEntity
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, params.GithubEntityType, string) (params.GithubEntity, error)); ok {
+		return rf(_a0, entityType, entityID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, params.GithubEntityType, string) params.GithubEntity); ok {
+		r0 = rf(_a0, entityType, entityID)
+	} else {
+		r0 = ret.Get(0).(params.GithubEntity)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, params.GithubEntityType, string) error); ok {
+		r1 = rf(_a0, entityType, entityID)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -960,6 +1052,34 @@ func (_m *Store) GetRepositoryByID(ctx context.Context, repoID string) (params.R
 	return r0, r1
 }
 
+// GetScaleSetByID provides a mock function with given fields: ctx, scaleSet
+func (_m *Store) GetScaleSetByID(ctx context.Context, scaleSet uint) (params.ScaleSet, error) {
+	ret := _m.Called(ctx, scaleSet)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetScaleSetByID")
+	}
+
+	var r0 params.ScaleSet
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uint) (params.ScaleSet, error)); ok {
+		return rf(ctx, scaleSet)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uint) params.ScaleSet); ok {
+		r0 = rf(ctx, scaleSet)
+	} else {
+		r0 = ret.Get(0).(params.ScaleSet)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uint) error); ok {
+		r1 = rf(ctx, scaleSet)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetUser provides a mock function with given fields: ctx, user
 func (_m *Store) GetUser(ctx context.Context, user string) (params.User, error) {
 	ret := _m.Called(ctx, user)
@@ -1152,6 +1272,36 @@ func (_m *Store) ListAllPools(ctx context.Context) ([]params.Pool, error) {
 	return r0, r1
 }
 
+// ListAllScaleSets provides a mock function with given fields: ctx
+func (_m *Store) ListAllScaleSets(ctx context.Context) ([]params.ScaleSet, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListAllScaleSets")
+	}
+
+	var r0 []params.ScaleSet
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) ([]params.ScaleSet, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) []params.ScaleSet); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]params.ScaleSet)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // ListEnterprises provides a mock function with given fields: ctx
 func (_m *Store) ListEnterprises(ctx context.Context) ([]params.Enterprise, error) {
 	ret := _m.Called(ctx)
@@ -1265,6 +1415,36 @@ func (_m *Store) ListEntityPools(ctx context.Context, entity params.GithubEntity
 
 	if rf, ok := ret.Get(1).(func(context.Context, params.GithubEntity) error); ok {
 		r1 = rf(ctx, entity)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// ListEntityScaleSets provides a mock function with given fields: _a0, entity
+func (_m *Store) ListEntityScaleSets(_a0 context.Context, entity params.GithubEntity) ([]params.ScaleSet, error) {
+	ret := _m.Called(_a0, entity)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListEntityScaleSets")
+	}
+
+	var r0 []params.ScaleSet
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, params.GithubEntity) ([]params.ScaleSet, error)); ok {
+		return rf(_a0, entity)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, params.GithubEntity) []params.ScaleSet); ok {
+		r0 = rf(_a0, entity)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]params.ScaleSet)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, params.GithubEntity) error); ok {
+		r1 = rf(_a0, entity)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -1452,6 +1632,36 @@ func (_m *Store) ListRepositories(ctx context.Context) ([]params.Repository, err
 	return r0, r1
 }
 
+// ListScaleSetInstances provides a mock function with given fields: _a0, scalesetID
+func (_m *Store) ListScaleSetInstances(_a0 context.Context, scalesetID uint) ([]params.Instance, error) {
+	ret := _m.Called(_a0, scalesetID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListScaleSetInstances")
+	}
+
+	var r0 []params.Instance
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uint) ([]params.Instance, error)); ok {
+		return rf(_a0, scalesetID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uint) []params.Instance); ok {
+		r0 = rf(_a0, scalesetID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]params.Instance)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uint) error); ok {
+		r1 = rf(_a0, scalesetID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // LockJob provides a mock function with given fields: ctx, jobID, entityID
 func (_m *Store) LockJob(ctx context.Context, jobID int64, entityID string) error {
 	ret := _m.Called(ctx, jobID, entityID)
@@ -1593,6 +1803,34 @@ func (_m *Store) UpdateEntityPool(ctx context.Context, entity params.GithubEntit
 
 	if rf, ok := ret.Get(1).(func(context.Context, params.GithubEntity, string, params.UpdatePoolParams) error); ok {
 		r1 = rf(ctx, entity, poolID, param)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// UpdateEntityScaleSet provides a mock function with given fields: _a0, entity, scaleSetID, param, callback
+func (_m *Store) UpdateEntityScaleSet(_a0 context.Context, entity params.GithubEntity, scaleSetID uint, param params.UpdateScaleSetParams, callback func(params.ScaleSet, params.ScaleSet) error) (params.ScaleSet, error) {
+	ret := _m.Called(_a0, entity, scaleSetID, param, callback)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateEntityScaleSet")
+	}
+
+	var r0 params.ScaleSet
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, params.GithubEntity, uint, params.UpdateScaleSetParams, func(params.ScaleSet, params.ScaleSet) error) (params.ScaleSet, error)); ok {
+		return rf(_a0, entity, scaleSetID, param, callback)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, params.GithubEntity, uint, params.UpdateScaleSetParams, func(params.ScaleSet, params.ScaleSet) error) params.ScaleSet); ok {
+		r0 = rf(_a0, entity, scaleSetID, param, callback)
+	} else {
+		r0 = ret.Get(0).(params.ScaleSet)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, params.GithubEntity, uint, params.UpdateScaleSetParams, func(params.ScaleSet, params.ScaleSet) error) error); ok {
+		r1 = rf(_a0, entity, scaleSetID, param, callback)
 	} else {
 		r1 = ret.Error(1)
 	}

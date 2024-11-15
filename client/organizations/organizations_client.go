@@ -58,6 +58,8 @@ type ClientService interface {
 
 	CreateOrgPool(params *CreateOrgPoolParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*CreateOrgPoolOK, error)
 
+	CreateOrgScaleSet(params *CreateOrgScaleSetParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*CreateOrgScaleSetOK, error)
+
 	DeleteOrg(params *DeleteOrgParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) error
 
 	DeleteOrgPool(params *DeleteOrgPoolParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) error
@@ -158,6 +160,44 @@ func (a *Client) CreateOrgPool(params *CreateOrgPoolParams, authInfo runtime.Cli
 	}
 	// unexpected success response
 	unexpectedSuccess := result.(*CreateOrgPoolDefault)
+	return nil, runtime.NewAPIError("unexpected success response: content available as default response in error", unexpectedSuccess, unexpectedSuccess.Code())
+}
+
+/*
+CreateOrgScaleSet creates organization scale set with the parameters given
+*/
+func (a *Client) CreateOrgScaleSet(params *CreateOrgScaleSetParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*CreateOrgScaleSetOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewCreateOrgScaleSetParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "CreateOrgScaleSet",
+		Method:             "POST",
+		PathPattern:        "/organizations/{orgID}/scalesets",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http"},
+		Params:             params,
+		Reader:             &CreateOrgScaleSetReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*CreateOrgScaleSetOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	unexpectedSuccess := result.(*CreateOrgScaleSetDefault)
 	return nil, runtime.NewAPIError("unexpected success response: content available as default response in error", unexpectedSuccess, unexpectedSuccess.Code())
 }
 

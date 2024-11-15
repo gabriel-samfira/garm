@@ -125,9 +125,11 @@ const (
 )
 
 const (
-	ScaleSetPendingCreate ScaleSetState = "pending_create"
-	ScaleSetCreated       ScaleSetState = "created"
-	ScaleSetPendingDelete ScaleSetState = "pending_delete"
+	ScaleSetPendingCreate      ScaleSetState = "pending_create"
+	ScaleSetCreated            ScaleSetState = "created"
+	ScaleSetError              ScaleSetState = "error"
+	ScaleSetPendingDelete      ScaleSetState = "pending_delete"
+	ScaleSetPendingForceDelete ScaleSetState = "pending_force_delete"
 )
 
 func (e GithubEntityType) String() string {
@@ -393,11 +395,13 @@ func (p *Pool) HasRequiredLabels(set []string) bool {
 type Pools []Pool
 
 type ScaleSet struct {
-	ID            uint          `json:"id,omitempty"`
-	ScaleSetID    uint64        `json:"scale_set_id,omitempty"`
-	Name          string        `json:"name,omitempty"`
-	DisableUpdate bool          `json:"disable_update"`
+	ID            uint   `json:"id,omitempty"`
+	ScaleSetID    int    `json:"scale_set_id,omitempty"`
+	Name          string `json:"name,omitempty"`
+	DisableUpdate bool   `json:"disable_update"`
+
 	State         ScaleSetState `json:"state"`
+	ExtendedState string        `json:"extended_state,omitempty"`
 
 	ProviderName   string              `json:"provider_name,omitempty"`
 	MaxRunners     uint                `json:"max_runners,omitempty"`
@@ -476,6 +480,9 @@ func (p *ScaleSet) RunnerTimeout() uint {
 	}
 	return p.RunnerBootstrapTimeout
 }
+
+// used by swagger client generated code
+type ScaleSets []ScaleSet
 
 type Repository struct {
 	ID    string `json:"id,omitempty"`

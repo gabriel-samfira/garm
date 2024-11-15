@@ -435,3 +435,15 @@ type AcquirableJob struct {
 	EventName       string   `json:"eventName"`
 	RequestLabels   []string `json:"requestLabels"`
 }
+
+type RunnerGroup struct {
+	ID        int64  `json:"id"`
+	Name      string `json:"name"`
+	Size      int64  `json:"size"`
+	IsDefault bool   `json:"isDefaultGroup"`
+}
+
+type RunnerGroupList struct {
+	Count        int           `json:"count"`
+	RunnerGroups []RunnerGroup `json:"value"`
+}

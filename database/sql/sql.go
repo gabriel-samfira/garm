@@ -428,6 +428,8 @@ func (s *sqlDatabase) migrateDB() error {
 		&Instance{},
 		&ControllerInfo{},
 		&WorkflowJob{},
+		&Event{},
+		&ScaleSet{},
 	); err != nil {
 		return errors.Wrap(err, "running auto migrate")
 	}

@@ -89,6 +89,7 @@ func (s *sqlDatabase) CreateEntityScaleSet(_ context.Context, entity params.Gith
 
 	newScaleSet := ScaleSet{
 		Name:                   param.Name,
+		ScaleSetID:             param.ScaleSetID,
 		DisableUpdate:          param.DisableUpdate,
 		ProviderName:           param.ProviderName,
 		RunnerPrefix:           param.GetRunnerPrefix(),
@@ -130,6 +131,7 @@ func (s *sqlDatabase) CreateEntityScaleSet(_ context.Context, entity params.Gith
 		if q.Error != nil {
 			return errors.Wrap(q.Error, "creating pool")
 		}
+
 		return nil
 	})
 	if err != nil {
@@ -211,7 +213,7 @@ func (s *sqlDatabase) ListEntityScaleSets(_ context.Context, entity params.Githu
 	return ret, nil
 }
 
-func (s *sqlDatabase) UpdateEntityScaleSet(_ context.Context, entity params.GithubEntity, scaleSetID uint, param params.UpdateScaleSetParams) (updatedScaleSet params.ScaleSet, err error) {
+func (s *sqlDatabase) UpdateEntityScaleSet(_ context.Context, entity params.GithubEntity, scaleSetID uint, param params.UpdateScaleSetParams, callback func(old, new params.ScaleSet) error) (updatedScaleSet params.ScaleSet, err error) {
 	defer func() {
 		if err == nil {
 			s.sendNotify(common.ScaleSetEntityType, common.UpdateOperation, updatedScaleSet)
@@ -223,9 +225,20 @@ func (s *sqlDatabase) UpdateEntityScaleSet(_ context.Context, entity params.Gith
 			return errors.Wrap(err, "fetching scale set")
 		}
 
+		old, err := s.sqlToCommonScaleSet(scaleSet)
+		if err != nil {
+			return errors.Wrap(err, "converting scale set")
+		}
+
 		updatedScaleSet, err = s.updateScaleSet(tx, scaleSet, param)
 		if err != nil {
 			return errors.Wrap(err, "updating pool")
+		}
+
+		if callback != nil {
+			if err := callback(old, updatedScaleSet); err != nil {
+				return errors.Wrap(err, "executing update callback")
+			}
 		}
 		return nil
 	})
@@ -288,6 +301,14 @@ func (s *sqlDatabase) updateScaleSet(tx *gorm.DB, scaleSet ScaleSet, param param
 		scaleSet.Enabled = *param.Enabled
 	}
 
+	if param.State != nil && *param.State != scaleSet.State {
+		scaleSet.State = *param.State
+	}
+
+	if param.ExtendedState != nil && *param.ExtendedState != scaleSet.ExtendedState {
+		scaleSet.ExtendedState = *param.ExtendedState
+	}
+
 	if param.Name != "" {
 		scaleSet.Name = param.Name
 	}
@@ -341,4 +362,44 @@ func (s *sqlDatabase) updateScaleSet(tx *gorm.DB, scaleSet ScaleSet, param param
 	}
 
 	return s.sqlToCommonScaleSet(scaleSet)
+}
+
+func (s *sqlDatabase) GetScaleSetByID(_ context.Context, scaleSet uint) (params.ScaleSet, error) {
+	pool, err := s.getScaleSetByID(s.conn, scaleSet, "Instances", "Enterprise", "Organization", "Repository")
+	if err != nil {
+		return params.ScaleSet{}, errors.Wrap(err, "fetching pool by ID")
+	}
+	return s.sqlToCommonScaleSet(pool)
+}
+
+func (s *sqlDatabase) DeleteScaleSetByID(ctx context.Context, scaleSetID uint) (err error) {
+	var scaleSet params.ScaleSet
+	defer func() {
+		if err == nil && scaleSet.ID != 0 {
+			s.sendNotify(common.ScaleSetEntityType, common.DeleteOperation, scaleSet)
+		}
+	}()
+	err = s.conn.Transaction(func(tx *gorm.DB) error {
+		dbSet, err := s.getScaleSetByID(tx, scaleSetID, "Instances")
+		if err != nil {
+			return errors.Wrap(err, "fetching scale set")
+		}
+
+		if len(dbSet.Instances) > 0 {
+			return runnerErrors.NewBadRequestError("cannot delete scaleset with runners")
+		}
+		scaleSet, err = s.sqlToCommonScaleSet(dbSet)
+		if err != nil {
+			return errors.Wrap(err, "converting scale set")
+		}
+
+		if q := tx.Unscoped().Delete(&dbSet); q.Error != nil {
+			return errors.Wrap(q.Error, "deleting scale set")
+		}
+		return nil
+	})
+	if err != nil {
+		return errors.Wrap(err, "removing scale set")
+	}
+	return nil
 }

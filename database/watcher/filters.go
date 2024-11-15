@@ -210,3 +210,33 @@ func WithExcludeEntityTypeFilter(entityType dbCommon.DatabaseEntityType) dbCommo
 		return payload.EntityType != entityType
 	}
 }
+
+// WithScaleSetFilter returns a filter function that matches a particular scale set.
+func WithScaleSetFilter(scaleset params.ScaleSet) dbCommon.PayloadFilterFunc {
+	return func(payload dbCommon.ChangePayload) bool {
+		if payload.EntityType != dbCommon.ScaleSetEntityType {
+			return false
+		}
+
+		ss, ok := payload.Payload.(params.ScaleSet)
+		if !ok {
+			return false
+		}
+
+		return ss.ID == scaleset.ID
+	}
+}
+
+func WithScaleSetInstanceFilter(scaleset params.ScaleSet) dbCommon.PayloadFilterFunc {
+	return func(payload dbCommon.ChangePayload) bool {
+		if payload.EntityType != dbCommon.InstanceEntityType {
+			return false
+		}
+
+		instance, ok := payload.Payload.(params.Instance)
+		if !ok {
+			return false
+		}
+		return instance.ScaleSetID == scaleset.ID
+	}
+}

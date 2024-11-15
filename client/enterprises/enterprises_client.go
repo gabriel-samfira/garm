@@ -58,6 +58,8 @@ type ClientService interface {
 
 	CreateEnterprisePool(params *CreateEnterprisePoolParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*CreateEnterprisePoolOK, error)
 
+	CreateEnterpriseScaleSet(params *CreateEnterpriseScaleSetParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*CreateEnterpriseScaleSetOK, error)
+
 	DeleteEnterprise(params *DeleteEnterpriseParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) error
 
 	DeleteEnterprisePool(params *DeleteEnterprisePoolParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) error
@@ -152,6 +154,44 @@ func (a *Client) CreateEnterprisePool(params *CreateEnterprisePoolParams, authIn
 	}
 	// unexpected success response
 	unexpectedSuccess := result.(*CreateEnterprisePoolDefault)
+	return nil, runtime.NewAPIError("unexpected success response: content available as default response in error", unexpectedSuccess, unexpectedSuccess.Code())
+}
+
+/*
+CreateEnterpriseScaleSet creates enterprise pool with the parameters given
+*/
+func (a *Client) CreateEnterpriseScaleSet(params *CreateEnterpriseScaleSetParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*CreateEnterpriseScaleSetOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewCreateEnterpriseScaleSetParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "CreateEnterpriseScaleSet",
+		Method:             "POST",
+		PathPattern:        "/enterprises/{enterpriseID}/scalesets",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http"},
+		Params:             params,
+		Reader:             &CreateEnterpriseScaleSetReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*CreateEnterpriseScaleSetOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	unexpectedSuccess := result.(*CreateEnterpriseScaleSetDefault)
 	return nil, runtime.NewAPIError("unexpected success response: content available as default response in error", unexpectedSuccess, unexpectedSuccess.Code())
 }
 
