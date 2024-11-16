@@ -55,10 +55,6 @@ var (
 	priority                   uint
 )
 
-type poolsPayloadGetter interface {
-	GetPayload() params.Pools
-}
-
 // runnerCmd represents the runner command
 var poolCmd = &cobra.Command{
 	Use:          "pool",
@@ -138,8 +134,8 @@ Example:
 
 var poolShowCmd = &cobra.Command{
 	Use:          "show",
-	Short:        "Show details for a runner",
-	Long:         `Displays a detailed view of a single runner.`,
+	Short:        "Show details for a pool",
+	Long:         `Displays a detailed view of a single pool.`,
 	SilenceUsage: true,
 	RunE: func(_ *cobra.Command, args []string) error {
 		if needsInit {
@@ -195,6 +191,10 @@ var poolDeleteCmd = &cobra.Command{
 
 type poolPayloadGetter interface {
 	GetPayload() params.Pool
+}
+
+type poolsPayloadGetter interface {
+	GetPayload() params.Pools
 }
 
 var poolAddCmd = &cobra.Command{

@@ -54,7 +54,7 @@ ListScalesetsOK describes a response with status code 200, with default header v
 ScaleSets
 */
 type ListScalesetsOK struct {
-	Payload garm_params.ScaleSet
+	Payload garm_params.ScaleSets
 }
 
 // IsSuccess returns true when this list scalesets o k response has a 2xx status code
@@ -97,7 +97,7 @@ func (o *ListScalesetsOK) String() string {
 	return fmt.Sprintf("[GET /scalesets][%d] listScalesetsOK %s", 200, payload)
 }
 
-func (o *ListScalesetsOK) GetPayload() garm_params.ScaleSet {
+func (o *ListScalesetsOK) GetPayload() garm_params.ScaleSets {
 	return o.Payload
 }
 

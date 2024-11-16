@@ -395,6 +395,8 @@ func (p *Pool) HasRequiredLabels(set []string) bool {
 type Pools []Pool
 
 type ScaleSet struct {
+	RunnerPrefix
+
 	ID            uint   `json:"id,omitempty"`
 	ScaleSetID    int    `json:"scale_set_id,omitempty"`
 	Name          string `json:"name,omitempty"`
@@ -424,7 +426,6 @@ type ScaleSet struct {
 	// The runner group must be created by someone with access to the enterprise.
 	GitHubRunnerGroup string `json:"github-runner-group,omitempty"`
 
-	RunnerPrefix   string          `json:"runner_prefix,omitempty"`
 	StatusMessages []StatusMessage `json:"status_messages"`
 
 	RepoID   string `json:"repo_id,omitempty"`
@@ -757,7 +758,7 @@ func (g GithubCredentials) GetHTTPClient(ctx context.Context) (*http.Client, err
 	default:
 		var pat GithubPAT
 		if err := json.Unmarshal(g.CredentialsPayload, &pat); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal github app credentials: %w", err)
+			return nil, fmt.Errorf("failed to unmarshal github PAT credentials: %w", err)
 		}
 		httpClient := &http.Client{Transport: httpTransport}
 		ctx = context.WithValue(ctx, oauth2.HTTPClient, httpClient)

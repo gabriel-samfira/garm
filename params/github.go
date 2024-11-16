@@ -237,15 +237,19 @@ type RunnerScaleSetStatistic struct {
 }
 
 type RunnerScaleSet struct {
-	Id                 int                      `json:"id,omitempty"`
-	Name               string                   `json:"name,omitempty"`
-	RunnerGroupId      int                      `json:"runnerGroupId,omitempty"`
-	RunnerGroupName    string                   `json:"runnerGroupName,omitempty"`
-	Labels             []Label                  `json:"labels,omitempty"`
-	RunnerSetting      RunnerSetting            `json:"RunnerSetting,omitempty"`
-	CreatedOn          time.Time                `json:"createdOn,omitempty"`
-	RunnerJitConfigUrl string                   `json:"runnerJitConfigUrl,omitempty"`
-	Statistics         *RunnerScaleSetStatistic `json:"statistics,omitempty"`
+	Id                   int                      `json:"id,omitempty"`
+	Name                 string                   `json:"name,omitempty"`
+	RunnerGroupId        int                      `json:"runnerGroupId,omitempty"`
+	RunnerGroupName      string                   `json:"runnerGroupName,omitempty"`
+	Labels               []Label                  `json:"labels,omitempty"`
+	RunnerSetting        RunnerSetting            `json:"RunnerSetting,omitempty"`
+	CreatedOn            time.Time                `json:"createdOn,omitempty"`
+	RunnerJitConfigUrl   string                   `json:"runnerJitConfigUrl,omitempty"`
+	GetAcquirableJobsUrl string                   `json:"getAcquirableJobsUrl,omitempty"`
+	AcquireJobsUrl       string                   `json:"acquireJobsUrl,omitempty"`
+	Statistics           *RunnerScaleSetStatistic `json:"statistics,omitempty"`
+	Status               string                   `json:"status,omitempty"`
+	Enabled              *bool                    `json:"enabled,omitempty"`
 }
 
 type RunnerScaleSetsResponse struct {

@@ -76,6 +76,8 @@ type ClientService interface {
 
 	ListOrgPools(params *ListOrgPoolsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ListOrgPoolsOK, error)
 
+	ListOrgScaleSets(params *ListOrgScaleSetsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ListOrgScaleSetsOK, error)
+
 	ListOrgs(params *ListOrgsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ListOrgsOK, error)
 
 	UninstallOrgWebhook(params *UninstallOrgWebhookParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) error
@@ -492,6 +494,44 @@ func (a *Client) ListOrgPools(params *ListOrgPoolsParams, authInfo runtime.Clien
 	}
 	// unexpected success response
 	unexpectedSuccess := result.(*ListOrgPoolsDefault)
+	return nil, runtime.NewAPIError("unexpected success response: content available as default response in error", unexpectedSuccess, unexpectedSuccess.Code())
+}
+
+/*
+ListOrgScaleSets lists organization scale sets
+*/
+func (a *Client) ListOrgScaleSets(params *ListOrgScaleSetsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ListOrgScaleSetsOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewListOrgScaleSetsParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "ListOrgScaleSets",
+		Method:             "GET",
+		PathPattern:        "/organizations/{orgID}/scalesets",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http"},
+		Params:             params,
+		Reader:             &ListOrgScaleSetsReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*ListOrgScaleSetsOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	unexpectedSuccess := result.(*ListOrgScaleSetsDefault)
 	return nil, runtime.NewAPIError("unexpected success response: content available as default response in error", unexpectedSuccess, unexpectedSuccess.Code())
 }
 

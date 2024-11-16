@@ -133,7 +133,7 @@ definitions:
   ScaleSets:
     type: array
     x-go-type:
-        type: ScaleSet
+        type: ScaleSets
         import:
             package: github.com/cloudbase/garm/params
             alias: garm_params

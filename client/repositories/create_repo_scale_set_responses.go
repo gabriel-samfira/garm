@@ -51,10 +51,10 @@ func NewCreateRepoScaleSetOK() *CreateRepoScaleSetOK {
 /*
 CreateRepoScaleSetOK describes a response with status code 200, with default header values.
 
-Pool
+ScaleSet
 */
 type CreateRepoScaleSetOK struct {
-	Payload garm_params.Pool
+	Payload garm_params.ScaleSet
 }
 
 // IsSuccess returns true when this create repo scale set o k response has a 2xx status code
@@ -97,7 +97,7 @@ func (o *CreateRepoScaleSetOK) String() string {
 	return fmt.Sprintf("[POST /repositories/{repoID}/scalesets][%d] createRepoScaleSetOK %s", 200, payload)
 }
 
-func (o *CreateRepoScaleSetOK) GetPayload() garm_params.Pool {
+func (o *CreateRepoScaleSetOK) GetPayload() garm_params.ScaleSet {
 	return o.Payload
 }
 

@@ -71,7 +71,10 @@ func (s *sqlDatabase) sqlToParamsInstance(instance Instance) (params.Instance, e
 		JitConfiguration:  jitConfig,
 		GitHubRunnerGroup: instance.GitHubRunnerGroup,
 		AditionalLabels:   labels,
-		ScaleSetID:        instance.ScaleSetID,
+	}
+
+	if instance.ScaleSetFkID != nil {
+		ret.ScaleSetID = *instance.ScaleSetFkID
 	}
 
 	if instance.Job != nil {
@@ -267,10 +270,12 @@ func (s *sqlDatabase) sqlToCommonScaleSet(scaleSet ScaleSet) (params.ScaleSet, e
 		Name:          scaleSet.Name,
 		DisableUpdate: scaleSet.DisableUpdate,
 
-		ProviderName:           scaleSet.ProviderName,
-		MaxRunners:             scaleSet.MaxRunners,
-		MinIdleRunners:         scaleSet.MinIdleRunners,
-		RunnerPrefix:           scaleSet.RunnerPrefix,
+		ProviderName:   scaleSet.ProviderName,
+		MaxRunners:     scaleSet.MaxRunners,
+		MinIdleRunners: scaleSet.MinIdleRunners,
+		RunnerPrefix: params.RunnerPrefix{
+			Prefix: scaleSet.RunnerPrefix,
+		},
 		Image:                  scaleSet.Image,
 		Flavor:                 scaleSet.Flavor,
 		OSArch:                 scaleSet.OSArch,

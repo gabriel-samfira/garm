@@ -16,6 +16,7 @@ package runner
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 
@@ -69,6 +70,32 @@ func (r *Runner) DeleteScaleSetByID(ctx context.Context, scaleSetID uint) error 
 		return runnerErrors.NewBadRequestError("scale set has runners")
 	}
 
+	paramEntity, err := scaleSet.GithubEntity()
+	if err != nil {
+		return errors.Wrap(err, "getting entity")
+	}
+
+	entity, err := r.store.GetGithubEntity(ctx, paramEntity.EntityType, paramEntity.ID)
+	if err != nil {
+		return errors.Wrap(err, "getting entity")
+	}
+
+	ghCli, err := github.GithubClient(ctx, entity)
+	if err != nil {
+		return errors.Wrap(err, "creating github client")
+	}
+
+	scalesetCli, err := scalesets.NewClient(ghCli)
+	if err != nil {
+		return errors.Wrap(err, "getting scaleset client")
+	}
+
+	if err := scalesetCli.DeleteRunnerScaleSet(ctx, scaleSet.ScaleSetID); err != nil {
+		if !errors.Is(err, runnerErrors.ErrNotFound) {
+			slog.InfoContext(ctx, "scale set not found", "scale_set_id", scaleSet.ScaleSetID)
+			return nil
+		}
+	}
 	if err := r.store.DeleteScaleSetByID(ctx, scaleSetID); err != nil {
 		return errors.Wrap(err, "deleting scale set")
 	}
@@ -103,7 +130,12 @@ func (r *Runner) UpdateScaleSetByID(ctx context.Context, scaleSetID uint, param 
 		return params.ScaleSet{}, runnerErrors.NewBadRequestError("min_idle_runners cannot be larger than max_runners")
 	}
 
-	entity, err := scaleSet.GithubEntity()
+	paramEntity, err := scaleSet.GithubEntity()
+	if err != nil {
+		return params.ScaleSet{}, errors.Wrap(err, "getting entity")
+	}
+
+	entity, err := r.store.GetGithubEntity(ctx, paramEntity.EntityType, paramEntity.ID)
 	if err != nil {
 		return params.ScaleSet{}, errors.Wrap(err, "getting entity")
 	}
@@ -126,6 +158,11 @@ func (r *Runner) UpdateScaleSetByID(ctx context.Context, scaleSetID uint, param 
 			hasUpdates = true
 		}
 
+		if old.Enabled != new.Enabled {
+			updateParams.Enabled = &new.Enabled
+			hasUpdates = true
+		}
+
 		if old.GitHubRunnerGroup != new.GitHubRunnerGroup {
 			runnerGroup, err := scalesetCli.GetRunnerGroupByName(ctx, new.GitHubRunnerGroup)
 			if err != nil {
@@ -141,10 +178,12 @@ func (r *Runner) UpdateScaleSetByID(ctx context.Context, scaleSetID uint, param 
 		}
 
 		if hasUpdates {
-			_, err = scalesetCli.UpdateRunnerScaleSet(ctx, new.ScaleSetID, updateParams)
+			result, err := scalesetCli.UpdateRunnerScaleSet(ctx, new.ScaleSetID, updateParams)
 			if err != nil {
 				return fmt.Errorf("failed to update scaleset in github: %w", err)
 			}
+			asJs, _ := json.MarshalIndent(result, "", "  ")
+			slog.Info("update result", "data", string(asJs))
 		}
 		return nil
 	}
@@ -205,12 +244,16 @@ func (r *Runner) CreateEntityScaleSet(ctx context.Context, entityType params.Git
 			Ephemeral:     true,
 			DisableUpdate: param.DisableUpdate,
 		},
+		Enabled: &param.Enabled,
 	}
 
 	runnerScaleSet, err := scalesetCli.CreateRunnerScaleSet(ctx, createParam)
 	if err != nil {
 		return params.ScaleSet{}, errors.Wrap(err, "creating runner scale set")
 	}
+
+	asJs, _ := json.MarshalIndent(runnerScaleSet, "", "  ")
+	slog.InfoContext(ctx, "scale set", "data", string(asJs))
 
 	defer func() {
 		if err != nil {
@@ -239,4 +282,19 @@ func (r *Runner) ListScaleSetInstances(ctx context.Context, scalesetID uint) ([]
 		return []params.Instance{}, errors.Wrap(err, "fetching instances")
 	}
 	return instances, nil
+}
+
+func (r *Runner) ListEntityScaleSets(ctx context.Context, entityType params.GithubEntityType, entityID string) ([]params.ScaleSet, error) {
+	if !auth.IsAdmin(ctx) {
+		return []params.ScaleSet{}, runnerErrors.ErrUnauthorized
+	}
+	entity := params.GithubEntity{
+		ID:         entityID,
+		EntityType: entityType,
+	}
+	scaleSets, err := r.store.ListEntityScaleSets(ctx, entity)
+	if err != nil {
+		return nil, errors.Wrap(err, "fetching scale sets")
+	}
+	return scaleSets, nil
 }

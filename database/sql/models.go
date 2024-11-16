@@ -139,7 +139,7 @@ type ScaleSet struct {
 	EnterpriseID *uuid.UUID `gorm:"index"`
 	Enterprise   Enterprise `gorm:"foreignKey:EnterpriseID"`
 
-	Instances      []Instance `gorm:"foreignKey:ScaleSetID"`
+	Instances      []Instance `gorm:"foreignKey:ScaleSetFkID"`
 	StatusMessages []Event    `gorm:"many2many:status_updates"`
 }
 
@@ -244,8 +244,8 @@ type Instance struct {
 	PoolID uuid.UUID
 	Pool   Pool `gorm:"foreignKey:PoolID"`
 
-	ScaleSetID uint
-	ScaleSet   ScaleSet `gorm:"foreignKey:ScaleSetID"`
+	ScaleSetFkID *uint
+	ScaleSet     ScaleSet `gorm:"foreignKey:ScaleSetFkID"`
 
 	StatusMessages []InstanceStatusUpdate `gorm:"foreignKey:InstanceID;constraint:OnDelete:CASCADE,OnUpdate:CASCADE;"`
 

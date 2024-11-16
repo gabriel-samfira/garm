@@ -259,7 +259,7 @@ definitions:
             import:
                 alias: garm_params
                 package: github.com/cloudbase/garm/params
-            type: ScaleSet
+            type: ScaleSets
     UpdateControllerParams:
         type: object
         x-go-type:
@@ -640,6 +640,27 @@ paths:
                 - enterprises
                 - pools
     /enterprises/{enterpriseID}/scalesets:
+        get:
+            operationId: ListEnterpriseScaleSets
+            parameters:
+                - description: Enterprise ID.
+                  in: path
+                  name: enterpriseID
+                  required: true
+                  type: string
+            responses:
+                "200":
+                    description: ScaleSets
+                    schema:
+                        $ref: '#/definitions/ScaleSets'
+                default:
+                    description: APIErrorResponse
+                    schema:
+                        $ref: '#/definitions/APIErrorResponse'
+            summary: List enterprise scale sets.
+            tags:
+                - enterprises
+                - scalesets
         post:
             operationId: CreateEnterpriseScaleSet
             parameters:
@@ -653,14 +674,14 @@ paths:
                   name: Body
                   required: true
                   schema:
-                    $ref: '#/definitions/CreatePoolParams'
+                    $ref: '#/definitions/CreateScaleSetParams'
                     description: Parameters used when creating the enterprise scale set.
                     type: object
             responses:
                 "200":
-                    description: Pool
+                    description: ScaleSet
                     schema:
-                        $ref: '#/definitions/Pool'
+                        $ref: '#/definitions/ScaleSet'
                 default:
                     description: APIErrorResponse
                     schema:
@@ -1253,6 +1274,27 @@ paths:
                 - organizations
                 - pools
     /organizations/{orgID}/scalesets:
+        get:
+            operationId: ListOrgScaleSets
+            parameters:
+                - description: Organization ID.
+                  in: path
+                  name: orgID
+                  required: true
+                  type: string
+            responses:
+                "200":
+                    description: ScaleSets
+                    schema:
+                        $ref: '#/definitions/ScaleSets'
+                default:
+                    description: APIErrorResponse
+                    schema:
+                        $ref: '#/definitions/APIErrorResponse'
+            summary: List organization scale sets.
+            tags:
+                - organizations
+                - scalesets
         post:
             operationId: CreateOrgScaleSet
             parameters:
@@ -1271,9 +1313,9 @@ paths:
                     type: object
             responses:
                 "200":
-                    description: Pool
+                    description: ScaleSet
                     schema:
-                        $ref: '#/definitions/Pool'
+                        $ref: '#/definitions/ScaleSet'
                 default:
                     description: APIErrorResponse
                     schema:
@@ -1732,6 +1774,27 @@ paths:
                 - repositories
                 - pools
     /repositories/{repoID}/scalesets:
+        get:
+            operationId: ListRepoScaleSets
+            parameters:
+                - description: Repository ID.
+                  in: path
+                  name: repoID
+                  required: true
+                  type: string
+            responses:
+                "200":
+                    description: ScaleSets
+                    schema:
+                        $ref: '#/definitions/ScaleSets'
+                default:
+                    description: APIErrorResponse
+                    schema:
+                        $ref: '#/definitions/APIErrorResponse'
+            summary: List repository scale sets.
+            tags:
+                - repositories
+                - scalesets
         post:
             operationId: CreateRepoScaleSet
             parameters:
@@ -1750,9 +1813,9 @@ paths:
                     type: object
             responses:
                 "200":
-                    description: Pool
+                    description: ScaleSet
                     schema:
-                        $ref: '#/definitions/Pool'
+                        $ref: '#/definitions/ScaleSet'
                 default:
                     description: APIErrorResponse
                     schema:

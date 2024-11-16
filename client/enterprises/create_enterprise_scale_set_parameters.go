@@ -67,7 +67,7 @@ type CreateEnterpriseScaleSetParams struct {
 
 	   Parameters used when creating the enterprise scale set.
 	*/
-	Body garm_params.CreatePoolParams
+	Body garm_params.CreateScaleSetParams
 
 	/* EnterpriseID.
 
@@ -129,13 +129,13 @@ func (o *CreateEnterpriseScaleSetParams) SetHTTPClient(client *http.Client) {
 }
 
 // WithBody adds the body to the create enterprise scale set params
-func (o *CreateEnterpriseScaleSetParams) WithBody(body garm_params.CreatePoolParams) *CreateEnterpriseScaleSetParams {
+func (o *CreateEnterpriseScaleSetParams) WithBody(body garm_params.CreateScaleSetParams) *CreateEnterpriseScaleSetParams {
 	o.SetBody(body)
 	return o
 }
 
 // SetBody adds the body to the create enterprise scale set params
-func (o *CreateEnterpriseScaleSetParams) SetBody(body garm_params.CreatePoolParams) {
+func (o *CreateEnterpriseScaleSetParams) SetBody(body garm_params.CreateScaleSetParams) {
 	o.Body = body
 }
 

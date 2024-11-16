@@ -76,6 +76,8 @@ type ClientService interface {
 
 	ListRepoPools(params *ListRepoPoolsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ListRepoPoolsOK, error)
 
+	ListRepoScaleSets(params *ListRepoScaleSetsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ListRepoScaleSetsOK, error)
+
 	ListRepos(params *ListReposParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ListReposOK, error)
 
 	UninstallRepoWebhook(params *UninstallRepoWebhookParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) error
@@ -492,6 +494,44 @@ func (a *Client) ListRepoPools(params *ListRepoPoolsParams, authInfo runtime.Cli
 	}
 	// unexpected success response
 	unexpectedSuccess := result.(*ListRepoPoolsDefault)
+	return nil, runtime.NewAPIError("unexpected success response: content available as default response in error", unexpectedSuccess, unexpectedSuccess.Code())
+}
+
+/*
+ListRepoScaleSets lists repository scale sets
+*/
+func (a *Client) ListRepoScaleSets(params *ListRepoScaleSetsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ListRepoScaleSetsOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewListRepoScaleSetsParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "ListRepoScaleSets",
+		Method:             "GET",
+		PathPattern:        "/repositories/{repoID}/scalesets",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http"},
+		Params:             params,
+		Reader:             &ListRepoScaleSetsReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*ListRepoScaleSetsOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	unexpectedSuccess := result.(*ListRepoScaleSetsDefault)
 	return nil, runtime.NewAPIError("unexpected success response: content available as default response in error", unexpectedSuccess, unexpectedSuccess.Code())
 }
 

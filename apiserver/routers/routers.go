@@ -269,6 +269,10 @@ func NewAPIRouter(han *controllers.APIController, authMiddleware, initMiddleware
 	apiRouter.Handle("/repositories/{repoID}/scalesets/", http.HandlerFunc(han.CreateRepoScaleSetHandler)).Methods("POST", "OPTIONS")
 	apiRouter.Handle("/repositories/{repoID}/scalesets", http.HandlerFunc(han.CreateRepoScaleSetHandler)).Methods("POST", "OPTIONS")
 
+	// List scale sets
+	apiRouter.Handle("/repositories/{repoID}/scalesets/", http.HandlerFunc(han.ListRepoScaleSetsHandler)).Methods("GET", "OPTIONS")
+	apiRouter.Handle("/repositories/{repoID}/scalesets", http.HandlerFunc(han.ListRepoScaleSetsHandler)).Methods("GET", "OPTIONS")
+
 	// Repo instances list
 	apiRouter.Handle("/repositories/{repoID}/instances/", http.HandlerFunc(han.ListRepoInstancesHandler)).Methods("GET", "OPTIONS")
 	apiRouter.Handle("/repositories/{repoID}/instances", http.HandlerFunc(han.ListRepoInstancesHandler)).Methods("GET", "OPTIONS")
@@ -323,6 +327,10 @@ func NewAPIRouter(han *controllers.APIController, authMiddleware, initMiddleware
 	apiRouter.Handle("/organizations/{orgID}/scalesets/", http.HandlerFunc(han.CreateOrgScaleSetHandler)).Methods("POST", "OPTIONS")
 	apiRouter.Handle("/organizations/{orgID}/scalesets", http.HandlerFunc(han.CreateOrgScaleSetHandler)).Methods("POST", "OPTIONS")
 
+	// List org scale sets
+	apiRouter.Handle("/organizations/{orgID}/scalesets/", http.HandlerFunc(han.ListOrgScaleSetsHandler)).Methods("GET", "OPTIONS")
+	apiRouter.Handle("/organizations/{orgID}/scalesets", http.HandlerFunc(han.ListOrgScaleSetsHandler)).Methods("GET", "OPTIONS")
+
 	// Org instances list
 	apiRouter.Handle("/organizations/{orgID}/instances/", http.HandlerFunc(han.ListOrgInstancesHandler)).Methods("GET", "OPTIONS")
 	apiRouter.Handle("/organizations/{orgID}/instances", http.HandlerFunc(han.ListOrgInstancesHandler)).Methods("GET", "OPTIONS")
@@ -376,6 +384,10 @@ func NewAPIRouter(han *controllers.APIController, authMiddleware, initMiddleware
 	// Create enterprise scale sets
 	apiRouter.Handle("/enterprises/{enterpriseID}/scalesets/", http.HandlerFunc(han.CreateEnterpriseScaleSetHandler)).Methods("POST", "OPTIONS")
 	apiRouter.Handle("/enterprises/{enterpriseID}/scalesets", http.HandlerFunc(han.CreateEnterpriseScaleSetHandler)).Methods("POST", "OPTIONS")
+
+	// List enterprise scale sets
+	apiRouter.Handle("/enterprises/{enterpriseID}/scalesets/", http.HandlerFunc(han.ListEnterpriseScaleSetsHandler)).Methods("GET", "OPTIONS")
+	apiRouter.Handle("/enterprises/{enterpriseID}/scalesets", http.HandlerFunc(han.ListEnterpriseScaleSetsHandler)).Methods("GET", "OPTIONS")
 
 	// Enterprise instances list
 	apiRouter.Handle("/enterprises/{enterpriseID}/instances/", http.HandlerFunc(han.ListEnterpriseInstancesHandler)).Methods("GET", "OPTIONS")

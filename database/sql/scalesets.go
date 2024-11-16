@@ -30,7 +30,7 @@ import (
 func (s *sqlDatabase) ListAllScaleSets(_ context.Context) ([]params.ScaleSet, error) {
 	var scaleSets []ScaleSet
 
-	q := s.conn.Model(&Pool{}).
+	q := s.conn.Model(&ScaleSet{}).
 		Preload("Organization").
 		Preload("Repository").
 		Preload("Enterprise").
@@ -38,7 +38,7 @@ func (s *sqlDatabase) ListAllScaleSets(_ context.Context) ([]params.ScaleSet, er
 		Omit("status_messages").
 		Find(&scaleSets)
 	if q.Error != nil {
-		return nil, errors.Wrap(q.Error, "fetching all pools")
+		return nil, errors.Wrap(q.Error, "fetching all scale sets")
 	}
 
 	ret := make([]params.ScaleSet, len(scaleSets))
@@ -46,7 +46,7 @@ func (s *sqlDatabase) ListAllScaleSets(_ context.Context) ([]params.ScaleSet, er
 	for idx, val := range scaleSets {
 		ret[idx], err = s.sqlToCommonScaleSet(val)
 		if err != nil {
-			return nil, errors.Wrap(err, "converting pool")
+			return nil, errors.Wrap(err, "converting scale sets")
 		}
 	}
 	return ret, nil
@@ -129,7 +129,7 @@ func (s *sqlDatabase) CreateEntityScaleSet(_ context.Context, entity params.Gith
 
 		q := tx.Create(&newScaleSet)
 		if q.Error != nil {
-			return errors.Wrap(q.Error, "creating pool")
+			return errors.Wrap(q.Error, "creating scale set")
 		}
 
 		return nil
@@ -140,7 +140,7 @@ func (s *sqlDatabase) CreateEntityScaleSet(_ context.Context, entity params.Gith
 
 	dbScaleSet, err := s.getScaleSetByID(s.conn, newScaleSet.ID, "Instances", "Enterprise", "Organization", "Repository")
 	if err != nil {
-		return params.ScaleSet{}, errors.Wrap(err, "fetching pool")
+		return params.ScaleSet{}, errors.Wrap(err, "fetching scale set")
 	}
 
 	return s.sqlToCommonScaleSet(dbScaleSet)
@@ -181,7 +181,7 @@ func (s *sqlDatabase) listEntityScaleSets(tx *gorm.DB, entityType params.GithubE
 
 	var scaleSets []ScaleSet
 	condition := fmt.Sprintf("%s = ?", fieldName)
-	err := q.Model(&Pool{}).
+	err := q.Model(&ScaleSet{}).
 		Where(condition, entityID).
 		Omit("extra_specs").
 		Omit("status_messages").
@@ -199,7 +199,7 @@ func (s *sqlDatabase) listEntityScaleSets(tx *gorm.DB, entityType params.GithubE
 func (s *sqlDatabase) ListEntityScaleSets(_ context.Context, entity params.GithubEntity) ([]params.ScaleSet, error) {
 	scaleSets, err := s.listEntityScaleSets(s.conn, entity.EntityType, entity.ID)
 	if err != nil {
-		return nil, errors.Wrap(err, "fetching pools")
+		return nil, errors.Wrap(err, "fetching scale sets")
 	}
 
 	ret := make([]params.ScaleSet, len(scaleSets))
@@ -232,7 +232,7 @@ func (s *sqlDatabase) UpdateEntityScaleSet(_ context.Context, entity params.Gith
 
 		updatedScaleSet, err = s.updateScaleSet(tx, scaleSet, param)
 		if err != nil {
-			return errors.Wrap(err, "updating pool")
+			return errors.Wrap(err, "updating scale set")
 		}
 
 		if callback != nil {
@@ -365,11 +365,11 @@ func (s *sqlDatabase) updateScaleSet(tx *gorm.DB, scaleSet ScaleSet, param param
 }
 
 func (s *sqlDatabase) GetScaleSetByID(_ context.Context, scaleSet uint) (params.ScaleSet, error) {
-	pool, err := s.getScaleSetByID(s.conn, scaleSet, "Instances", "Enterprise", "Organization", "Repository")
+	set, err := s.getScaleSetByID(s.conn, scaleSet, "Instances", "Enterprise", "Organization", "Repository")
 	if err != nil {
-		return params.ScaleSet{}, errors.Wrap(err, "fetching pool by ID")
+		return params.ScaleSet{}, errors.Wrap(err, "fetching scale set by ID")
 	}
-	return s.sqlToCommonScaleSet(pool)
+	return s.sqlToCommonScaleSet(set)
 }
 
 func (s *sqlDatabase) DeleteScaleSetByID(ctx context.Context, scaleSetID uint) (err error) {

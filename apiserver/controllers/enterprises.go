@@ -290,12 +290,12 @@ func (a *APIController) CreateEnterprisePoolHandler(w http.ResponseWriter, r *ht
 //
 //	  + name: Body
 //	    description: Parameters used when creating the enterprise scale set.
-//	    type: CreatePoolParams
+//	    type: CreateScaleSetParams
 //	    in: body
 //	    required: true
 //
 //	Responses:
-//	  200: Pool
+//	  200: ScaleSet
 //	  default: APIErrorResponse
 func (a *APIController) CreateEnterpriseScaleSetHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -371,6 +371,48 @@ func (a *APIController) ListEnterprisePoolsHandler(w http.ResponseWriter, r *htt
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(pools); err != nil {
+		slog.With(slog.Any("error", err)).ErrorContext(ctx, "failed to encode response")
+	}
+}
+
+// swagger:route GET /enterprises/{enterpriseID}/scalesets enterprises scalesets ListEnterpriseScaleSets
+//
+// List enterprise scale sets.
+//
+//	Parameters:
+//	  + name: enterpriseID
+//	    description: Enterprise ID.
+//	    type: string
+//	    in: path
+//	    required: true
+//
+//	Responses:
+//	  200: ScaleSets
+//	  default: APIErrorResponse
+func (a *APIController) ListEnterpriseScaleSetsHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	vars := mux.Vars(r)
+	enterpriseID, ok := vars["enterpriseID"]
+	if !ok {
+		w.WriteHeader(http.StatusBadRequest)
+		if err := json.NewEncoder(w).Encode(params.APIErrorResponse{
+			Error:   "Bad Request",
+			Details: "No enterprise ID specified",
+		}); err != nil {
+			slog.With(slog.Any("error", err)).ErrorContext(ctx, "failed to encode response")
+		}
+		return
+	}
+
+	scaleSets, err := a.r.ListEntityScaleSets(ctx, runnerParams.GithubEntityTypeEnterprise, enterpriseID)
+	if err != nil {
+		slog.With(slog.Any("error", err)).ErrorContext(ctx, "listing scale sets")
+		handleError(ctx, w, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(scaleSets); err != nil {
 		slog.With(slog.Any("error", err)).ErrorContext(ctx, "failed to encode response")
 	}
 }
