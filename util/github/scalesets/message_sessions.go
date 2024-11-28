@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math/rand/v2"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -136,8 +137,9 @@ func (m *MessageSession) maybeRefreshToken(ctx context.Context) error {
 	if m.session == nil {
 		return fmt.Errorf("session is nil")
 	}
-
-	if m.session.ExpiresIn(2 * time.Minute) {
+	// add some jitter
+	jitter := time.Duration(rand.IntN(10000)) * time.Millisecond
+	if m.session.ExpiresIn(2*time.Minute + jitter) {
 		if err := m.Refresh(ctx); err != nil {
 			return fmt.Errorf("failed to refresh message queue token: %w", err)
 		}

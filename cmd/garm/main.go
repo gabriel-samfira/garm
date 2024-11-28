@@ -41,6 +41,7 @@ import (
 	"github.com/cloudbase/garm/database"
 	"github.com/cloudbase/garm/database/common"
 	"github.com/cloudbase/garm/database/watcher"
+	"github.com/cloudbase/garm/locking"
 	"github.com/cloudbase/garm/metrics"
 	"github.com/cloudbase/garm/params"
 	"github.com/cloudbase/garm/runner" //nolint:typecheck
@@ -298,6 +299,15 @@ func main() {
 	listener, err := net.Listen("tcp", srv.Addr)
 	if err != nil {
 		log.Fatalf("creating listener: %q", err)
+	}
+
+	lock, err := locking.NewLocalLocker(ctx, db)
+	if err != nil {
+		log.Fatalf("failed to create locker: %q", err)
+	}
+
+	if err := locking.RegisterLocker(lock); err != nil {
+		log.Fatalf("failed to register locker: %q", err)
 	}
 
 	go func() {

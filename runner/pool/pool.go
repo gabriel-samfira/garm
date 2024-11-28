@@ -36,9 +36,11 @@ import (
 	"github.com/cloudbase/garm/auth"
 	dbCommon "github.com/cloudbase/garm/database/common"
 	"github.com/cloudbase/garm/database/watcher"
+	"github.com/cloudbase/garm/locking"
 	"github.com/cloudbase/garm/params"
 	"github.com/cloudbase/garm/runner/common"
 	garmUtil "github.com/cloudbase/garm/util"
+	ghClient "github.com/cloudbase/garm/util/github"
 )
 
 var (
@@ -63,8 +65,8 @@ const (
 )
 
 func NewEntityPoolManager(ctx context.Context, entity params.GithubEntity, instanceTokenGetter auth.InstanceTokenGetter, providers map[string]common.Provider, store dbCommon.Store) (common.PoolManager, error) {
-	ctx = garmUtil.WithContext(ctx, slog.Any("pool_mgr", entity.String()), slog.Any("pool_type", entity.EntityType))
-	ghc, err := garmUtil.GithubClient(ctx, entity)
+	ctx = garmUtil.WithSlogContext(ctx, slog.Any("pool_mgr", entity.String()), slog.Any("pool_type", entity.EntityType))
+	ghc, err := ghClient.GithubClient(ctx, entity)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting github client")
 	}
@@ -89,7 +91,6 @@ func NewEntityPoolManager(ctx context.Context, entity params.GithubEntity, insta
 	}
 
 	wg := &sync.WaitGroup{}
-	keyMuxes := &keyMutex{}
 
 	repo := &basePoolManager{
 		ctx:                 ctx,
@@ -102,7 +103,6 @@ func NewEntityPoolManager(ctx context.Context, entity params.GithubEntity, insta
 		providers: providers,
 		quit:      make(chan struct{}),
 		wg:        wg,
-		keyMux:    keyMuxes,
 		consumer:  consumer,
 	}
 	return repo, nil
@@ -125,9 +125,8 @@ type basePoolManager struct {
 	managerIsRunning   bool
 	managerErrorReason string
 
-	mux    sync.Mutex
-	wg     *sync.WaitGroup
-	keyMux *keyMutex
+	mux sync.Mutex
+	wg  *sync.WaitGroup
 }
 
 func (r *basePoolManager) getProviderBaseParams(pool params.Pool) common.ProviderBaseParams {
@@ -360,7 +359,7 @@ func (r *basePoolManager) startLoopForFunction(f func() error, interval time.Dur
 
 func (r *basePoolManager) updateTools() error {
 	// Update tools cache.
-	tools, err := r.FetchTools()
+	tools, err := garmUtil.FetchTools(r.ctx, r.ghcli)
 	if err != nil {
 		slog.With(slog.Any("error", err)).ErrorContext(
 			r.ctx, "failed to update tools for entity", "entity", r.entity.String())
@@ -401,14 +400,14 @@ func (r *basePoolManager) cleanupOrphanedProviderRunners(runners []*github.Runne
 	}
 
 	for _, instance := range dbInstances {
-		lockAcquired := r.keyMux.TryLock(instance.Name)
-		if !lockAcquired {
+		lockAcquired, err := locking.TryLock(instance.Name)
+		if err != nil || !lockAcquired {
 			slog.DebugContext(
 				r.ctx, "failed to acquire lock for instance",
 				"runner_name", instance.Name)
 			continue
 		}
-		defer r.keyMux.Unlock(instance.Name, false)
+		defer locking.Unlock(instance.Name, false)
 
 		switch instance.Status {
 		case commonParams.InstancePendingCreate,
@@ -480,14 +479,14 @@ func (r *basePoolManager) reapTimedOutRunners(runners []*github.Runner) error {
 		slog.DebugContext(
 			r.ctx, "attempting to lock instance",
 			"runner_name", instance.Name)
-		lockAcquired := r.keyMux.TryLock(instance.Name)
-		if !lockAcquired {
+		lockAcquired, err := locking.TryLock(instance.Name)
+		if err != nil || !lockAcquired {
 			slog.DebugContext(
 				r.ctx, "failed to acquire lock for instance",
-				"runner_name", instance.Name)
+				"runner_name", instance.Name, "error", err)
 			continue
 		}
-		defer r.keyMux.Unlock(instance.Name, false)
+		defer locking.Unlock(instance.Name, false)
 
 		pool, err := r.store.GetEntityPool(r.ctx, r.entity, instance.PoolID)
 		if err != nil {
@@ -611,11 +610,11 @@ func (r *basePoolManager) cleanupOrphanedGithubRunners(runners []*github.Runner)
 			poolInstanceCache[pool.ID] = poolInstances
 		}
 
-		lockAcquired := r.keyMux.TryLock(dbInstance.Name)
-		if !lockAcquired {
+		lockAcquired, err := locking.TryLock(dbInstance.Name)
+		if err != nil || !lockAcquired {
 			slog.DebugContext(
 				r.ctx, "failed to acquire lock for instance",
-				"runner_name", dbInstance.Name)
+				"runner_name", dbInstance.Name, "error", err)
 			continue
 		}
 
@@ -624,7 +623,9 @@ func (r *basePoolManager) cleanupOrphanedGithubRunners(runners []*github.Runner)
 		g.Go(func() error {
 			deleteMux := false
 			defer func() {
-				r.keyMux.Unlock(dbInstance.Name, deleteMux)
+				if innerErr := locking.Unlock(dbInstance.Name, deleteMux); innerErr != nil {
+					slog.ErrorContext(r.ctx, "failed to unlock", "lock_name", dbInstance.Name)
+				}
 			}()
 			providerInstance, ok := instanceInList(dbInstance.Name, poolInstances)
 			if !ok {
@@ -1049,14 +1050,14 @@ func (r *basePoolManager) scaleDownOnePool(ctx context.Context, pool params.Pool
 	for _, instanceToDelete := range idleWorkers[:numScaleDown] {
 		instanceToDelete := instanceToDelete
 
-		lockAcquired := r.keyMux.TryLock(instanceToDelete.Name)
-		if !lockAcquired {
+		lockAcquired, err := locking.TryLock(instanceToDelete.Name)
+		if err != nil || !lockAcquired {
 			slog.With(slog.Any("error", err)).ErrorContext(
 				ctx, "failed to acquire lock for instance",
-				"provider_id", instanceToDelete.Name)
+				"provider_id", instanceToDelete.Name, "error", err)
 			continue
 		}
-		defer r.keyMux.Unlock(instanceToDelete.Name, false)
+		defer locking.Unlock(instanceToDelete.Name, false)
 
 		g.Go(func() error {
 			slog.InfoContext(
@@ -1197,16 +1198,16 @@ func (r *basePoolManager) retryFailedInstancesForOnePool(ctx context.Context, po
 		slog.DebugContext(
 			ctx, "attempting to retry failed instance",
 			"runner_name", instance.Name)
-		lockAcquired := r.keyMux.TryLock(instance.Name)
-		if !lockAcquired {
+		lockAcquired, err := locking.TryLock(instance.Name)
+		if err != nil || !lockAcquired {
 			slog.DebugContext(
 				ctx, "failed to acquire lock for instance",
-				"runner_name", instance.Name)
+				"runner_name", instance.Name, "error", err)
 			continue
 		}
 
 		g.Go(func() error {
-			defer r.keyMux.Unlock(instance.Name, false)
+			defer locking.Unlock(instance.Name, false)
 			slog.DebugContext(
 				ctx, "attempting to clean up any previous instance",
 				"runner_name", instance.Name)
@@ -1376,11 +1377,11 @@ func (r *basePoolManager) deletePendingInstances() error {
 			r.ctx, "removing instance from pool",
 			"runner_name", instance.Name,
 			"pool_id", instance.PoolID)
-		lockAcquired := r.keyMux.TryLock(instance.Name)
-		if !lockAcquired {
+		lockAcquired, err := locking.TryLock(instance.Name)
+		if err != nil || !lockAcquired {
 			slog.InfoContext(
 				r.ctx, "failed to acquire lock for instance",
-				"runner_name", instance.Name)
+				"runner_name", instance.Name, "error", err)
 			continue
 		}
 
@@ -1391,14 +1392,18 @@ func (r *basePoolManager) deletePendingInstances() error {
 			slog.With(slog.Any("error", err)).ErrorContext(
 				r.ctx, "failed to update runner status",
 				"runner_name", instance.Name)
-			r.keyMux.Unlock(instance.Name, false)
+			if lockErr := locking.Unlock(instance.Name, false); lockErr != nil {
+				slog.ErrorContext(r.ctx, "failed to unlock", "lock_name", instance.Name, "error", lockErr)
+			}
 			continue
 		}
 
 		go func(instance params.Instance) (err error) {
 			deleteMux := false
 			defer func() {
-				r.keyMux.Unlock(instance.Name, deleteMux)
+				if innerErr := locking.Unlock(instance.Name, deleteMux); innerErr != nil {
+					slog.ErrorContext(r.ctx, "failed to unlock", "lock_name", instance.Name)
+				}
 			}()
 			defer func(instance params.Instance) {
 				if err != nil {
@@ -1461,11 +1466,11 @@ func (r *basePoolManager) addPendingInstances() error {
 			r.ctx, "attempting to acquire lock for instance",
 			"runner_name", instance.Name,
 			"action", "create_pending")
-		lockAcquired := r.keyMux.TryLock(instance.Name)
-		if !lockAcquired {
+		lockAcquired, err := locking.TryLock(instance.Name)
+		if err != nil || !lockAcquired {
 			slog.DebugContext(
 				r.ctx, "failed to acquire lock for instance",
-				"runner_name", instance.Name)
+				"runner_name", instance.Name, "error", err)
 			continue
 		}
 
@@ -1475,14 +1480,16 @@ func (r *basePoolManager) addPendingInstances() error {
 			slog.With(slog.Any("error", err)).ErrorContext(
 				r.ctx, "failed to update runner status",
 				"runner_name", instance.Name)
-			r.keyMux.Unlock(instance.Name, false)
+			if lockErr := locking.Unlock(instance.Name, false); lockErr != nil {
+				slog.With(slog.Any("error", lockErr)).ErrorContext(r.ctx, "failed to unlock", "lock_name", instance.Name)
+			}
 			// We failed to transition the instance to Creating. This means that garm will retry to create this instance
 			// when the loop runs again and we end up with multiple instances.
 			continue
 		}
 
 		go func(instance params.Instance) {
-			defer r.keyMux.Unlock(instance.Name, false)
+			defer locking.Unlock(instance.Name, false)
 			slog.InfoContext(
 				r.ctx, "creating instance in pool",
 				"runner_name", instance.Name,
@@ -1942,25 +1949,6 @@ func (r *basePoolManager) GithubRunnerRegistrationToken() (string, error) {
 		return "", errors.Wrap(err, "creating runner token")
 	}
 	return *tk.Token, nil
-}
-
-func (r *basePoolManager) FetchTools() ([]commonParams.RunnerApplicationDownload, error) {
-	tools, ghResp, err := r.ghcli.ListEntityRunnerApplicationDownloads(r.ctx)
-	if err != nil {
-		if ghResp != nil && ghResp.StatusCode == http.StatusUnauthorized {
-			return nil, errors.Wrap(runnerErrors.ErrUnauthorized, "fetching tools")
-		}
-		return nil, errors.Wrap(err, "fetching runner tools")
-	}
-
-	ret := []commonParams.RunnerApplicationDownload{}
-	for _, tool := range tools {
-		if tool == nil {
-			continue
-		}
-		ret = append(ret, commonParams.RunnerApplicationDownload(*tool))
-	}
-	return ret, nil
 }
 
 func (r *basePoolManager) GetGithubRunners() ([]*github.Runner, error) {

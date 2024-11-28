@@ -3,8 +3,14 @@ package worker
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"sync"
+	"time"
 
+	"github.com/pkg/errors"
+
+	runnerErrors "github.com/cloudbase/garm-provider-common/errors"
+	commonParams "github.com/cloudbase/garm-provider-common/params"
 	dbCommon "github.com/cloudbase/garm/database/common"
 	"github.com/cloudbase/garm/database/watcher"
 	"github.com/cloudbase/garm/params"
@@ -13,7 +19,7 @@ import (
 	"github.com/cloudbase/garm/util/github/scalesets"
 )
 
-func NewScaleSetWorker(ctx context.Context, scaleset params.ScaleSet, store dbCommon.Store) (worker *ScaleSetWorker, err error) {
+func NewScaleSetWorker(ctx context.Context, scaleset params.ScaleSet, store dbCommon.Store, providers map[string]common.Provider) (worker *ScaleSetWorker, err error) {
 	if scaleset.ID == 0 {
 		return nil, fmt.Errorf("invalid scale set")
 	}
@@ -80,6 +86,8 @@ func NewScaleSetWorker(ctx context.Context, scaleset params.ScaleSet, store dbCo
 		scalesetConsumer:         scalesetConsumer,
 		scalesetInstanceConsumer: scalesetInstanceConsumer,
 		ctx:                      ctx,
+		wg:                       &sync.WaitGroup{},
+		providers:                providers,
 		quit:                     make(chan struct{}),
 	}, nil
 }
@@ -88,6 +96,7 @@ type ScaleSetWorker struct {
 	controllerInfo params.ControllerInfo
 	scalesetClient *scalesets.ScaleSetClient
 	ghCli          common.GithubClient
+	providers      map[string]common.Provider
 
 	store                    dbCommon.Store
 	scaleset                 params.ScaleSet
@@ -97,12 +106,13 @@ type ScaleSetWorker struct {
 	quit                     chan struct{}
 	running                  bool
 
-	active      bool
 	faultReason error
+	tools       []commonParams.RunnerApplicationDownload
 
 	entity params.GithubEntity
 
 	mux sync.Mutex
+	wg  *sync.WaitGroup
 }
 
 func (s *ScaleSetWorker) ID() uint {
@@ -124,9 +134,28 @@ func (s *ScaleSetWorker) Start() error {
 		return nil
 	}
 
+	initialToolUpdate := make(chan struct{}, 1)
+	go func() {
+		slog.Info("running initial tool update")
+		if err := s.updateTools(); err != nil {
+			slog.With(slog.Any("error", err)).Error("failed to update tools")
+		}
+		initialToolUpdate <- struct{}{}
+	}()
+
 	go s.runScaleSetWatcher()
 	go s.runScaleSetInstanceWatcher()
-	go s.consolidate()
+	go func() {
+		select {
+		case <-s.quit:
+			return
+		case <-s.ctx.Done():
+			return
+		case <-initialToolUpdate:
+		}
+		defer close(initialToolUpdate)
+		go s.startLoopForFunction(s.updateTools, 50*time.Minute, "update_tools", true)
+	}()
 	s.running = true
 	return nil
 }
@@ -134,6 +163,13 @@ func (s *ScaleSetWorker) Start() error {
 func (s *ScaleSetWorker) Stop() error {
 	s.mux.Lock()
 	defer s.mux.Unlock()
+	if s.scalesetConsumer != nil {
+		s.scalesetConsumer.Close()
+	}
+
+	if s.scalesetInstanceConsumer != nil {
+		s.scalesetInstanceConsumer.Close()
+	}
 
 	if !s.running {
 		return nil
@@ -142,5 +178,24 @@ func (s *ScaleSetWorker) Stop() error {
 	close(s.quit)
 	s.running = false
 
+	if err := s.Wait(); err != nil {
+		return errors.Wrap(err, "stopping scale set")
+	}
+	return nil
+}
+
+func (s *ScaleSetWorker) Wait() error {
+	done := make(chan struct{})
+	timer := time.NewTimer(60 * time.Second)
+	go func() {
+		s.wg.Wait()
+		timer.Stop()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-timer.C:
+		return errors.Wrap(runnerErrors.ErrTimeout, "waiting for scaleset to stop")
+	}
 	return nil
 }

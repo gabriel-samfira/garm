@@ -9,10 +9,11 @@ import (
 	dbCommon "github.com/cloudbase/garm/database/common"
 	"github.com/cloudbase/garm/database/watcher"
 	"github.com/cloudbase/garm/params"
+	"github.com/cloudbase/garm/runner/common"
 	"github.com/cloudbase/garm/workers/scalesets/worker"
 )
 
-func NewScaleSetController(ctx context.Context, store dbCommon.Store) (*ScaleSetController, error) {
+func NewScaleSetController(ctx context.Context, store dbCommon.Store, providers map[string]common.Provider) (*ScaleSetController, error) {
 	consumerID := "scaleset-controller"
 	consumer, err := watcher.RegisterConsumer(
 		ctx, consumerID,
@@ -21,6 +22,7 @@ func NewScaleSetController(ctx context.Context, store dbCommon.Store) (*ScaleSet
 			watcher.WithAny(
 				watcher.WithOperationTypeFilter(dbCommon.CreateOperation),
 				watcher.WithOperationTypeFilter(dbCommon.DeleteOperation),
+				watcher.WithOperationTypeFilter(dbCommon.UpdateOperation),
 			),
 		),
 	)
@@ -31,13 +33,15 @@ func NewScaleSetController(ctx context.Context, store dbCommon.Store) (*ScaleSet
 		ctx:       ctx,
 		consumer:  consumer,
 		scalesets: make(map[uint]*worker.ScaleSetWorker),
+		providers: providers,
 	}
 	return controller, nil
 }
 
 type ScaleSetController struct {
-	store    dbCommon.Store
-	consumer dbCommon.Consumer
+	store     dbCommon.Store
+	consumer  dbCommon.Consumer
+	providers map[string]common.Provider
 
 	scalesets map[uint]*worker.ScaleSetWorker
 
@@ -57,7 +61,7 @@ func (s *ScaleSetController) Start() error {
 	}
 
 	for _, set := range scaleSets {
-		work, err := worker.NewScaleSetWorker(s.ctx, set, s.store)
+		work, err := worker.NewScaleSetWorker(s.ctx, set, s.store, s.providers)
 		if err != nil {
 			return fmt.Errorf("failed to create scaleset worker for %d (%s): %w", set.ID, set.Name, err)
 		}
@@ -121,13 +125,22 @@ func (s *ScaleSetController) handleScaleSetUpdateOrCreate(scaleset params.ScaleS
 		return
 	}
 
-	worker, err := worker.NewScaleSetWorker(s.ctx, scaleset, s.store)
+	var err error
+	worker, err := worker.NewScaleSetWorker(s.ctx, scaleset, s.store, s.providers)
 	if err != nil {
 		slog.With(slog.Any("error", err)).ErrorContext(s.ctx, "failed to get entity", "scaleset_id", scaleset.ID)
 		return
 	}
 
-	if err := worker.Start(); err != nil {
+	defer func(err error) {
+		// cleanup watchers.
+		if err != nil {
+			worker.Stop()
+		}
+	}(err)
+
+	err = worker.Start()
+	if err != nil {
 		slog.With(slog.Any("error", err)).ErrorContext(s.ctx, "failed to start scale set worker", "scaleset_id", scaleset.ID)
 		return
 	}
@@ -141,7 +154,7 @@ func (s *ScaleSetController) handleWatcherEvent(event dbCommon.ChangePayload) {
 	}
 
 	switch event.Operation {
-	case dbCommon.CreateOperation:
+	case dbCommon.CreateOperation, dbCommon.UpdateOperation:
 		scaleSet, ok := event.Payload.(params.ScaleSet)
 		if !ok {
 			slog.InfoContext(s.ctx, "got invalid scaleset payload from watcher", "payload", event.Payload)
@@ -153,12 +166,6 @@ func (s *ScaleSetController) handleWatcherEvent(event dbCommon.ChangePayload) {
 			slog.InfoContext(s.ctx, "got invalid scaleset payload from watcher", "payload", event.Payload)
 		}
 		s.handleScaleSetDelete(scaleSet)
-	case dbCommon.UpdateOperation:
-		scaleSet, ok := event.Payload.(params.ScaleSet)
-		if !ok {
-			slog.InfoContext(s.ctx, "got invalid scaleset payload from watcher", "payload", event.Payload)
-		}
-		s.handleScaleSetUpdateOrCreate(scaleSet)
 	default:
 		slog.InfoContext(s.ctx, "invalid operation for scaleset controller", "operation", event.Operation)
 	}

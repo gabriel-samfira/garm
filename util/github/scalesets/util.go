@@ -19,20 +19,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-
-	"github.com/google/go-github/v57/github"
 )
-
-// WithQueryArg sets an arbitrary query arg to the desired value.
-func WithQueryArg(key, value string) github.RequestOption {
-	return func(req *http.Request) {
-		if req != nil && req.URL != nil {
-			q := req.URL.Query()
-			q.Set(key, value)
-			req.URL.RawQuery = q.Encode()
-		}
-	}
-}
 
 func (s *ScaleSetClient) newActionsRequest(ctx context.Context, method, path string, body io.Reader) (*http.Request, error) {
 	if err := s.ensureAdminInfo(ctx); err != nil {
