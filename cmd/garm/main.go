@@ -38,6 +38,8 @@ import (
 	"github.com/cloudbase/garm/apiserver/controllers"
 	"github.com/cloudbase/garm/apiserver/routers"
 	"github.com/cloudbase/garm/auth"
+	webHandlers "github.com/cloudbase/garm/web/handlers"
+	webRouters "github.com/cloudbase/garm/web/routers"
 	"github.com/cloudbase/garm/config"
 	"github.com/cloudbase/garm/database"
 	"github.com/cloudbase/garm/database/common"
@@ -313,7 +315,15 @@ func main() {
 		log.Fatal(err)
 	}
 
-	router := routers.NewAPIRouter(controller, jwtMiddleware, initMiddleware, urlsRequiredMiddleware, instanceMiddleware, cfg.Default.EnableWebhookManagement)
+	router := routers.NewAPIRouterWithRunner(controller, jwtMiddleware, initMiddleware, urlsRequiredMiddleware, instanceMiddleware, cfg.Default.EnableWebhookManagement, runner)
+
+	// Add web UI routes
+	slog.InfoContext(ctx, "setting up web UI routes")
+	webHandler, err := webHandlers.NewWebHandler(runner)
+	if err != nil {
+		log.Fatalf("failed to create web handler: %v", err)
+	}
+	webRouters.AddWebRoutes(router, webHandler, db, cfg.JWTAuth, authenticator)
 
 	// start the metrics collector
 	if cfg.Metrics.Enable {

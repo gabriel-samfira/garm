@@ -1,0 +1,54 @@
+{{define "instances-content"}}
+<!-- Instance List -->
+<div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+    <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Runner Instances</h3>
+        <div class="flex space-x-2">
+            <select id="status-filter" 
+                    hx-get="/web/api/instances" 
+                    hx-target="#instances-table" 
+                    hx-trigger="change"
+                    class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                <option value="">All statuses</option>
+                <option value="idle">Idle</option>
+                <option value="active">Active</option>
+                <option value="pending">Pending</option>
+                <option value="installing">Installing</option>
+                <option value="failed">Failed</option>
+                <option value="terminated">Terminated</option>
+                <option value="offline">Offline</option>
+                <option value="online">Online</option>
+                <option value="unknown">Unknown</option>
+            </select>
+        </div>
+    </div>
+    
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead class="bg-gray-50 dark:bg-gray-700">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Name</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Pool</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Provider</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Runner Status</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Created</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="instances-table" 
+                   hx-get="/web/api/instances" 
+                   hx-trigger="load, every 15s" 
+                   hx-indicator="#loading" 
+                   class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                <tr>
+                    <td colspan="7" class="px-6 py-4 text-center text-gray-500">Loading instances...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal Container -->
+<div id="modal-container"></div>
+{{end}}

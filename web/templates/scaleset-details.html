@@ -1,0 +1,202 @@
+<!-- Modal Background -->
+<div class="fixed inset-0 bg-black bg-opacity-50 dark:bg-gray-900 dark:bg-opacity-75 flex items-center justify-center z-50" 
+     onclick="this.remove()">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-6xl w-full mx-4 max-h-screen overflow-y-auto" onclick="event.stopPropagation()">
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Scale Set Details: {{.ScaleSet.Name}} (ID: {{.ScaleSet.ID}})</h3>
+            <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-600 dark:text-gray-300 dark:hover:text-gray-100">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        
+        <div class="p-6">
+            <!-- Scale Set Information -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                    <h4 class="font-semibold text-gray-900 dark:text-white mb-3">Basic Information</h4>
+                    <dl class="space-y-2">
+                        <div class="flex justify-between">
+                            <dt class="text-sm text-gray-600 dark:text-gray-400">ID:</dt>
+                            <dd class="text-sm font-mono text-gray-900 dark:text-white">{{.ScaleSet.ID}}</dd>
+                        </div>
+                        <div class="flex justify-between">
+                            <dt class="text-sm text-gray-600 dark:text-gray-400">GitHub Scale Set ID:</dt>
+                            <dd class="text-sm font-mono text-gray-900 dark:text-white">{{.ScaleSet.ScaleSetID}}</dd>
+                        </div>
+                        <div class="flex justify-between">
+                            <dt class="text-sm text-gray-600 dark:text-gray-400">Name:</dt>
+                            <dd class="text-sm text-gray-900 dark:text-white">{{.ScaleSet.Name}}</dd>
+                        </div>
+                        <div class="flex justify-between">
+                            <dt class="text-sm text-gray-600 dark:text-gray-400">Status:</dt>
+                            <dd class="text-sm">
+                                <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {{if .ScaleSet.Enabled}}bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200{{else}}bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200{{end}}">
+                                    {{if .ScaleSet.Enabled}}Enabled{{else}}Disabled{{end}}
+                                </span>
+                            </dd>
+                        </div>
+                    </dl>
+                </div>
+                
+                <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                    <h4 class="font-semibold text-gray-900 dark:text-white mb-3">Entity & Configuration</h4>
+                    <dl class="space-y-2">
+                        <div class="flex justify-between">
+                            <dt class="text-sm text-gray-600 dark:text-gray-400">Entity:</dt>
+                            <dd class="text-sm text-gray-900 dark:text-white">
+                                {{if .ScaleSet.RepoName}}{{.ScaleSet.RepoName}} (Repository){{end}}
+                                {{if .ScaleSet.OrgName}}{{.ScaleSet.OrgName}} (Organization){{end}}
+                                {{if .ScaleSet.EnterpriseName}}{{.ScaleSet.EnterpriseName}} (Enterprise){{end}}
+                            </dd>
+                        </div>
+                        <div class="flex justify-between">
+                            <dt class="text-sm text-gray-600 dark:text-gray-400">Provider:</dt>
+                            <dd class="text-sm text-gray-900 dark:text-white">{{.ScaleSet.ProviderName}}</dd>
+                        </div>
+                        <div class="flex justify-between">
+                            <dt class="text-sm text-gray-600 dark:text-gray-400">Runner Group:</dt>
+                            <dd class="text-sm text-gray-900 dark:text-white">{{.ScaleSet.GitHubRunnerGroup}}</dd>
+                        </div>
+                        <div class="flex justify-between">
+                            <dt class="text-sm text-gray-600 dark:text-gray-400">Disable Update:</dt>
+                            <dd class="text-sm text-gray-900 dark:text-white">
+                                {{if .ScaleSet.DisableUpdate}}Yes{{else}}No{{end}}
+                            </dd>
+                        </div>
+                    </dl>
+                </div>
+
+                <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                    <h4 class="font-semibold text-gray-900 dark:text-white mb-3">Runtime Configuration</h4>
+                    <dl class="space-y-2">
+                        <div class="flex justify-between">
+                            <dt class="text-sm text-gray-600 dark:text-gray-400">Max Runners:</dt>
+                            <dd class="text-sm text-gray-900 dark:text-white">{{.ScaleSet.MaxRunners}}</dd>
+                        </div>
+                        <div class="flex justify-between">
+                            <dt class="text-sm text-gray-600 dark:text-gray-400">Min Idle Runners:</dt>
+                            <dd class="text-sm text-gray-900 dark:text-white">{{.ScaleSet.MinIdleRunners}}</dd>
+                        </div>
+                        <div class="flex justify-between">
+                            <dt class="text-sm text-gray-600 dark:text-gray-400">Desired Runners:</dt>
+                            <dd class="text-sm text-gray-900 dark:text-white">{{.ScaleSet.DesiredRunnerCount}}</dd>
+                        </div>
+                        <div class="flex justify-between">
+                            <dt class="text-sm text-gray-600 dark:text-gray-400">Bootstrap Timeout:</dt>
+                            <dd class="text-sm text-gray-900 dark:text-white">{{.ScaleSet.RunnerBootstrapTimeout}}s</dd>
+                        </div>
+                    </dl>
+                </div>
+            </div>
+
+            <!-- Image and OS Information -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                    <h4 class="font-semibold text-gray-900 dark:text-white mb-3">Image & OS</h4>
+                    <dl class="space-y-2">
+                        <div>
+                            <dt class="text-sm text-gray-600 dark:text-gray-400">Image:</dt>
+                            <dd class="text-sm text-gray-900 dark:text-white font-mono break-all">{{.ScaleSet.Image}}</dd>
+                        </div>
+                        <div class="flex justify-between">
+                            <dt class="text-sm text-gray-600 dark:text-gray-400">Flavor:</dt>
+                            <dd class="text-sm text-gray-900 dark:text-white">{{.ScaleSet.Flavor}}</dd>
+                        </div>
+                        <div class="flex justify-between">
+                            <dt class="text-sm text-gray-600 dark:text-gray-400">OS Type:</dt>
+                            <dd class="text-sm text-gray-900 dark:text-white">{{.ScaleSet.OSType}}</dd>
+                        </div>
+                        <div class="flex justify-between">
+                            <dt class="text-sm text-gray-600 dark:text-gray-400">OS Architecture:</dt>
+                            <dd class="text-sm text-gray-900 dark:text-white">{{.ScaleSet.OSArch}}</dd>
+                        </div>
+                    </dl>
+                </div>
+
+                <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                    <h4 class="font-semibold text-gray-900 dark:text-white mb-3">State & Timestamps</h4>
+                    <dl class="space-y-2">
+                        <div class="flex justify-between">
+                            <dt class="text-sm text-gray-600 dark:text-gray-400">State:</dt>
+                            <dd class="text-sm text-gray-900 dark:text-white">{{.ScaleSet.State}}</dd>
+                        </div>
+                        {{if .ScaleSet.ExtendedState}}
+                        <div>
+                            <dt class="text-sm text-gray-600 dark:text-gray-400">Extended State:</dt>
+                            <dd class="text-sm text-gray-900 dark:text-white">{{.ScaleSet.ExtendedState}}</dd>
+                        </div>
+                        {{end}}
+                        <div class="flex justify-between">
+                            <dt class="text-sm text-gray-600 dark:text-gray-400">Created:</dt>
+                            <dd class="text-sm text-gray-900 dark:text-white">{{.ScaleSet.CreatedAt.Format "Jan 2, 2006 15:04:05"}}</dd>
+                        </div>
+                        {{if not .ScaleSet.UpdatedAt.IsZero}}
+                        <div class="flex justify-between">
+                            <dt class="text-sm text-gray-600 dark:text-gray-400">Updated:</dt>
+                            <dd class="text-sm text-gray-900 dark:text-white">{{.ScaleSet.UpdatedAt.Format "Jan 2, 2006 15:04:05"}}</dd>
+                        </div>
+                        {{end}}
+                    </dl>
+                </div>
+            </div>
+
+            <!-- Instances List -->
+            <div class="border-t border-gray-200 dark:border-gray-700 pt-6">
+                <h4 class="font-semibold text-gray-900 dark:text-white mb-4">Instances ({{len .ScaleSet.Instances}})</h4>
+                {{if .ScaleSet.Instances}}
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead class="bg-gray-50 dark:bg-gray-700">
+                            <tr>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Name</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Status</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Runner Status</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Created</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                            {{range .ScaleSet.Instances}}
+                            <tr>
+                                <td class="px-3 py-2 text-sm font-mono text-gray-900 dark:text-white">{{.Name}}</td>
+                                <td class="px-3 py-2">
+                                    <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full 
+                                        {{if eq .Status "running"}}bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
+                                        {{else if eq .Status "stopped"}}bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200
+                                        {{else if eq .Status "pending_create"}}bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200
+                                        {{else}}bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200{{end}}">
+                                        {{.Status}}
+                                    </span>
+                                </td>
+                                <td class="px-3 py-2">
+                                    <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full 
+                                        {{if eq .RunnerStatus "idle"}}bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200
+                                        {{else if eq .RunnerStatus "active"}}bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
+                                        {{else if eq .RunnerStatus "offline"}}bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200
+                                        {{else}}bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200{{end}}">
+                                        {{.RunnerStatus}}
+                                    </span>
+                                </td>
+                                <td class="px-3 py-2 text-sm text-gray-900 dark:text-white">{{.CreatedAt.Format "Jan 2, 15:04"}}</td>
+                            </tr>
+                            {{end}}
+                        </tbody>
+                    </table>
+                </div>
+                {{else}}
+                <div class="text-center py-8 text-gray-500 dark:text-gray-400">
+                    No instances found for this scale set
+                </div>
+                {{end}}
+            </div>
+        </div>
+
+        <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end">
+            <button onclick="this.closest('.fixed').remove()" 
+                    class="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-white rounded-lg font-medium">
+                Close
+            </button>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,262 @@
+{{define "scaleset-form.html"}}
+<!-- Modal Background -->
+<div class="fixed inset-0 bg-black bg-opacity-50 dark:bg-gray-900 dark:bg-opacity-75 flex items-center justify-center z-50" 
+     onclick="this.remove()">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-screen overflow-y-auto" onclick="event.stopPropagation()">
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Create New Scale Set</h3>
+            <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-600 dark:text-gray-300 dark:hover:text-gray-100">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        
+        <form hx-post="/web/api/scalesets" 
+              hx-target="#scalesets-table"
+              hx-on:htmx:after-request="this.closest('.fixed').remove()"
+              class="p-6">
+            
+            <div class="space-y-6">
+                <!-- GitHub Notice -->
+                <div class="bg-blue-50 dark:bg-blue-900 border border-blue-200 dark:border-blue-700 rounded-lg p-4">
+                    <div class="flex">
+                        <svg class="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                        </svg>
+                        <div class="ml-3">
+                            <p class="text-sm text-blue-800 dark:text-blue-300">
+                                Scale sets are only available for GitHub repositories, organizations, and enterprises.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Scale Set Name -->
+                <div>
+                    <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Scale Set Name *</label>
+                    <input type="text" name="name" id="name" required 
+                           placeholder="e.g., my-scale-set"
+                           class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+
+                <!-- Entity Level Selection -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Entity Level</label>
+                    <div class="flex space-x-4">
+                        <button type="button" onclick="selectEntityLevel('repo')" 
+                                id="level-repo" 
+                                class="entity-level-btn px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300">
+                            Repository
+                        </button>
+                        <button type="button" onclick="selectEntityLevel('org')" 
+                                id="level-org" 
+                                class="entity-level-btn px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300">
+                            Organization
+                        </button>
+                        <button type="button" onclick="selectEntityLevel('enterprise')" 
+                                id="level-enterprise" 
+                                class="entity-level-btn px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300">
+                            Enterprise
+                        </button>
+                    </div>
+                    <input type="hidden" name="entity_level" id="entity_level" required>
+                </div>
+
+                <!-- Entity Selection -->
+                <div id="entity-selection" style="display: none;">
+                    <label id="entity-selection-label" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select GitHub Entity</label>
+                    <select name="entity_id" id="entity_id" required 
+                            class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">Choose a GitHub entity...</option>
+                    </select>
+                </div>
+
+                <!-- Provider Selection -->
+                <div>
+                    <label for="provider_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Provider *</label>
+                    <select name="provider_name" id="provider_name" required 
+                            class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">Choose a provider...</option>
+                        {{range .Providers}}
+                        <option value="{{.Name}}">{{.Name}}</option>
+                        {{end}}
+                    </select>
+                </div>
+
+                <!-- Image and Flavor -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="image" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Image *</label>
+                        <input type="text" name="image" id="image" required 
+                               placeholder="e.g., ubuntu:22.04"
+                               class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="flavor" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Flavor *</label>
+                        <input type="text" name="flavor" id="flavor" required 
+                               placeholder="e.g., default, small, medium"
+                               class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                </div>
+
+                <!-- OS Type and Architecture -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="os_type" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">OS Type</label>
+                        <select name="os_type" id="os_type" 
+                                class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">Select OS Type...</option>
+                            <option value="linux">Linux</option>
+                            <option value="windows">Windows</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="os_arch" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Architecture</label>
+                        <select name="os_arch" id="os_arch" 
+                                class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">Select Architecture...</option>
+                            <option value="amd64">AMD64</option>
+                            <option value="arm64">ARM64</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Runner Configuration -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label for="max_runners" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Max Runners</label>
+                        <input type="number" name="max_runners" id="max_runners" min="1" value="5"
+                               class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="min_idle_runners" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Min Idle Runners</label>
+                        <input type="number" name="min_idle_runners" id="min_idle_runners" min="0" value="1"
+                               class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="runner_bootstrap_timeout" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Bootstrap Timeout (minutes)</label>
+                        <input type="number" name="runner_bootstrap_timeout" id="runner_bootstrap_timeout" min="1" value="20"
+                               class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                </div>
+
+                <!-- Runner Prefix -->
+                <div>
+                    <label for="runner_prefix" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Runner Prefix</label>
+                    <input type="text" name="runner_prefix" id="runner_prefix" value="garm"
+                           placeholder="e.g., garm, runner"
+                           class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+
+                <!-- GitHub Runner Group -->
+                <div>
+                    <label for="github_runner_group" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">GitHub Runner Group</label>
+                    <input type="text" name="github_runner_group" id="github_runner_group" 
+                           placeholder="Optional runner group name"
+                           class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+
+                <!-- Tags -->
+                <div>
+                    <label for="tags" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tags</label>
+                    <input type="text" name="tags" id="tags" 
+                           placeholder="Comma-separated tags (e.g., ubuntu, linux, x64)"
+                           class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+
+                <!-- Enabled Checkbox -->
+                <div class="flex items-center">
+                    <input type="checkbox" name="enabled" id="enabled" checked
+                           class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded">
+                    <label for="enabled" class="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+                        Enable scale set immediately
+                    </label>
+                </div>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="flex justify-end space-x-3 pt-6 border-t border-gray-200 dark:border-gray-700 mt-6">
+                <button type="button" onclick="this.closest('.fixed').remove()" 
+                        class="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-white rounded-lg font-medium">
+                    Cancel
+                </button>
+                <button type="submit" 
+                        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium">
+                    Create Scale Set
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// Store entity data from template (GitHub entities only)
+const entityData = {
+    repositories: [
+        {{range .Repositories}}
+        {id: "{{.ID}}", name: "{{.Name}}", owner: "{{.Owner}}"},
+        {{end}}
+    ],
+    organizations: [
+        {{range .Organizations}}
+        {id: "{{.ID}}", name: "{{.Name}}"},
+        {{end}}
+    ],
+    enterprises: [
+        {{range .Enterprises}}
+        {id: "{{.ID}}", name: "{{.Name}}"},
+        {{end}}
+    ]
+};
+
+// Entity level selection logic
+function selectEntityLevel(level) {
+    // Update hidden input
+    document.getElementById('entity_level').value = level;
+    
+    // Update button styles
+    document.querySelectorAll('.entity-level-btn').forEach(btn => {
+        btn.classList.remove('bg-blue-600', 'text-white');
+        btn.classList.add('text-gray-700', 'dark:text-gray-300');
+    });
+    
+    const selectedBtn = document.getElementById('level-' + level);
+    selectedBtn.classList.add('bg-blue-600', 'text-white');
+    selectedBtn.classList.remove('text-gray-700', 'dark:text-gray-300');
+    
+    // Update label text
+    const label = document.getElementById('entity-selection-label');
+    if (level === 'repo') {
+        label.textContent = 'Select GitHub Repository';
+    } else if (level === 'org') {
+        label.textContent = 'Select GitHub Organization';
+    } else if (level === 'enterprise') {
+        label.textContent = 'Select GitHub Enterprise';
+    }
+    
+    // Show entity selection dropdown
+    document.getElementById('entity-selection').style.display = 'block';
+    
+    // Populate entity dropdown based on level (GitHub entities only)
+    const entitySelect = document.getElementById('entity_id');
+    entitySelect.innerHTML = '<option value="">Choose a GitHub ' + (level === 'repo' ? 'repository' : level === 'org' ? 'organization' : 'enterprise') + '...</option>';
+    
+    let entities = [];
+    if (level === 'repo') {
+        entities = entityData.repositories;
+    } else if (level === 'org') {
+        entities = entityData.organizations;
+    } else if (level === 'enterprise') {
+        entities = entityData.enterprises;
+    }
+    
+    entities.forEach(entity => {
+        const option = document.createElement('option');
+        option.value = entity.id;
+        option.textContent = entity.name + (entity.owner ? ` (${entity.owner})` : '');
+        entitySelect.appendChild(option);
+    });
+}
+</script>
+{{end}}

@@ -186,3 +186,13 @@ func (a *Authenticator) AuthenticateUser(ctx context.Context, info params.Passwo
 
 	return PopulateContext(ctx, user, nil), nil
 }
+
+// GetStore returns the database store
+func (a *Authenticator) GetStore() common.Store {
+	return a.store
+}
+
+// GetJWTConfig returns the JWT configuration
+func (a *Authenticator) GetJWTConfig() config.JWTAuth {
+	return a.cfg
+}

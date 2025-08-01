@@ -1,0 +1,130 @@
+{{define "pool-edit.html"}}
+<!-- Modal Background -->
+<div class="fixed inset-0 bg-black bg-opacity-50 dark:bg-gray-900 dark:bg-opacity-75 flex items-center justify-center z-50" 
+     onclick="this.remove()">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-screen overflow-y-auto" onclick="event.stopPropagation()">
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Edit Pool: {{.Pool.ID}}</h3>
+            <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-600 dark:text-gray-300 dark:hover:text-gray-100">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        
+        <form hx-put="/web/api/pools/{{.Pool.ID}}" 
+              hx-target="#pools-table" 
+              hx-ext="json-enc"
+              class="p-6">
+            
+            <!-- Pool Configuration -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Image</label>
+                    <input type="text" name="image" value="{{.Pool.Image}}" 
+                           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 dark:bg-gray-700 dark:text-white" 
+                           placeholder="ubuntu-20.04">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Flavor</label>
+                    <input type="text" name="flavor" value="{{.Pool.Flavor}}" 
+                           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 dark:bg-gray-700 dark:text-white" 
+                           placeholder="medium">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Min Idle Runners</label>
+                    <input type="number" name="min_idle_runners" value="{{.Pool.MinIdleRunners}}" min="0"
+                           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 dark:bg-gray-700 dark:text-white">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Max Runners</label>
+                    <input type="number" name="max_runners" value="{{.Pool.MaxRunners}}" min="1"
+                           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 dark:bg-gray-700 dark:text-white">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Bootstrap Timeout (minutes)</label>
+                    <input type="number" name="runner_bootstrap_timeout" value="{{.Pool.RunnerBootstrapTimeout}}" min="1"
+                           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 dark:bg-gray-700 dark:text-white">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Runner Prefix</label>
+                    <input type="text" name="runner_prefix" value="{{.Pool.GetRunnerPrefix}}" 
+                           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 dark:bg-gray-700 dark:text-white" 
+                           placeholder="garm">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">OS Type</label>
+                    <select name="os_type" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 dark:bg-gray-700 dark:text-white">
+                        <option value="linux" {{if eq .Pool.OSType "linux"}}selected{{end}}>Linux</option>
+                        <option value="windows" {{if eq .Pool.OSType "windows"}}selected{{end}}>Windows</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">OS Architecture</label>
+                    <select name="os_arch" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 dark:bg-gray-700 dark:text-white">
+                        <option value="amd64" {{if eq .Pool.OSArch "amd64"}}selected{{end}}>AMD64</option>
+                        <option value="arm64" {{if eq .Pool.OSArch "arm64"}}selected{{end}}>ARM64</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Priority</label>
+                    <input type="number" name="priority" value="{{.Pool.Priority}}" min="0"
+                           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 dark:bg-gray-700 dark:text-white">
+                </div>
+                
+                <div>
+                    <label class="flex items-center space-x-2">
+                        <input type="checkbox" name="enabled" {{if .Pool.Enabled}}checked{{end}}
+                               class="rounded border-gray-300 dark:border-gray-600 text-orange-600 focus:ring-orange-500 dark:bg-gray-700">
+                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Pool Enabled</span>
+                    </label>
+                </div>
+            </div>
+            
+            <!-- GitHub Runner Group -->
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">GitHub Runner Group</label>
+                <input type="text" name="github-runner-group" value="{{.Pool.GitHubRunnerGroup}}" 
+                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 dark:bg-gray-700 dark:text-white" 
+                       placeholder="default">
+            </div>
+            
+            <!-- Tags/Labels -->
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Labels (comma-separated)</label>
+                <input type="text" name="tags" value="{{range $i, $tag := .Pool.Tags}}{{if $i}}, {{end}}{{$tag.Name}}{{end}}" 
+                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 dark:bg-gray-700 dark:text-white" 
+                       placeholder="ubuntu, x64, gpu">
+            </div>
+            
+            <!-- Extra Specs -->
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Extra Specs (JSON)</label>
+                <textarea name="extra_specs" rows="4" 
+                          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 dark:bg-gray-700 dark:text-white font-mono text-sm" 
+                          placeholder='{"key": "value"}'>{{.ExtraSpecsDecoded}}</textarea>
+            </div>
+            
+            <!-- Form Actions -->
+            <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <button type="button" onclick="this.closest('.fixed').remove()" 
+                        class="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-white rounded-lg font-medium">
+                    Cancel
+                </button>
+                <button type="submit" 
+                        class="px-4 py-2 bg-orange-600 hover:bg-orange-700 dark:bg-orange-700 dark:hover:bg-orange-800 text-white rounded-lg font-medium">
+                    Update Pool
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{{end}}

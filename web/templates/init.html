@@ -1,0 +1,234 @@
+{{define "init-content"}}
+<div class="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8" x-data="{ 
+    theme: localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'),
+    toggleTheme() {
+        this.theme = this.theme === 'dark' ? 'light' : 'dark';
+        localStorage.setItem('theme', this.theme);
+        document.documentElement.classList.toggle('dark', this.theme === 'dark');
+    }
+}" 
+x-init="document.documentElement.classList.toggle('dark', theme === 'dark')"
+:class="theme === 'dark' ? 'dark bg-gray-900' : 'bg-gray-50'">
+    <div class="max-w-md w-full space-y-8">
+        <!-- Theme Toggle -->
+        <div class="flex justify-end">
+            <button @click="toggleTheme()" 
+                    class="p-2 rounded-lg bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                <svg x-show="theme === 'light'" class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+                </svg>
+                <svg x-show="theme === 'dark'" class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                </svg>
+            </button>
+        </div>
+
+        <div>
+            <!-- Logo -->
+            <div class="flex justify-center">
+                <img :src="theme === 'dark' ? '/assets/garm-dark.svg' : '/assets/garm-light.svg'" 
+                     alt="GARM Logo" 
+                     class="h-40 w-40">
+            </div>
+            <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
+                Initialize GARM
+            </h2>
+            <p class="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
+                Set up your administrator account
+            </p>
+        </div>
+
+        <form class="mt-8 space-y-6" 
+              hx-post="/web/api/auth/init" 
+              hx-target="#init-result"
+              hx-indicator="#init-loading"
+              x-data="{ 
+                  username: '', 
+                  password: '',
+                  confirmPassword: '',
+                  showPassword: false,
+                  showConfirmPassword: false,
+                  passwordStrength: 0,
+                  getPasswordStrength() {
+                      const password = this.password;
+                      let strength = 0;
+                      
+                      if (password.length >= 8) strength += 1;
+                      if (password.match(/[a-z]/)) strength += 1;
+                      if (password.match(/[A-Z]/)) strength += 1;
+                      if (password.match(/[0-9]/)) strength += 1;
+                      if (password.match(/[^a-zA-Z0-9]/)) strength += 1;
+                      
+                      this.passwordStrength = strength;
+                      return strength;
+                  },
+                  getStrengthText() {
+                      const strength = this.getPasswordStrength();
+                      if (strength <= 1) return 'Very Weak';
+                      if (strength === 2) return 'Weak';
+                      if (strength === 3) return 'Fair';
+                      if (strength === 4) return 'Good';
+                      return 'Strong';
+                  },
+                  getStrengthColor() {
+                      const strength = this.getPasswordStrength();
+                      if (strength <= 1) return 'text-red-600 dark:text-red-400';
+                      if (strength === 2) return 'text-orange-600 dark:text-orange-400';
+                      if (strength === 3) return 'text-yellow-600 dark:text-yellow-400';
+                      if (strength === 4) return 'text-blue-600 dark:text-blue-400';
+                      return 'text-green-600 dark:text-green-400';
+                  },
+                  getStrengthBarColor() {
+                      const strength = this.getPasswordStrength();
+                      if (strength <= 1) return 'bg-red-500';
+                      if (strength === 2) return 'bg-orange-500';
+                      if (strength === 3) return 'bg-yellow-500';
+                      if (strength === 4) return 'bg-blue-500';
+                      return 'bg-green-500';
+                  }
+              }">
+            <div class="space-y-4">
+                <div>
+                    <label for="username" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Username</label>
+                    <input id="username" 
+                           name="username" 
+                           type="text" 
+                           autocomplete="username" 
+                           required 
+                           x-model="username"
+                           class="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white dark:bg-gray-800 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" 
+                           placeholder="Administrator username">
+                </div>
+                
+                <div>
+                    <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Password</label>
+                    <div class="mt-1 relative">
+                        <input id="password" 
+                               name="password" 
+                               :type="showPassword ? 'text' : 'password'" 
+                               autocomplete="new-password" 
+                               required 
+                               x-model="password"
+                               @input="getPasswordStrength()"
+                               class="appearance-none relative block w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white dark:bg-gray-800 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" 
+                               placeholder="Choose a strong password">
+                        <button type="button" 
+                                @click="showPassword = !showPassword"
+                                class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                            <svg x-show="!showPassword" class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                            </svg>
+                            <svg x-show="showPassword" class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L12 12m0 0l3.122 3.122M3 3l3.878 3.878"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <!-- Password Strength Indicator -->
+                    <div x-show="password.length > 0" class="mt-2">
+                        <div class="flex items-center space-x-2">
+                            <div class="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                                <div class="h-2 rounded-full transition-all duration-300"
+                                     :class="getStrengthBarColor()"
+                                     :style="`width: ${(passwordStrength / 5) * 100}%`"></div>
+                            </div>
+                            <span class="text-xs font-medium" :class="getStrengthColor()" x-text="getStrengthText()"></span>
+                        </div>
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            Password must be at least 8 characters. Strong passwords include uppercase, lowercase, numbers, and symbols.
+                        </p>
+                    </div>
+                </div>
+                
+                <div>
+                    <label for="confirm-password" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Confirm Password</label>
+                    <div class="mt-1 relative">
+                        <input id="confirm-password" 
+                               name="confirm_password" 
+                               :type="showConfirmPassword ? 'text' : 'password'" 
+                               autocomplete="new-password" 
+                               required 
+                               x-model="confirmPassword"
+                               class="appearance-none relative block w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white dark:bg-gray-800 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" 
+                               placeholder="Confirm your password">
+                        <button type="button" 
+                                @click="showConfirmPassword = !showConfirmPassword"
+                                class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                            <svg x-show="!showConfirmPassword" class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                            </svg>
+                            <svg x-show="showConfirmPassword" class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L12 12m0 0l3.122 3.122M3 3l3.878 3.878"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div x-show="confirmPassword.length > 0 && password !== confirmPassword" class="mt-1">
+                        <p class="text-xs text-red-600 dark:text-red-400">Passwords do not match</p>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <button type="submit" 
+                        :disabled="password.length < 8 || password !== confirmPassword"
+                        class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed dark:focus:ring-offset-gray-900">
+                    <span class="absolute left-0 inset-y-0 flex items-center pl-3">
+                        <svg class="h-5 w-5 text-blue-500 group-hover:text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"></path>
+                        </svg>
+                    </span>
+                    <span id="init-loading" class="htmx-indicator">
+                        <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Initializing...
+                    </span>
+                    <span class="htmx-indicator:not(.htmx-indicator)">
+                        Initialize GARM
+                    </span>
+                </button>
+            </div>
+
+            <div id="init-result" class="mt-4"></div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.body.addEventListener('htmx:responseError', function(evt) {
+    const errorDiv = document.getElementById('init-result');
+    errorDiv.innerHTML = `
+        <div class="bg-red-100 dark:bg-red-900/50 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-300 px-4 py-3 rounded">
+            <span class="block sm:inline">Initialization failed. Please try again.</span>
+        </div>
+    `;
+});
+
+document.body.addEventListener('htmx:afterRequest', function(evt) {
+    if (evt.detail.xhr.status === 200 && evt.detail.target.id === 'init-result') {
+        const response = JSON.parse(evt.detail.xhr.responseText);
+        if (response.token) {
+            // Store JWT token
+            localStorage.setItem('garm_token', response.token);
+            localStorage.setItem('garm_user', JSON.stringify(response.user));
+            
+            // Show success message and redirect
+            const resultDiv = document.getElementById('init-result');
+            resultDiv.innerHTML = `
+                <div class="bg-green-100 dark:bg-green-900/50 border border-green-400 dark:border-green-700 text-green-700 dark:text-green-300 px-4 py-3 rounded">
+                    <span class="block sm:inline">GARM initialized successfully! Redirecting to dashboard...</span>
+                </div>
+            `;
+            
+            // Redirect to dashboard after a short delay
+            setTimeout(() => {
+                window.location.href = '/web/';
+            }, 2000);
+        }
+    }
+});
+</script>
+{{end}}

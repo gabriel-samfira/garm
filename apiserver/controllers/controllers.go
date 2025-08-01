@@ -31,6 +31,8 @@ import (
 	"github.com/cloudbase/garm/apiserver/events"
 	"github.com/cloudbase/garm/apiserver/params"
 	"github.com/cloudbase/garm/auth"
+	"github.com/cloudbase/garm/config"
+	"github.com/cloudbase/garm/database/common"
 	"github.com/cloudbase/garm/metrics"
 	runnerParams "github.com/cloudbase/garm/params"
 	"github.com/cloudbase/garm/runner" //nolint:typecheck
@@ -478,4 +480,19 @@ func (a *APIController) UpdateControllerHandler(w http.ResponseWriter, r *http.R
 	if err := json.NewEncoder(w).Encode(info); err != nil {
 		slog.With(slog.Any("error", err)).ErrorContext(ctx, "failed to encode response")
 	}
+}
+
+// GetStore returns the database store from the authenticator
+func (a *APIController) GetStore() common.Store {
+	return a.auth.GetStore()
+}
+
+// GetJWTConfig returns the JWT configuration from the authenticator
+func (a *APIController) GetJWTConfig() config.JWTAuth {
+	return a.auth.GetJWTConfig()
+}
+
+// GetAuthenticator returns the authenticator instance
+func (a *APIController) GetAuthenticator() *auth.Authenticator {
+	return a.auth
 }

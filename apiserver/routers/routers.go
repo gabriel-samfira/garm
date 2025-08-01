@@ -57,6 +57,9 @@ import (
 
 	"github.com/cloudbase/garm/apiserver/controllers"
 	"github.com/cloudbase/garm/auth"
+	"github.com/cloudbase/garm/web/handlers"
+	webRouters "github.com/cloudbase/garm/web/routers"
+	"github.com/cloudbase/garm/runner"
 )
 
 func WithMetricsRouter(parentRouter *mux.Router, disableAuth bool, metricsMiddlerware auth.Middleware) *mux.Router {
@@ -101,8 +104,30 @@ func requestLogger(h http.Handler) http.Handler {
 }
 
 func NewAPIRouter(han *controllers.APIController, authMiddleware, initMiddleware, urlsRequiredMiddleware, instanceMiddleware auth.Middleware, manageWebhooks bool) *mux.Router {
+	return NewAPIRouterWithRunner(han, authMiddleware, initMiddleware, urlsRequiredMiddleware, instanceMiddleware, manageWebhooks, nil)
+}
+
+func NewAPIRouterWithRunner(han *controllers.APIController, authMiddleware, initMiddleware, urlsRequiredMiddleware, instanceMiddleware auth.Middleware, manageWebhooks bool, runnerInstance *runner.Runner) *mux.Router {
 	router := mux.NewRouter()
 	router.Use(requestLogger)
+
+	// Add web routes if runner is provided - do this early
+	if runnerInstance != nil {
+		slog.Info("Creating web handler")
+		webHandler, err := handlers.NewWebHandler(runnerInstance)
+		if err == nil {
+			slog.Info("Web handler created successfully, adding web routes")
+			// Get store, JWT config, and authenticator from the API controller
+			store := han.GetStore()
+			jwtConfig := han.GetJWTConfig()
+			authenticator := han.GetAuthenticator()
+			webRouters.AddWebRoutes(router, webHandler, store, jwtConfig, authenticator)
+		} else {
+			slog.Error("Failed to create web handler", "error", err)
+		}
+	} else {
+		slog.Error("No runner instance provided for web routes")
+	}
 
 	// Handles github webhooks
 	webhookRouter := router.PathPrefix("/webhooks").Subrouter()
@@ -505,7 +530,8 @@ func NewAPIRouter(han *controllers.APIController, authMiddleware, initMiddleware
 	apiRouter.Handle("/ws/events/", http.HandlerFunc(han.EventsHandler)).Methods("GET")
 	apiRouter.Handle("/ws/events", http.HandlerFunc(han.EventsHandler)).Methods("GET")
 
-	// NotFound handler
+
+	// NotFound handler - this should be last
 	apiRouter.PathPrefix("/").HandlerFunc(han.NotFoundHandler).Methods("GET", "POST", "PUT", "DELETE", "OPTIONS")
 	return router
 }

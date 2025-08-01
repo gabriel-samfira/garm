@@ -1,0 +1,174 @@
+{{define "scaleset-edit.html"}}
+<!-- Modal Background -->
+<div class="fixed inset-0 bg-black bg-opacity-50 dark:bg-gray-900 dark:bg-opacity-75 flex items-center justify-center z-50" 
+     onclick="this.remove()">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-screen overflow-y-auto" onclick="event.stopPropagation()">
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Edit Scale Set: {{.ScaleSet.Name}}</h3>
+            <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-600 dark:text-gray-300 dark:hover:text-gray-100">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        
+        <form hx-put="/web/api/scalesets/{{.ScaleSet.ID}}" 
+              hx-target="#scalesets-table"
+              hx-on:htmx:after-request="this.closest('.fixed').remove()"
+              class="p-6">
+            
+            <div class="space-y-6">
+                <!-- Basic Information -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Scale Set Name
+                        </label>
+                        <input type="text" 
+                               id="name" 
+                               name="name" 
+                               value="{{.ScaleSet.Name}}"
+                               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                               placeholder="Enter scale set name">
+                    </div>
+
+                    <div>
+                        <label for="github_runner_group" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            GitHub Runner Group
+                        </label>
+                        <input type="text" 
+                               id="github_runner_group" 
+                               name="github_runner_group" 
+                               value="{{.ScaleSet.GitHubRunnerGroup}}"
+                               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                               placeholder="Default">
+                    </div>
+                </div>
+
+                <!-- Runner Configuration -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label for="max_runners" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Max Runners
+                        </label>
+                        <input type="number" 
+                               id="max_runners" 
+                               name="max_runners" 
+                               value="{{.ScaleSet.MaxRunners}}"
+                               min="1"
+                               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <div>
+                        <label for="min_idle_runners" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Min Idle Runners
+                        </label>
+                        <input type="number" 
+                               id="min_idle_runners" 
+                               name="min_idle_runners" 
+                               value="{{.ScaleSet.MinIdleRunners}}"
+                               min="0"
+                               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <div>
+                        <label for="runner_bootstrap_timeout" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Bootstrap Timeout (seconds)
+                        </label>
+                        <input type="number" 
+                               id="runner_bootstrap_timeout" 
+                               name="runner_bootstrap_timeout" 
+                               value="{{.ScaleSet.RunnerBootstrapTimeout}}"
+                               min="60"
+                               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                </div>
+
+                <!-- Checkboxes -->
+                <div class="space-y-4">
+                    <div class="flex items-center">
+                        <input type="checkbox" 
+                               id="enabled" 
+                               name="enabled" 
+                               {{if .ScaleSet.Enabled}}checked{{end}}
+                               class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700">
+                        <label for="enabled" class="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+                            Enable Scale Set
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Read-only Information -->
+                <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                    <h4 class="text-sm font-medium text-gray-900 dark:text-white mb-3">Read-only Information</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <span class="text-gray-600 dark:text-gray-400">ID:</span>
+                            <span class="font-mono text-gray-900 dark:text-white ml-2">{{.ScaleSet.ID}}</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-600 dark:text-gray-400">GitHub Scale Set ID:</span>
+                            <span class="font-mono text-gray-900 dark:text-white ml-2">{{.ScaleSet.ScaleSetID}}</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-600 dark:text-gray-400">Provider:</span>
+                            <span class="text-gray-900 dark:text-white ml-2">{{.ScaleSet.ProviderName}}</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-600 dark:text-gray-400">Disable Update:</span>
+                            <span class="text-gray-900 dark:text-white ml-2">{{if .ScaleSet.DisableUpdate}}Yes{{else}}No{{end}}</span>
+                        </div>
+                        <div class="md:col-span-2">
+                            <span class="text-gray-600 dark:text-gray-400">Entity:</span>
+                            <span class="text-gray-900 dark:text-white ml-2">
+                                {{if .ScaleSet.RepoName}}{{.ScaleSet.RepoName}} (Repository){{end}}
+                                {{if .ScaleSet.OrgName}}{{.ScaleSet.OrgName}} (Organization){{end}}
+                                {{if .ScaleSet.EnterpriseName}}{{.ScaleSet.EnterpriseName}} (Enterprise){{end}}
+                            </span>
+                        </div>
+                        <div class="md:col-span-2">
+                            <span class="text-gray-600 dark:text-gray-400">Image:</span>
+                            <span class="font-mono text-gray-900 dark:text-white ml-2 break-all">{{.ScaleSet.Image}}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Validation Notes -->
+                <div class="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <h3 class="text-sm font-medium text-yellow-800 dark:text-yellow-200">Important Notes</h3>
+                            <div class="mt-2 text-sm text-yellow-700 dark:text-yellow-300">
+                                <ul class="list-disc list-inside space-y-1">
+                                    <li>Min Idle Runners cannot be larger than Max Runners</li>
+                                    <li>Bootstrap timeout must be at least 60 seconds</li>
+                                    <li>Disabling a scale set will stop all running instances</li>
+                                    <li>Some fields like Provider and Image cannot be changed after creation</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="flex justify-end space-x-3 mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+                <button type="button" 
+                        onclick="this.closest('.fixed').remove()"
+                        class="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-white rounded-lg font-medium">
+                    Cancel
+                </button>
+                <button type="submit"
+                        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium">
+                    Update Scale Set
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{{end}}

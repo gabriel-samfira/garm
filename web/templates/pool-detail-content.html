@@ -1,0 +1,225 @@
+{{define "pool-detail-content"}}
+<div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+    <div class="px-4 py-5 sm:p-6">
+        <!-- Breadcrumb -->
+        <nav class="flex mb-4" aria-label="Breadcrumb">
+            <ol class="inline-flex items-center space-x-1 md:space-x-3">
+                <li class="inline-flex items-center">
+                    <a href="/web/pools" class="inline-flex items-center text-sm font-medium text-gray-700 hover:text-blue-600 dark:text-gray-400 dark:hover:text-white">
+                        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-3a1 1 0 011-1h2a1 1 0 011 1v3a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path>
+                        </svg>
+                        Pools
+                    </a>
+                </li>
+                <li>
+                    <div class="flex items-center">
+                        <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                        <span class="ml-1 text-sm font-medium text-gray-500 dark:text-gray-400">Pool {{if gt (len .Entity.ID) 8}}{{slice .Entity.ID 0 8}}...{{else}}{{.Entity.ID}}{{end}}</span>
+                    </div>
+                </li>
+            </ol>
+        </nav>
+
+        <!-- Pool Details -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Main Info -->
+            <div class="lg:col-span-2">
+                <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mb-6">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Pool Configuration</h3>
+                    <dl class="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Pool ID</dt>
+                            <dd class="mt-1 text-sm text-gray-900 dark:text-white font-mono">{{.Entity.ID}}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Provider</dt>
+                            <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{.Entity.ProviderName}}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Image</dt>
+                            <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{.Entity.Image}}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Flavor</dt>
+                            <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{.Entity.Flavor}}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">OS Type</dt>
+                            <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{.Entity.OSType}}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">OS Architecture</dt>
+                            <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{.Entity.OSArch}}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Min Idle Runners</dt>
+                            <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{.Entity.MinIdleRunners}}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Max Runners</dt>
+                            <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{.Entity.MaxRunners}}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Priority</dt>
+                            <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{.Entity.Priority}}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Status</dt>
+                            <dd class="mt-1">
+                                {{if .Entity.Enabled}}
+                                    <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">Enabled</span>
+                                {{else}}
+                                    <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200">Disabled</span>
+                                {{end}}
+                            </dd>
+                        </div>
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Runner Bootstrap Timeout</dt>
+                            <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{.Entity.RunnerBootstrapTimeout}} min</dd>
+                        </div>
+                        {{if .Entity.Prefix}}
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Runner Prefix</dt>
+                            <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{.Entity.Prefix}}</dd>
+                        </div>
+                        {{end}}
+                        {{if .Entity.Tags}}
+                        <div class="sm:col-span-2">
+                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Tags</dt>
+                            <dd class="mt-1">
+                                <div class="flex flex-wrap gap-1">
+                                    {{range .Entity.Tags}}
+                                    <span class="inline-flex px-2 py-1 text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded">{{.}}</span>
+                                    {{end}}
+                                </div>
+                            </dd>
+                        </div>
+                        {{end}}
+                        {{if .ExtraSpecsDecoded}}
+                        <div class="sm:col-span-2">
+                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Extra Specs</dt>
+                            <dd class="mt-1">
+                                <pre class="text-xs bg-gray-100 dark:bg-gray-600 p-2 rounded text-gray-900 dark:text-white overflow-x-auto">{{.ExtraSpecsDecoded}}</pre>
+                            </dd>
+                        </div>
+                        {{end}}
+                    </dl>
+                </div>
+
+                <!-- Entity Association -->
+                <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Associated Entity</h3>
+                    <dl class="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Entity Type</dt>
+                            <dd class="mt-1 text-sm text-gray-900 dark:text-white">
+                                {{if .Entity.RepoName}}Repository{{end}}
+                                {{if .Entity.OrgName}}Organization{{end}}
+                                {{if .Entity.EnterpriseName}}Enterprise{{end}}
+                            </dd>
+                        </div>
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Entity Name</dt>
+                            <dd class="mt-1 text-sm text-gray-900 dark:text-white">
+                                {{if .Entity.RepoName}}
+                                    <a href="/web/repositories/{{.Entity.RepoID}}" class="text-blue-600 dark:text-blue-400 hover:underline">{{.Entity.RepoName}}</a>
+                                {{end}}
+                                {{if .Entity.OrgName}}
+                                    <a href="/web/organizations/{{.Entity.OrgID}}" class="text-blue-600 dark:text-blue-400 hover:underline">{{.Entity.OrgName}}</a>
+                                {{end}}
+                                {{if .Entity.EnterpriseName}}
+                                    <a href="/web/enterprises/{{.Entity.EnterpriseID}}" class="text-blue-600 dark:text-blue-400 hover:underline">{{.Entity.EnterpriseName}}</a>
+                                {{end}}
+                            </dd>
+                        </div>
+                        {{if .Entity.GitHubRunnerGroup}}
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">GitHub Runner Group</dt>
+                            <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{.Entity.GitHubRunnerGroup}}</dd>
+                        </div>
+                        {{end}}
+                    </dl>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div>
+                <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Actions</h3>
+                    <div class="space-y-3">
+                        <button hx-get="/web/pools/{{.Entity.ID}}/edit" 
+                                hx-target="#modal-container"
+                                class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium">
+                            Edit Pool
+                        </button>
+                        <button onclick="showDeletePoolConfirm('{{.Entity.ID}}')"
+                                class="w-full bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium">
+                            Delete Pool
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Instances Section -->
+        <div class="mt-8">
+            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Instances ({{len .Entity.Instances}})</h3>
+            <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                {{if .Entity.Instances}}
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead class="bg-gray-50 dark:bg-gray-700">
+                            <tr>
+                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Name</th>
+                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Runner Status</th>
+                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Created</th>
+                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                            {{range .Entity.Instances}}
+                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                                <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{{.Name}}</td>
+                                <td class="px-3 py-4 whitespace-nowrap">
+                                    <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full 
+                                        {{if eq .Status "running"}}bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
+                                        {{else if eq .Status "stopped"}}bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200
+                                        {{else if eq .Status "pending"}}bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200
+                                        {{else}}bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200{{end}}">
+                                        {{.Status}}
+                                    </span>
+                                </td>
+                                <td class="px-3 py-4 whitespace-nowrap">
+                                    <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">{{.RunnerStatus}}</span>
+                                </td>
+                                <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{{.CreatedAt.Format "Jan 2, 15:04"}}</td>
+                                <td class="px-3 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                    <button hx-get="/web/instances/{{.Name}}/details" 
+                                            hx-target="#modal-container"
+                                            class="text-purple-600 dark:text-purple-400 hover:text-purple-900 dark:hover:text-purple-300">
+                                        View
+                                    </button>
+                                </td>
+                            </tr>
+                            {{end}}
+                        </tbody>
+                    </table>
+                </div>
+                {{else}}
+                <div class="px-4 py-8 text-center">
+                    <svg class="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path>
+                    </svg>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">No instances in this pool</p>
+                    <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Instances will appear here when runners are created</p>
+                </div>
+                {{end}}
+            </div>
+        </div>
+    </div>
+</div>
+{{end}}
