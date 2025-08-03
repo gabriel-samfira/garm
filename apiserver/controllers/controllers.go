@@ -51,6 +51,11 @@ func NewAPIController(r *runner.Runner, authenticator *auth.Authenticator, hub *
 		upgrader: websocket.Upgrader{
 			ReadBufferSize:  1024,
 			WriteBufferSize: 16384,
+			CheckOrigin: func(r *http.Request) bool {
+				// Allow connections from any origin for now
+				// In production, you might want to restrict this
+				return true
+			},
 		},
 		controllerID: controllerInfo.ControllerID.String(),
 	}, nil

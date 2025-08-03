@@ -44,6 +44,8 @@ func (w *WebAuthMiddleware) Middleware(next http.Handler) http.Handler {
 			token = w.getTokenFromCookie(r)
 		}
 		
+		// Cookie authentication is sufficient for WebSocket connections
+		
 		if token == "" {
 			w.redirectToLogin(rw, r)
 			return
@@ -96,6 +98,7 @@ func (w *WebAuthMiddleware) getTokenFromCookie(r *http.Request) string {
 	}
 	return cookie.Value
 }
+
 
 // validateToken validates and parses the JWT token
 func (w *WebAuthMiddleware) validateToken(tokenString string) (*auth.JWTClaims, error) {

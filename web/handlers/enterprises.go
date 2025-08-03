@@ -222,13 +222,14 @@ func (h *WebHandler) CreateEnterpriseHandler(w http.ResponseWriter, r *http.Requ
 
 	_, err := h.runner.CreateEnterprise(ctx, createParams)
 	if err != nil {
+		w.Header().Set("HX-Trigger", "enterpriseCreateError")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// Close modal and refresh table
-	w.Header().Set("HX-Trigger", "closeModal")
-	h.EnterprisesAPIHandler(w, r)
+	// Close modal and trigger refresh
+	w.Header().Set("HX-Trigger", "enterpriseCreated")
+	w.WriteHeader(http.StatusOK)
 }
 
 func (h *WebHandler) UpdateEnterpriseHandler(w http.ResponseWriter, r *http.Request) {
@@ -253,13 +254,14 @@ func (h *WebHandler) UpdateEnterpriseHandler(w http.ResponseWriter, r *http.Requ
 
 	_, err := h.runner.UpdateEnterprise(ctx, enterpriseID, updateParams)
 	if err != nil {
+		w.Header().Set("HX-Trigger", "enterpriseUpdateError")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// Close modal and refresh table
-	w.Header().Set("HX-Trigger", "closeModal")
-	h.EnterprisesAPIHandler(w, r)
+	// Close modal and trigger refresh
+	w.Header().Set("HX-Trigger", "enterpriseUpdated")
+	w.WriteHeader(http.StatusOK)
 }
 
 func (h *WebHandler) DeleteEnterpriseHandler(w http.ResponseWriter, r *http.Request) {
@@ -269,11 +271,13 @@ func (h *WebHandler) DeleteEnterpriseHandler(w http.ResponseWriter, r *http.Requ
 
 	err := h.runner.DeleteEnterprise(ctx, enterpriseID)
 	if err != nil {
+		w.Header().Set("HX-Trigger", "enterpriseDeleteError")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	h.EnterprisesAPIHandler(w, r)
+	w.Header().Set("HX-Trigger", "enterpriseDeleted")
+	w.WriteHeader(http.StatusOK)
 }
 
 func (h *WebHandler) EnterprisePoolsAPIHandler(w http.ResponseWriter, r *http.Request) {
@@ -326,10 +330,9 @@ func (h *WebHandler) EnterprisePoolsAPIHandler(w http.ResponseWriter, r *http.Re
 		fmt.Fprintf(w, `
 			<tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
 				<td class="px-3 py-4 whitespace-nowrap text-sm font-mono">
-					<button hx-get="/web/pools/%s/details" 
-							hx-target="#modal-container" 
-							class="text-purple-600 dark:text-purple-400 hover:text-purple-900 dark:hover:text-purple-300 cursor-pointer" 
-							title="%s">%s</button>
+					<a href="/web/pools/%s/details?from=enterprise&entity_id=%s" 
+							class="text-purple-600 dark:text-purple-400 hover:text-purple-900 dark:hover:text-purple-300 hover:underline" 
+							title="%s">%s</a>
 				</td>
 				<td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">%s</td>
 				<td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">%s</td>
@@ -338,7 +341,7 @@ func (h *WebHandler) EnterprisePoolsAPIHandler(w http.ResponseWriter, r *http.Re
 				</td>
 				<td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">%d</td>
 			</tr>`,
-			pool.ID, pool.ID, poolIDShort, pool.ProviderName, pool.Image, statusClass, status, instanceCount)
+			pool.ID, enterpriseID, pool.ID, poolIDShort, pool.ProviderName, pool.Image, statusClass, status, instanceCount)
 	}
 
 	fmt.Fprintf(w, `
@@ -373,9 +376,9 @@ func (h *WebHandler) EnterpriseInstancesAPIHandler(w http.ResponseWriter, r *htt
 				<tr>
 					<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Name</th>
 					<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
-					<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Provider</th>
-					<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Pool ID</th>
+					<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Runner Status</th>
 					<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Created</th>
+					<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
 				</tr>
 			</thead>
 			<tbody class="divide-y divide-gray-200 dark:divide-gray-700">`)
@@ -393,26 +396,24 @@ func (h *WebHandler) EnterpriseInstancesAPIHandler(w http.ResponseWriter, r *htt
 			statusClass = "bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200"
 		}
 
-		poolIDShort := instance.PoolID
-		if len(poolIDShort) > 8 {
-			poolIDShort = poolIDShort[:8] + "..."
-		}
-
 		fmt.Fprintf(w, `
 			<tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
-				<td class="px-3 py-4 whitespace-nowrap text-sm font-mono">
-					<button hx-get="/web/instances/%s/details" 
-							hx-target="#modal-container" 
-							class="text-purple-600 dark:text-purple-400 hover:text-purple-900 dark:hover:text-purple-300 cursor-pointer">%s</button>
-				</td>
+				<td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">%s</td>
 				<td class="px-3 py-4 whitespace-nowrap">
 					<span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full %s">%s</span>
 				</td>
-				<td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">%s</td>
-				<td class="px-3 py-4 whitespace-nowrap text-sm font-mono" title="%s">%s</td>
+				<td class="px-3 py-4 whitespace-nowrap">
+					<span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">%s</span>
+				</td>
 				<td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">%s</td>
+				<td class="px-3 py-4 whitespace-nowrap text-right text-sm font-medium">
+					<a href="/web/instances/%s/detail?from=enterprise&entity_id=%s" 
+					   class="text-purple-600 dark:text-purple-400 hover:text-purple-900 dark:hover:text-purple-300 hover:underline">
+						View
+					</a>
+				</td>
 			</tr>`,
-			instance.Name, instance.Name, statusClass, status, instance.ProviderName, instance.PoolID, poolIDShort, instance.CreatedAt.Format("Jan 2, 15:04"))
+			instance.Name, statusClass, status, string(instance.RunnerStatus), instance.CreatedAt.Format("Jan 2, 15:04"), instance.Name, enterpriseID)
 	}
 
 	fmt.Fprintf(w, `

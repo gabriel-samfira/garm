@@ -186,18 +186,27 @@ func (h *WebHandler) OrganizationsAPIHandler(w http.ResponseWriter, r *http.Requ
 func (h *WebHandler) NewOrganizationHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	// Get credentials for the form
-	creds, err := h.runner.ListCredentials(ctx)
+	// Get both GitHub and Gitea credentials for the form
+	githubCreds, err := h.runner.ListCredentials(ctx)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	
+	giteaCreds, err := h.runner.ListGiteaCredentials(ctx)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	
+	// Combine all credentials
+	allCreds := append(githubCreds, giteaCreds...)
 
 	data := struct {
 		Organization *params.Organization
 		Credentials  []params.ForgeCredentials
 	}{
-		Credentials: creds,
+		Credentials: allCreds,
 	}
 
 	if err := h.templates.ExecuteTemplate(w, "organization-form.html", data); err != nil {
@@ -257,13 +266,14 @@ func (h *WebHandler) CreateOrganizationHandler(w http.ResponseWriter, r *http.Re
 
 	_, err := h.runner.CreateOrganization(ctx, createParams)
 	if err != nil {
+		w.Header().Set("HX-Trigger", "organizationCreateError")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// Close modal and refresh table
-	w.Header().Set("HX-Trigger", "closeModal")
-	h.OrganizationsAPIHandler(w, r)
+	// Close modal and trigger refresh
+	w.Header().Set("HX-Trigger", "organizationCreated")
+	w.WriteHeader(http.StatusOK)
 }
 
 func (h *WebHandler) UpdateOrganizationHandler(w http.ResponseWriter, r *http.Request) {
@@ -288,13 +298,14 @@ func (h *WebHandler) UpdateOrganizationHandler(w http.ResponseWriter, r *http.Re
 
 	_, err := h.runner.UpdateOrganization(ctx, orgID, updateParams)
 	if err != nil {
+		w.Header().Set("HX-Trigger", "organizationUpdateError")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// Close modal and refresh table
-	w.Header().Set("HX-Trigger", "closeModal")
-	h.OrganizationsAPIHandler(w, r)
+	// Close modal and trigger refresh
+	w.Header().Set("HX-Trigger", "organizationUpdated")
+	w.WriteHeader(http.StatusOK)
 }
 
 func (h *WebHandler) DeleteOrganizationHandler(w http.ResponseWriter, r *http.Request) {
@@ -304,11 +315,13 @@ func (h *WebHandler) DeleteOrganizationHandler(w http.ResponseWriter, r *http.Re
 
 	err := h.runner.DeleteOrganization(ctx, orgID, false)
 	if err != nil {
+		w.Header().Set("HX-Trigger", "organizationDeleteError")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	h.OrganizationsAPIHandler(w, r)
+	w.Header().Set("HX-Trigger", "organizationDeleted")
+	w.WriteHeader(http.StatusOK)
 }
 
 func (h *WebHandler) OrganizationPoolsAPIHandler(w http.ResponseWriter, r *http.Request) {
@@ -331,15 +344,14 @@ func (h *WebHandler) OrganizationPoolsAPIHandler(w http.ResponseWriter, r *http.
 		return
 	}
 
-	fmt.Fprintf(w, `<div class="overflow-x-auto">
-		<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+	fmt.Fprintf(w, `<div class="w-full">
+		<table class="w-full table-fixed divide-y divide-gray-200 dark:divide-gray-700">
 			<thead class="bg-gray-50 dark:bg-gray-700">
 				<tr>
-					<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Pool ID</th>
-					<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Provider</th>
-					<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Image</th>
-					<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
-					<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Instances</th>
+					<th class="w-1/3 px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Pool ID</th>
+					<th class="w-1/3 px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Image</th>
+					<th class="w-20 px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Provider</th>
+					<th class="w-16 px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
 				</tr>
 			</thead>
 			<tbody class="divide-y divide-gray-200 dark:divide-gray-700">`)
@@ -352,28 +364,25 @@ func (h *WebHandler) OrganizationPoolsAPIHandler(w http.ResponseWriter, r *http.
 			statusClass = "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200"
 		}
 
-		instanceCount := len(pool.Instances)
-		poolIDShort := pool.ID
-		if len(poolIDShort) > 8 {
-			poolIDShort = poolIDShort[:8] + "..."
-		}
-
 		fmt.Fprintf(w, `
 			<tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
-				<td class="px-3 py-4 whitespace-nowrap text-sm font-mono">
-					<button hx-get="/web/pools/%s/details" 
-							hx-target="#modal-container" 
-							class="text-purple-600 dark:text-purple-400 hover:text-purple-900 dark:hover:text-purple-300 cursor-pointer" 
-							title="%s">%s</button>
+				<td class="px-3 py-4 text-sm font-mono" title="%s">
+					<div class="truncate">
+						<a href="/web/pools/%s/details?from=organization&entity_id=%s" 
+								class="text-purple-600 dark:text-purple-400 hover:text-purple-900 dark:hover:text-purple-300 hover:underline">%s</a>
+					</div>
 				</td>
-				<td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">%s</td>
-				<td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">%s</td>
-				<td class="px-3 py-4 whitespace-nowrap">
+				<td class="px-3 py-4 text-sm text-gray-900 dark:text-white" title="%s">
+					<div class="truncate">%s</div>
+				</td>
+				<td class="px-3 py-4 text-sm text-gray-900 dark:text-white">
+					<div class="truncate">%s</div>
+				</td>
+				<td class="px-3 py-4">
 					<span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full %s">%s</span>
 				</td>
-				<td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">%d</td>
 			</tr>`,
-			pool.ID, pool.ID, poolIDShort, pool.ProviderName, pool.Image, statusClass, status, instanceCount)
+			pool.ID, pool.ID, orgID, pool.ID, pool.Image, pool.Image, pool.ProviderName, statusClass, status)
 	}
 
 	fmt.Fprintf(w, `
@@ -408,9 +417,9 @@ func (h *WebHandler) OrganizationInstancesAPIHandler(w http.ResponseWriter, r *h
 				<tr>
 					<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Name</th>
 					<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
-					<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Provider</th>
-					<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Pool ID</th>
+					<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Runner Status</th>
 					<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Created</th>
+					<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
 				</tr>
 			</thead>
 			<tbody class="divide-y divide-gray-200 dark:divide-gray-700">`)
@@ -428,26 +437,24 @@ func (h *WebHandler) OrganizationInstancesAPIHandler(w http.ResponseWriter, r *h
 			statusClass = "bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200"
 		}
 
-		poolIDShort := instance.PoolID
-		if len(poolIDShort) > 8 {
-			poolIDShort = poolIDShort[:8] + "..."
-		}
-
 		fmt.Fprintf(w, `
 			<tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
-				<td class="px-3 py-4 whitespace-nowrap text-sm font-mono">
-					<button hx-get="/web/instances/%s/details" 
-							hx-target="#modal-container" 
-							class="text-purple-600 dark:text-purple-400 hover:text-purple-900 dark:hover:text-purple-300 cursor-pointer">%s</button>
-				</td>
+				<td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">%s</td>
 				<td class="px-3 py-4 whitespace-nowrap">
 					<span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full %s">%s</span>
 				</td>
-				<td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">%s</td>
-				<td class="px-3 py-4 whitespace-nowrap text-sm font-mono" title="%s">%s</td>
+				<td class="px-3 py-4 whitespace-nowrap">
+					<span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">%s</span>
+				</td>
 				<td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">%s</td>
+				<td class="px-3 py-4 whitespace-nowrap text-right text-sm font-medium">
+					<a href="/web/instances/%s/detail?from=organization&entity_id=%s" 
+					   class="text-purple-600 dark:text-purple-400 hover:text-purple-900 dark:hover:text-purple-300 hover:underline">
+						View
+					</a>
+				</td>
 			</tr>`,
-			instance.Name, instance.Name, statusClass, status, instance.ProviderName, instance.PoolID, poolIDShort, instance.CreatedAt.Format("Jan 2, 15:04"))
+			instance.Name, statusClass, status, string(instance.RunnerStatus), instance.CreatedAt.Format("Jan 2, 15:04"), instance.Name, orgID)
 	}
 
 	fmt.Fprintf(w, `

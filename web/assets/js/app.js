@@ -51,28 +51,163 @@ document.addEventListener('DOMContentLoaded', function() {
     // Handle custom HTMX triggers
     document.body.addEventListener('repositoryUpdated', function(evt) {
         closeModal();
+        showToast('Repository updated successfully', 'success');
+        // Manually refresh the repositories table to preserve polling
+        const repoTable = document.getElementById('repositories-table');
+        if (repoTable) {
+            htmx.trigger(repoTable, 'refresh');
+        }
+    });
+    
+    document.body.addEventListener('repositoryCreated', function(evt) {
+        closeModal();
+        showToast('Repository created successfully', 'success');
+        // Manually refresh the repositories table to preserve polling
+        const repoTable = document.getElementById('repositories-table');
+        if (repoTable) {
+            htmx.trigger(repoTable, 'refresh');
+        }
+    });
+    
+    document.body.addEventListener('repositoryDeleted', function(evt) {
+        showToast('Repository deleted successfully', 'success');
+        // Manually refresh the repositories table to preserve polling
+        const repoTable = document.getElementById('repositories-table');
+        if (repoTable) {
+            htmx.trigger(repoTable, 'refresh');
+        }
+    });
+    
+    document.body.addEventListener('repositoryCreateError', function(evt) {
+        showToast('Failed to create repository', 'error');
+    });
+    
+    document.body.addEventListener('repositoryUpdateError', function(evt) {
+        showToast('Failed to update repository', 'error');
+    });
+    
+    document.body.addEventListener('repositoryDeleteError', function(evt) {
+        showToast('Failed to delete repository', 'error');
+    });
+    
+    document.body.addEventListener('organizationUpdated', function(evt) {
+        closeModal();
+        showToast('Organization updated successfully', 'success');
+        // Manually refresh the organizations table to preserve polling
+        const orgTable = document.getElementById('organizations-table');
+        if (orgTable) {
+            htmx.trigger(orgTable, 'refresh');
+        }
+    });
+    
+    document.body.addEventListener('organizationCreated', function(evt) {
+        closeModal();
+        showToast('Organization created successfully', 'success');
+        // Manually refresh the organizations table to preserve polling
+        const orgTable = document.getElementById('organizations-table');
+        if (orgTable) {
+            htmx.trigger(orgTable, 'refresh');
+        }
+    });
+    
+    document.body.addEventListener('organizationDeleted', function(evt) {
+        showToast('Organization deleted successfully', 'success');
+        // Manually refresh the organizations table to preserve polling
+        const orgTable = document.getElementById('organizations-table');
+        if (orgTable) {
+            htmx.trigger(orgTable, 'refresh');
+        }
+    });
+    
+    document.body.addEventListener('organizationCreateError', function(evt) {
+        showToast('Failed to create organization', 'error');
+    });
+    
+    document.body.addEventListener('organizationUpdateError', function(evt) {
+        showToast('Failed to update organization', 'error');
+    });
+    
+    document.body.addEventListener('organizationDeleteError', function(evt) {
+        showToast('Failed to delete organization', 'error');
+    });
+    
+    document.body.addEventListener('enterpriseUpdated', function(evt) {
+        closeModal();
+        showToast('Enterprise updated successfully', 'success');
+        // Manually refresh the enterprises table to preserve polling
+        const entTable = document.getElementById('enterprises-table');
+        if (entTable) {
+            htmx.trigger(entTable, 'refresh');
+        }
+    });
+    
+    document.body.addEventListener('enterpriseCreated', function(evt) {
+        closeModal();
+        showToast('Enterprise created successfully', 'success');
+        // Manually refresh the enterprises table to preserve polling
+        const entTable = document.getElementById('enterprises-table');
+        if (entTable) {
+            htmx.trigger(entTable, 'refresh');
+        }
+    });
+    
+    document.body.addEventListener('enterpriseDeleted', function(evt) {
+        showToast('Enterprise deleted successfully', 'success');
+        // Manually refresh the enterprises table to preserve polling
+        const entTable = document.getElementById('enterprises-table');
+        if (entTable) {
+            htmx.trigger(entTable, 'refresh');
+        }
+    });
+    
+    document.body.addEventListener('enterpriseCreateError', function(evt) {
+        showToast('Failed to create enterprise', 'error');
+    });
+    
+    document.body.addEventListener('enterpriseUpdateError', function(evt) {
+        showToast('Failed to update enterprise', 'error');
+    });
+    
+    document.body.addEventListener('enterpriseDeleteError', function(evt) {
+        showToast('Failed to delete enterprise', 'error');
+    });
+    
+    document.body.addEventListener('poolUpdated', function(evt) {
+        closeModal();
+        showToast('Pool updated successfully', 'success');
+        // Manually refresh the pools table to preserve polling
+        const poolTable = document.getElementById('pools-table');
+        if (poolTable) {
+            htmx.trigger(poolTable, 'refresh');
+        }
+    });
+    
+    document.body.addEventListener('poolUpdateError', function(evt) {
+        showToast('Failed to update pool', 'error');
     });
 });
 
-// Toast notification system
+// Toast notification system using existing toast elements
 function showToast(message, type = 'info', duration = 5000) {
-    const toast = document.createElement('div');
-    toast.className = `toast toast-${type}`;
-    toast.innerHTML = `
-        <div class="flex items-center space-x-2">
-            <span>${message}</span>
-            <button onclick="this.parentElement.parentElement.remove()" class="ml-2 text-current hover:opacity-75">×</button>
-        </div>
-    `;
+    let toastEl, messageEl;
     
-    document.body.appendChild(toast);
+    if (type === 'success') {
+        toastEl = document.getElementById('success-toast');
+        messageEl = document.getElementById('success-message');
+    } else if (type === 'error') {
+        toastEl = document.getElementById('error-toast');
+        messageEl = document.getElementById('error-message');
+    }
     
-    // Auto-remove after duration
-    setTimeout(() => {
-        if (toast.parentElement) {
-            toast.remove();
-        }
-    }, duration);
+    if (toastEl && messageEl) {
+        messageEl.textContent = message;
+        toastEl.classList.remove('hidden');
+        
+        // Auto-hide after duration
+        setTimeout(() => {
+            toastEl.classList.add('hidden');
+        }, duration);
+    }
 }
 
 // Modal management

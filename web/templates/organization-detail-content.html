@@ -126,7 +126,7 @@
             <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
                 <div id="organization-events-{{.Entity.ID}}" 
                      hx-get="/web/api/organizations/{{.Entity.ID}}/events" 
-                     hx-trigger="load, refreshEvents"
+                     hx-trigger="load, refreshEvents, every 5s"
                      hx-indicator="#events-loading"
                      class="relative">
                     <!-- Events will be loaded here -->
@@ -170,20 +170,41 @@
                 window.garmWebSocket.subscribe('organization', '*', function(payload, operation) {
                     if (payload.id === organizationId) {
                         // Refresh events when organization is updated
-                        htmx.trigger(document.getElementById('organization-events-' + organizationId), 'refreshEvents');
+                        const eventsEl = document.getElementById('organization-events-' + organizationId);
+                        if (eventsEl && eventsEl.isConnected) {
+                            try {
+                                htmx.trigger(eventsEl, 'refreshEvents');
+                            } catch (error) {
+                                console.error('Error triggering organization events refresh:', error);
+                            }
+                        }
                     }
                 });
                 
                 // Also subscribe to pool and instance events for this organization
                 window.garmWebSocket.subscribe('pool', '*', function(payload, operation) {
                     if (payload.org_id === organizationId) {
-                        htmx.trigger(document.getElementById('organization-events-' + organizationId), 'refreshEvents');
+                        const eventsEl = document.getElementById('organization-events-' + organizationId);
+                        if (eventsEl && eventsEl.isConnected) {
+                            try {
+                                htmx.trigger(eventsEl, 'refreshEvents');
+                            } catch (error) {
+                                console.error('Error triggering pool events refresh for organization:', error);
+                            }
+                        }
                     }
                 });
                 
                 window.garmWebSocket.subscribe('instance', '*', function(payload, operation) {
                     if (payload.org_id === organizationId) {
-                        htmx.trigger(document.getElementById('organization-events-' + organizationId), 'refreshEvents');
+                        const eventsEl = document.getElementById('organization-events-' + organizationId);
+                        if (eventsEl && eventsEl.isConnected) {
+                            try {
+                                htmx.trigger(eventsEl, 'refreshEvents');
+                            } catch (error) {
+                                console.error('Error triggering instance events refresh for organization:', error);
+                            }
+                        }
                     }
                 });
             }
@@ -191,7 +212,14 @@
         
         // Manual refresh function
         function refreshEntityEvents(entityId, entityType) {
-            htmx.trigger(document.getElementById(entityType + '-events-' + entityId), 'refreshEvents');
+            const eventsEl = document.getElementById(entityType + '-events-' + entityId);
+            if (eventsEl && eventsEl.isConnected) {
+                try {
+                    htmx.trigger(eventsEl, 'refreshEvents');
+                } catch (error) {
+                    console.error('Error triggering manual events refresh for organization:', error);
+                }
+            }
         }
         </script>
     </div>

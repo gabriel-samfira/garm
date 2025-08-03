@@ -44,6 +44,7 @@ x-init="document.documentElement.classList.toggle('dark', theme === 'dark')"
               hx-indicator="#login-loading"
               hx-headers='{"Content-Type": "application/json"}'
               hx-ext="json-enc"
+              hx-swap="none"
               x-data="{ 
                   username: '', 
                   password: '',
@@ -137,10 +138,8 @@ document.body.addEventListener('htmx:afterRequest', function(evt) {
                 </div>
             `;
             
-            // Redirect to the URL specified in the response after a short delay
-            setTimeout(() => {
-                window.location.href = response.redirect_url || '/web/';
-            }, 1000);
+            // Redirect immediately to the URL specified in the response
+            window.location.href = response.redirect_url || '/web/';
         }
     }
 });

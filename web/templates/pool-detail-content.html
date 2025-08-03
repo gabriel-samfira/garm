@@ -4,6 +4,36 @@
         <!-- Breadcrumb -->
         <nav class="flex mb-4" aria-label="Breadcrumb">
             <ol class="inline-flex items-center space-x-1 md:space-x-3">
+                {{if and .FromEntity .FromEntityID}}
+                <!-- Show breadcrumb back to originating entity -->
+                <li class="inline-flex items-center">
+                    <a href="/web/{{if eq .FromEntity "repository"}}repositories{{else if eq .FromEntity "organization"}}organizations{{else if eq .FromEntity "enterprise"}}enterprises{{end}}" class="inline-flex items-center text-sm font-medium text-gray-700 hover:text-blue-600 dark:text-gray-400 dark:hover:text-white">
+                        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-3a1 1 0 011-1h2a1 1 0 011 1v3a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path>
+                        </svg>
+                        {{if eq .FromEntity "repository"}}Repositories{{else if eq .FromEntity "organization"}}Organizations{{else if eq .FromEntity "enterprise"}}Enterprises{{end}}
+                    </a>
+                </li>
+                <li>
+                    <div class="flex items-center">
+                        <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                        <a href="/web/{{if eq .FromEntity "repository"}}repositories{{else if eq .FromEntity "organization"}}organizations{{else if eq .FromEntity "enterprise"}}enterprises{{end}}/{{.FromEntityID}}" class="ml-1 text-sm font-medium text-gray-700 hover:text-blue-600 dark:text-gray-400 dark:hover:text-white">
+                            {{if eq .FromEntity "repository"}}{{.Entity.RepoName}}{{else if eq .FromEntity "organization"}}{{.Entity.OrgName}}{{else if eq .FromEntity "enterprise"}}{{.Entity.EnterpriseName}}{{end}}
+                        </a>
+                    </div>
+                </li>
+                <li>
+                    <div class="flex items-center">
+                        <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                        <span class="ml-1 text-sm font-medium text-gray-500 dark:text-gray-400">Pool {{if gt (len .Entity.ID) 8}}{{slice .Entity.ID 0 8}}...{{else}}{{.Entity.ID}}{{end}}</span>
+                    </div>
+                </li>
+                {{else}}
+                <!-- Default breadcrumb when accessed from pools list -->
                 <li class="inline-flex items-center">
                     <a href="/web/pools" class="inline-flex items-center text-sm font-medium text-gray-700 hover:text-blue-600 dark:text-gray-400 dark:hover:text-white">
                         <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
@@ -20,6 +50,7 @@
                         <span class="ml-1 text-sm font-medium text-gray-500 dark:text-gray-400">Pool {{if gt (len .Entity.ID) 8}}{{slice .Entity.ID 0 8}}...{{else}}{{.Entity.ID}}{{end}}</span>
                     </div>
                 </li>
+                {{end}}
             </ol>
         </nav>
 
@@ -198,11 +229,10 @@
                                 </td>
                                 <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{{.CreatedAt.Format "Jan 2, 15:04"}}</td>
                                 <td class="px-3 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <button hx-get="/web/instances/{{.Name}}/details" 
-                                            hx-target="#modal-container"
-                                            class="text-purple-600 dark:text-purple-400 hover:text-purple-900 dark:hover:text-purple-300">
+                                    <a href="/web/instances/{{.Name}}/detail?from=pool&entity_id={{$.Entity.ID}}" 
+                                       class="text-purple-600 dark:text-purple-400 hover:text-purple-900 dark:hover:text-purple-300 hover:underline">
                                         View
-                                    </button>
+                                    </a>
                                 </td>
                             </tr>
                             {{end}}

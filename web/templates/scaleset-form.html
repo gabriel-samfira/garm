@@ -213,7 +213,10 @@ const entityData = {
 // Entity level selection logic
 function selectEntityLevel(level) {
     // Update hidden input
-    document.getElementById('entity_level').value = level;
+    const entityLevelField = document.getElementById('entity_level');
+    if (entityLevelField) {
+        entityLevelField.value = level;
+    }
     
     // Update button styles
     document.querySelectorAll('.entity-level-btn').forEach(btn => {
@@ -236,7 +239,10 @@ function selectEntityLevel(level) {
     }
     
     // Show entity selection dropdown
-    document.getElementById('entity-selection').style.display = 'block';
+    const entitySelection = document.getElementById('entity-selection');
+    if (entitySelection) {
+        entitySelection.style.display = 'block';
+    }
     
     // Populate entity dropdown based on level (GitHub entities only)
     const entitySelect = document.getElementById('entity_id');

@@ -16,8 +16,11 @@ function createEntityPagination(config) {
         if (newPage < 1) return;
         
         currentPage = newPage;
-        document.getElementById('current-page').value = currentPage;
-        document.getElementById('page-numbers').textContent = `Page ${currentPage}`;
+        const currentPageEl = document.getElementById('current-page');
+        const pageNumbersEl = document.getElementById('page-numbers');
+        
+        if (currentPageEl) currentPageEl.value = currentPage;
+        if (pageNumbersEl) pageNumbersEl.textContent = `Page ${currentPage}`;
         
         // Make the HTMX request
         htmx.trigger(`#${tableId}`, 'refresh');
@@ -39,8 +42,11 @@ function createEntityPagination(config) {
         if (searchInput) {
             searchInput.addEventListener('input', function() {
                 currentPage = 1;
-                document.getElementById('current-page').value = 1;
-                document.getElementById('page-numbers').textContent = 'Page 1';
+                const currentPageEl = document.getElementById('current-page');
+                const pageNumbersEl = document.getElementById('page-numbers');
+                
+                if (currentPageEl) currentPageEl.value = 1;
+                if (pageNumbersEl) pageNumbersEl.textContent = 'Page 1';
             });
         }
     }
@@ -51,9 +57,12 @@ function createEntityPagination(config) {
             if (evt.detail.target && evt.detail.target.id === tableId) {
                 // Check if we got results to determine if there might be a next page
                 const tableBody = document.getElementById(tableId);
+                if (!tableBody) return; // Exit if table body doesn't exist
+                
                 const rows = tableBody.querySelectorAll('tr:not([data-has-more])');
                 const hasMoreMarker = tableBody.querySelector('tr[data-has-more]');
-                const perPage = parseInt(document.querySelector('[name="per_page"]').value) || 25;
+                const perPageElement = document.querySelector('[name="per_page"]');
+                const perPage = parseInt(perPageElement ? perPageElement.value : '25') || 25;
                 
                 // Check if there are more pages based on the hidden marker
                 hasNextPage = hasMoreMarker !== null;
@@ -95,7 +104,7 @@ function createEntityPagination(config) {
         // Update the tbody to trigger on refresh
         const tableBody = document.getElementById(tableId);
         if (tableBody) {
-            tableBody.setAttribute('hx-trigger', 'load, every 30s, refresh');
+            tableBody.setAttribute('hx-trigger', 'load, every 5s, refresh');
         }
     }
 

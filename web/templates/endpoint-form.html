@@ -158,29 +158,57 @@
 <script>
 function selectForgeType(type) {
     // Hide forge type selection and show form
-    document.getElementById('forge-type-selection').classList.add('hidden');
-    document.getElementById('endpoint-form').classList.remove('hidden');
+    const forgeSelection = document.getElementById('forge-type-selection');
+    const endpointForm = document.getElementById('endpoint-form');
+    
+    if (forgeSelection) {
+        forgeSelection.classList.add('hidden');
+    }
+    if (endpointForm) {
+        endpointForm.classList.remove('hidden');
+    }
     
     // Set the endpoint type
-    document.getElementById('endpoint_type').value = type;
+    const endpointTypeField = document.getElementById('endpoint_type');
+    if (endpointTypeField) {
+        endpointTypeField.value = type;
+    }
     
     // Configure form based on forge type
     if (type === 'github') {
-        document.getElementById('upload_base_url_field').classList.remove('hidden');
-        document.getElementById('api-url-optional').classList.add('hidden');
-        document.getElementById('api_base_url').required = true;
+        const uploadField = document.getElementById('upload_base_url_field');
+        const apiOptional = document.getElementById('api-url-optional');
+        const apiBaseUrl = document.getElementById('api_base_url');
+        const baseUrl = document.getElementById('base_url');
         
-        // Update placeholders for GitHub
-        document.getElementById('base_url').placeholder = 'https://github.com or https://your-github-enterprise.com';
-        document.getElementById('api_base_url').placeholder = 'https://api.github.com or https://your-github-enterprise.com/api/v3';
+        if (uploadField) uploadField.classList.remove('hidden');
+        if (apiOptional) apiOptional.classList.add('hidden');
+        if (apiBaseUrl) {
+            apiBaseUrl.required = true;
+            apiBaseUrl.placeholder = 'https://api.github.com or https://your-github-enterprise.com/api/v3';
+        }
+        if (baseUrl) {
+            baseUrl.placeholder = 'https://github.com or https://your-github-enterprise.com';
+        }
     } else if (type === 'gitea') {
-        document.getElementById('upload_base_url_field').classList.add('hidden');
-        document.getElementById('api-url-optional').classList.remove('hidden');
-        document.getElementById('api_base_url').required = false;
+        const uploadField = document.getElementById('upload_base_url_field');
+        const apiOptional = document.getElementById('api-url-optional');
+        const apiBaseUrl = document.getElementById('api_base_url');
+        
+        if (uploadField) uploadField.classList.add('hidden');
+        if (apiOptional) apiOptional.classList.remove('hidden');
+        if (apiBaseUrl) apiBaseUrl.required = false;
         
         // Update placeholders for Gitea
-        document.getElementById('base_url').placeholder = 'https://your-gitea-instance.com';
-        document.getElementById('api_base_url').placeholder = 'https://your-gitea-instance.com/api/v1';
+        const baseUrlGitea = document.getElementById('base_url');
+        const apiBaseUrlGitea = document.getElementById('api_base_url');
+        
+        if (baseUrlGitea) {
+            baseUrlGitea.placeholder = 'https://your-gitea-instance.com';
+        }
+        if (apiBaseUrlGitea) {
+            apiBaseUrlGitea.placeholder = 'https://your-gitea-instance.com/api/v1';
+        }
     }
 }
 
@@ -191,9 +219,16 @@ function handleCACertUpload(input) {
     const reader = new FileReader();
     reader.onload = function(e) {
         const base64 = btoa(e.target.result);
-        document.getElementById('ca_cert_bundle').value = base64;
-        document.getElementById('ca_cert_info').textContent = `Certificate uploaded: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`;
-        document.getElementById('ca_cert_info').classList.remove('hidden');
+        const caCertBundle = document.getElementById('ca_cert_bundle');
+        const caCertInfo = document.getElementById('ca_cert_info');
+        
+        if (caCertBundle) {
+            caCertBundle.value = base64;
+        }
+        if (caCertInfo) {
+            caCertInfo.textContent = `Certificate uploaded: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`;
+            caCertInfo.classList.remove('hidden');
+        }
     };
     reader.readAsBinaryString(file);
 }

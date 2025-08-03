@@ -121,7 +121,7 @@
             <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
                 <div id="enterprise-events-{{.Entity.ID}}" 
                      hx-get="/web/api/enterprises/{{.Entity.ID}}/events" 
-                     hx-trigger="load, refreshEvents"
+                     hx-trigger="load, refreshEvents, every 5s"
                      hx-indicator="#events-loading"
                      class="relative">
                     <!-- Events will be loaded here -->
@@ -165,20 +165,41 @@
                 window.garmWebSocket.subscribe('enterprise', '*', function(payload, operation) {
                     if (payload.id === enterpriseId) {
                         // Refresh events when enterprise is updated
-                        htmx.trigger(document.getElementById('enterprise-events-' + enterpriseId), 'refreshEvents');
+                        const eventsEl = document.getElementById('enterprise-events-' + enterpriseId);
+                        if (eventsEl && eventsEl.isConnected) {
+                            try {
+                                htmx.trigger(eventsEl, 'refreshEvents');
+                            } catch (error) {
+                                console.error('Error triggering enterprise events refresh:', error);
+                            }
+                        }
                     }
                 });
                 
                 // Also subscribe to pool and instance events for this enterprise
                 window.garmWebSocket.subscribe('pool', '*', function(payload, operation) {
                     if (payload.enterprise_id === enterpriseId) {
-                        htmx.trigger(document.getElementById('enterprise-events-' + enterpriseId), 'refreshEvents');
+                        const eventsEl = document.getElementById('enterprise-events-' + enterpriseId);
+                        if (eventsEl && eventsEl.isConnected) {
+                            try {
+                                htmx.trigger(eventsEl, 'refreshEvents');
+                            } catch (error) {
+                                console.error('Error triggering pool events refresh for enterprise:', error);
+                            }
+                        }
                     }
                 });
                 
                 window.garmWebSocket.subscribe('instance', '*', function(payload, operation) {
                     if (payload.enterprise_id === enterpriseId) {
-                        htmx.trigger(document.getElementById('enterprise-events-' + enterpriseId), 'refreshEvents');
+                        const eventsEl = document.getElementById('enterprise-events-' + enterpriseId);
+                        if (eventsEl && eventsEl.isConnected) {
+                            try {
+                                htmx.trigger(eventsEl, 'refreshEvents');
+                            } catch (error) {
+                                console.error('Error triggering instance events refresh for enterprise:', error);
+                            }
+                        }
                     }
                 });
             }
@@ -186,7 +207,14 @@
         
         // Manual refresh function
         function refreshEntityEvents(entityId, entityType) {
-            htmx.trigger(document.getElementById(entityType + '-events-' + entityId), 'refreshEvents');
+            const eventsEl = document.getElementById(entityType + '-events-' + entityId);
+            if (eventsEl && eventsEl.isConnected) {
+                try {
+                    htmx.trigger(eventsEl, 'refreshEvents');
+                } catch (error) {
+                    console.error('Error triggering manual events refresh for enterprise:', error);
+                }
+            }
         }
         </script>
     </div>

@@ -16,17 +16,60 @@ document.addEventListener('DOMContentLoaded', function() {
     document.body.addEventListener('htmx:afterRequest', function(evt) {
         if (evt.detail.xhr.status >= 200 && evt.detail.xhr.status < 300) {
             const trigger = evt.detail.elt;
-            if (trigger.tagName === 'FORM') {
+            const response = evt.detail.xhr;
+            
+            // Check if response has custom HX-Trigger with showToast (skip global message)
+            const hxTrigger = response.getResponseHeader('HX-Trigger');
+            const hasCustomToast = hxTrigger && hxTrigger.includes('showToast');
+            
+            console.log('HTMX afterRequest:', {
+                status: evt.detail.xhr.status,
+                tagName: trigger.tagName,
+                hxTrigger: hxTrigger,
+                hasCustomToast: hasCustomToast
+            });
+            
+            if (trigger.tagName === 'FORM' && !hasCustomToast) {
                 showToast('Operation completed successfully', 'success');
                 closeModal();
             }
         }
     });
     
+    // Handle custom HTMX triggers
+    document.body.addEventListener('repositoryUpdated', function(evt) {
+        closeModal();
+    });
+    
+    document.body.addEventListener('organizationUpdated', function(evt) {
+        closeModal();
+    });
+    
+    document.body.addEventListener('enterpriseUpdated', function(evt) {
+        closeModal();
+    });
+    
+    document.body.addEventListener('poolUpdated', function(evt) {
+        showToast('Pool updated successfully', 'success', 3000);
+        closeModal();
+    });
+    
+    // Handle toast notifications from HTMX triggers
+    document.body.addEventListener('showToast', function(evt) {
+        console.log('showToast event received:', evt.detail);
+        if (evt.detail && evt.detail.message) {
+            showToast(evt.detail.message, evt.detail.type || 'info', evt.detail.duration || 5000);
+        }
+    });
+    
     // Close modal when clicking outside
     document.addEventListener('click', function(e) {
-        if (e.target.classList.contains('modal-backdrop')) {
-            closeModal();
+        try {
+            if (e.target && e.target.classList && e.target.classList.contains('modal-backdrop')) {
+                closeModal();
+            }
+        } catch (error) {
+            console.error('Error in modal click handler:', error, e.target);
         }
     });
     
@@ -51,23 +94,41 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Toast notification system
 function showToast(message, type = 'info', duration = 5000) {
+    // Remove existing error toasts if showing a new one (only one error at a time)
+    if (type === 'error') {
+        const existingErrors = document.querySelectorAll('.toast-error');
+        existingErrors.forEach(toast => toast.remove());
+    }
+    
+    // Remove any existing toasts if showing a success (success replaces errors)
+    if (type === 'success') {
+        const existingToasts = document.querySelectorAll('.toast');
+        existingToasts.forEach(toast => toast.remove());
+    }
+    
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
+    
+    // For error toasts, make them dismissable with duration = 0 meaning no auto-dismiss
+    const showCloseButton = type === 'error' || duration === 0;
+    
     toast.innerHTML = `
         <div class="flex items-center space-x-2">
             <span>${message}</span>
-            <button onclick="this.parentElement.parentElement.remove()" class="ml-2 text-current hover:opacity-75">×</button>
+            ${showCloseButton ? '<button onclick="this.parentElement.parentElement.remove()" class="ml-2 text-current hover:opacity-75">×</button>' : ''}
         </div>
     `;
     
     document.body.appendChild(toast);
     
-    // Auto-remove after duration
-    setTimeout(() => {
-        if (toast.parentElement) {
-            toast.remove();
-        }
-    }, duration);
+    // Auto-remove after duration (but only if duration > 0)
+    if (duration > 0) {
+        setTimeout(() => {
+            if (toast.parentElement) {
+                toast.remove();
+            }
+        }, duration);
+    }
 }
 
 // Modal management
@@ -75,6 +136,18 @@ function closeModal() {
     const modalContainer = document.getElementById('modal-container');
     if (modalContainer) {
         modalContainer.innerHTML = '';
+    }
+}
+
+// Safe modal close function for inline onclick handlers
+function safeCloseModal(element) {
+    try {
+        const modal = element.closest('.fixed');
+        if (modal) {
+            modal.remove();
+        }
+    } catch (error) {
+        console.error('Error closing modal:', error);
     }
 }
 

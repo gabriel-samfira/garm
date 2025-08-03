@@ -1,6 +1,6 @@
 <!-- Modal Background -->
 <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" 
-     onclick="this.remove()">
+     onclick="safeCloseModal(this)">
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4" onclick="event.stopPropagation()">
         <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
             <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
@@ -121,7 +121,7 @@
                         <label for="install_webhook" class="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300">Install Webhook</label>
                     </div>
                     
-                    <div id="webhook-secret-section" class="ml-6">
+                    <div id="webhook-secret-section">
                         <div class="flex items-center mb-2">
                             <input type="checkbox" 
                                    id="auto_generate_secret" 
@@ -145,11 +145,12 @@
 
                 <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
                     <button type="button" 
-                            onclick="this.closest('.fixed').remove()"
+                            onclick="safeCloseModal(this)"
                             class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-600 hover:bg-gray-200 dark:hover:bg-gray-500 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
                         Cancel
                     </button>
                     <button type="submit"
+                            id="submit-button"
                             class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
                         {{if .Repository}}Update Repository{{else}}Create Repository{{end}}
                     </button>
@@ -162,11 +163,19 @@
 <script>
 function selectRepositoryForgeType(type) {
     // Hide forge type selection and show form
-    document.getElementById('forge-type-selection').classList.add('hidden');
-    document.getElementById('repository-form').classList.remove('hidden');
+    const forgeSelection = document.getElementById('forge-type-selection');
+    const repositoryForm = document.getElementById('repository-form');
+    const forgeTypeField = document.getElementById('forge_type');
     
-    // Set the forge type
-    document.getElementById('forge_type').value = type;
+    if (forgeSelection) {
+        forgeSelection.classList.add('hidden');
+    }
+    if (repositoryForm) {
+        repositoryForm.classList.remove('hidden');
+    }
+    if (forgeTypeField) {
+        forgeTypeField.value = type;
+    }
     
     // Load credentials for the selected forge type
     loadCredentialsForForgeType(type);
@@ -196,18 +205,43 @@ function loadCredentialsForForgeType(forgeType) {
     });
 }
 
-// Toggle webhook secret input
-document.addEventListener('DOMContentLoaded', function() {
-    if (document.getElementById('auto_generate_secret')) {
-        document.getElementById('auto_generate_secret').addEventListener('change', function() {
+// Toggle webhook secret input and validate submit button
+(function() {
+    const autoGenerateCheckbox = document.getElementById('auto_generate_secret');
+    const webhookSecretInput = document.getElementById('webhook_secret');
+    const submitButton = document.getElementById('submit-button');
+    
+    function validateSubmitButton() {
+        // If auto-generate is unchecked and no custom secret is provided, disable submit
+        if (autoGenerateCheckbox && !autoGenerateCheckbox.checked && webhookSecretInput && webhookSecretInput.value.trim() === '') {
+            submitButton.disabled = true;
+            submitButton.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+            submitButton.classList.add('bg-gray-400', 'cursor-not-allowed');
+        } else {
+            submitButton.disabled = false;
+            submitButton.classList.remove('bg-gray-400', 'cursor-not-allowed');
+            submitButton.classList.add('bg-blue-600', 'hover:bg-blue-700');
+        }
+    }
+    
+    if (autoGenerateCheckbox) {
+        autoGenerateCheckbox.addEventListener('change', function() {
             const customField = document.getElementById('custom-secret-field');
             if (this.checked) {
                 customField.classList.add('hidden');
-                document.getElementById('webhook_secret').value = '';
+                webhookSecretInput.value = '';
             } else {
                 customField.classList.remove('hidden');
             }
+            validateSubmitButton();
         });
     }
-});
+    
+    if (webhookSecretInput) {
+        webhookSecretInput.addEventListener('input', validateSubmitButton);
+    }
+    
+    // Initial validation
+    validateSubmitButton();
+})();
 </script>

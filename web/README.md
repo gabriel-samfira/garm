@@ -79,7 +79,7 @@ web/
 
 The interface uses HTMX for:
 
-- **Dynamic table updates**: Tables refresh automatically every 30 seconds
+- **Dynamic table updates**: Tables refresh automatically every 5 seconds
 - **Modal forms**: Create/edit forms appear as modals without page reloads
 - **Inline actions**: Delete and other actions update content in-place
 - **Loading indicators**: Visual feedback during requests

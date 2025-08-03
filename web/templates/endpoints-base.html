@@ -17,7 +17,7 @@
     </script>
     
     <!-- HTMX -->
-    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.10/dist/htmx.js"></script>
     <script src="https://unpkg.com/htmx.org@1.9.10/dist/ext/json-enc.js"></script>
     
     <!-- Alpine.js -->
@@ -110,7 +110,7 @@
     <div id="error-toast" class="fixed top-4 right-4 bg-red-600 dark:bg-red-700 text-white px-4 py-2 rounded-lg shadow-lg hidden">
         <div class="flex items-center space-x-2">
             <span id="error-message">An error occurred</span>
-            <button onclick="document.getElementById('error-toast').classList.add('hidden')" class="ml-2 text-white hover:text-gray-200 dark:hover:text-gray-300">×</button>
+            <button onclick="const toast = document.getElementById('error-toast'); if (toast) toast.classList.add('hidden')" class="ml-2 text-white hover:text-gray-200 dark:hover:text-gray-300">×</button>
         </div>
     </div>
 

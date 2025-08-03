@@ -108,6 +108,7 @@ func AddWebRoutes(router *mux.Router, webHandler *handlers.WebHandler, store dbC
 	webRouter.HandleFunc("/instances", webHandler.InstancesHandler).Methods("GET")
 	webRouter.HandleFunc("/instances/", webHandler.InstancesHandler).Methods("GET")
 	webRouter.HandleFunc("/instances/{name}/details", webHandler.InstanceDetailsHandler).Methods("GET")
+	webRouter.HandleFunc("/instances/{name}/detail", webHandler.InstanceDetailHandler).Methods("GET")
 
 	// Credentials
 	credentialsHandler := handlers.NewCredentialsHandler(webHandler)

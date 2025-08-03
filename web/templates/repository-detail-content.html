@@ -126,7 +126,7 @@
             <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
                 <div id="repository-events-{{.Entity.ID}}" 
                      hx-get="/web/api/repositories/{{.Entity.ID}}/events" 
-                     hx-trigger="load, refreshEvents"
+                     hx-trigger="load, refreshEvents, every 5s"
                      hx-indicator="#events-loading"
                      class="relative">
                     <!-- Events will be loaded here -->
@@ -144,54 +144,16 @@
         </div>
 
         <script>
-        // Initialize real-time events for this repository
-        document.addEventListener('DOMContentLoaded', function() {
-            const repositoryId = '{{.Entity.ID}}';
-            
-            // Update WebSocket status indicator
-            function updateWebSocketStatus() {
-                const indicator = document.getElementById('ws-indicator');
-                const statusText = document.getElementById('ws-status-text');
-                
-                if (window.garmWebSocket && window.garmWebSocket.isConnected()) {
-                    indicator.className = 'w-2 h-2 bg-green-400 rounded-full';
-                    statusText.textContent = 'Connected';
-                } else {
-                    indicator.className = 'w-2 h-2 bg-red-400 rounded-full';
-                    statusText.textContent = 'Disconnected';
-                }
-            }
-            
-            // Check status periodically
-            setInterval(updateWebSocketStatus, 1000);
-            
-            // Subscribe to repository events for real-time updates
-            if (window.garmWebSocket) {
-                window.garmWebSocket.subscribe('repository', '*', function(payload, operation) {
-                    if (payload.id === repositoryId) {
-                        // Refresh events when repository is updated
-                        htmx.trigger(document.getElementById('repository-events-' + repositoryId), 'refreshEvents');
-                    }
-                });
-                
-                // Also subscribe to pool and instance events for this repository
-                window.garmWebSocket.subscribe('pool', '*', function(payload, operation) {
-                    if (payload.repo_id === repositoryId) {
-                        htmx.trigger(document.getElementById('repository-events-' + repositoryId), 'refreshEvents');
-                    }
-                });
-                
-                window.garmWebSocket.subscribe('instance', '*', function(payload, operation) {
-                    if (payload.repo_id === repositoryId) {
-                        htmx.trigger(document.getElementById('repository-events-' + repositoryId), 'refreshEvents');
-                    }
-                });
-            }
-        });
-        
         // Manual refresh function
         function refreshEntityEvents(entityId) {
-            htmx.trigger(document.getElementById('repository-events-' + entityId), 'refreshEvents');
+            const eventsEl = document.getElementById('repository-events-' + entityId);
+            if (eventsEl && eventsEl.isConnected) {
+                try {
+                    htmx.trigger(eventsEl, 'refreshEvents');
+                } catch (error) {
+                    console.error('Error triggering manual events refresh:', error);
+                }
+            }
         }
         </script>
     </div>
