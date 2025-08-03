@@ -300,15 +300,14 @@ func (h *WebHandler) EnterprisePoolsAPIHandler(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	fmt.Fprintf(w, `<div class="overflow-x-auto">
-		<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+	fmt.Fprintf(w, `<div class="w-full">
+		<table class="w-full table-fixed divide-y divide-gray-200 dark:divide-gray-700">
 			<thead class="bg-gray-50 dark:bg-gray-700">
 				<tr>
-					<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Pool ID</th>
-					<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Provider</th>
-					<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Image</th>
-					<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
-					<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Instances</th>
+					<th class="w-1/3 px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Pool ID</th>
+					<th class="w-1/3 px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Image</th>
+					<th class="w-20 px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Provider</th>
+					<th class="w-16 px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
 				</tr>
 			</thead>
 			<tbody class="divide-y divide-gray-200 dark:divide-gray-700">`)
@@ -321,27 +320,25 @@ func (h *WebHandler) EnterprisePoolsAPIHandler(w http.ResponseWriter, r *http.Re
 			statusClass = "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200"
 		}
 
-		instanceCount := len(pool.Instances)
-		poolIDShort := pool.ID
-		if len(poolIDShort) > 8 {
-			poolIDShort = poolIDShort[:8] + "..."
-		}
-
 		fmt.Fprintf(w, `
 			<tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
-				<td class="px-3 py-4 whitespace-nowrap text-sm font-mono">
-					<a href="/web/pools/%s/details?from=enterprise&entity_id=%s" 
-							class="text-purple-600 dark:text-purple-400 hover:text-purple-900 dark:hover:text-purple-300 hover:underline" 
-							title="%s">%s</a>
+				<td class="px-3 py-4 text-sm font-mono" title="%s">
+					<div class="truncate">
+						<a href="/web/pools/%s/details?from=enterprise&entity_id=%s" 
+								class="text-purple-600 dark:text-purple-400 hover:text-purple-900 dark:hover:text-purple-300 hover:underline">%s</a>
+					</div>
 				</td>
-				<td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">%s</td>
-				<td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">%s</td>
-				<td class="px-3 py-4 whitespace-nowrap">
+				<td class="px-3 py-4 text-sm text-gray-900 dark:text-white" title="%s">
+					<div class="truncate">%s</div>
+				</td>
+				<td class="px-3 py-4 text-sm text-gray-900 dark:text-white">
+					<div class="truncate">%s</div>
+				</td>
+				<td class="px-3 py-4">
 					<span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full %s">%s</span>
 				</td>
-				<td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">%d</td>
 			</tr>`,
-			pool.ID, enterpriseID, pool.ID, poolIDShort, pool.ProviderName, pool.Image, statusClass, status, instanceCount)
+			pool.ID, pool.ID, enterpriseID, pool.ID, pool.Image, pool.Image, pool.ProviderName, statusClass, status)
 	}
 
 	fmt.Fprintf(w, `

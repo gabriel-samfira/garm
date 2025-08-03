@@ -158,11 +158,25 @@ func (h *EndpointsHandler) ListEndpointsHandler(w http.ResponseWriter, r *http.R
 
 // NewEndpointFormHandler serves the new endpoint form
 func (h *EndpointsHandler) NewEndpointFormHandler(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
+	// Check if forge type is specified
+	forgeType := r.URL.Query().Get("forge_type")
+	
+	if forgeType == "" {
+		// Show forge type selector
+		if err := h.templates.ExecuteTemplate(w, "endpoint-forge-selector.html", nil); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		return
+	}
 
+	ctx := r.Context()
+	
 	data := struct {
-		// Add any data needed for the form
-	}{}
+		ForgeType string
+	}{
+		ForgeType: forgeType,
+	}
 
 	if err := h.templates.ExecuteTemplate(w, "endpoint-form.html", data); err != nil {
 		slog.ErrorContext(ctx, "Failed to execute endpoint form template", "error", err)
@@ -257,17 +271,33 @@ func (h *EndpointsHandler) EditEndpointFormHandler(w http.ResponseWriter, r *htt
 	vars := mux.Vars(r)
 	name := vars["name"]
 	
-	endpoint, err := h.runner.runner.GetGithubEndpoint(ctx, name)
-	if err != nil {
-		slog.ErrorContext(ctx, "Failed to get endpoint", "error", err)
-		http.Error(w, "Failed to get endpoint", http.StatusInternalServerError)
-		return
+	// Try to get the endpoint from both GitHub and Gitea
+	var endpoint params.ForgeEndpoint
+	var isGitea bool
+	
+	// First try GitHub
+	githubEndpoint, err := h.runner.runner.GetGithubEndpoint(ctx, name)
+	if err == nil {
+		endpoint = githubEndpoint
+		isGitea = false
+	} else {
+		// If GitHub fails, try Gitea
+		giteaEndpoint, err := h.runner.runner.GetGiteaEndpoint(ctx, name)
+		if err != nil {
+			slog.ErrorContext(ctx, "Failed to get endpoint from both GitHub and Gitea", "error", err, "name", name)
+			http.Error(w, "Endpoint not found", http.StatusNotFound)
+			return
+		}
+		endpoint = giteaEndpoint
+		isGitea = true
 	}
 
 	data := struct {
 		Endpoint params.ForgeEndpoint
+		IsGitea  bool
 	}{
 		Endpoint: endpoint,
+		IsGitea:  isGitea,
 	}
 
 	if err := h.templates.ExecuteTemplate(w, "endpoint-edit-form.html", data); err != nil {
@@ -283,27 +313,77 @@ func (h *EndpointsHandler) UpdateEndpointHandler(w http.ResponseWriter, r *http.
 	vars := mux.Vars(r)
 	name := vars["name"]
 	
-	if r.Method != "PUT" {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	if err := r.ParseForm(); err != nil {
+		slog.ErrorContext(ctx, "Failed to parse form", "error", err)
+		http.Error(w, "Invalid form data", http.StatusBadRequest)
 		return
 	}
 
-	var updateParams params.UpdateGithubEndpointParams
-	if err := json.NewDecoder(r.Body).Decode(&updateParams); err != nil {
-		slog.ErrorContext(ctx, "Failed to decode update endpoint request", "error", err)
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+	endpointType := r.FormValue("endpoint_type")
+	description := r.FormValue("description")
+	baseURL := r.FormValue("base_url")
+	apiBaseURL := r.FormValue("api_base_url")
+	uploadBaseURL := r.FormValue("upload_base_url")
+	caCertBase64 := r.FormValue("ca_cert_bundle")
+	removeCert := r.FormValue("remove_cert") == "on"
+
+	// Handle CA certificate bundle
+	var caCertBundle []byte
+	if removeCert {
+		// Set to empty to remove certificate
+		caCertBundle = []byte{}
+	} else if caCertBase64 != "" {
+		decoded, err := base64.StdEncoding.DecodeString(caCertBase64)
+		if err != nil {
+			slog.ErrorContext(ctx, "Failed to decode CA certificate", "error", err)
+			http.Error(w, "Invalid CA certificate encoding", http.StatusBadRequest)
+			return
+		}
+		caCertBundle = decoded
+	}
+
+	var err error
+
+	if endpointType == "github" {
+		updateParams := params.UpdateGithubEndpointParams{
+			Description:   &description,
+			APIBaseURL:    &apiBaseURL,
+			UploadBaseURL: &uploadBaseURL,
+			BaseURL:       &baseURL,
+		}
+		if len(caCertBundle) > 0 || removeCert {
+			updateParams.CACertBundle = caCertBundle
+		}
+		_, err = h.runner.runner.UpdateGithubEndpoint(ctx, name, updateParams)
+	} else if endpointType == "gitea" {
+		// For Gitea, use BaseURL as APIBaseURL if APIBaseURL is empty
+		if apiBaseURL == "" {
+			apiBaseURL = baseURL
+		}
+		updateParams := params.UpdateGiteaEndpointParams{
+			Description:  &description,
+			APIBaseURL:   &apiBaseURL,
+			BaseURL:      &baseURL,
+		}
+		if len(caCertBundle) > 0 || removeCert {
+			updateParams.CACertBundle = caCertBundle
+		}
+		_, err = h.runner.runner.UpdateGiteaEndpoint(ctx, name, updateParams)
+	} else {
+		http.Error(w, "Invalid endpoint type", http.StatusBadRequest)
 		return
 	}
 
-	endpoint, err := h.runner.runner.UpdateGithubEndpoint(ctx, name, updateParams)
 	if err != nil {
-		slog.ErrorContext(ctx, "Failed to update endpoint", "error", err)
-		http.Error(w, "Failed to update endpoint", http.StatusInternalServerError)
+		slog.ErrorContext(ctx, "Failed to update endpoint", "error", err, "type", endpointType)
+		w.Header().Set("HX-Trigger", "endpointUpdateError")
+		http.Error(w, "Failed to update endpoint: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(endpoint)
+	// Close modal and trigger refresh
+	w.Header().Set("HX-Trigger", "endpointUpdated")
+	w.WriteHeader(http.StatusOK)
 }
 
 // DeleteEndpointHandler handles endpoint deletion
@@ -312,16 +392,27 @@ func (h *EndpointsHandler) DeleteEndpointHandler(w http.ResponseWriter, r *http.
 	vars := mux.Vars(r)
 	name := vars["name"]
 	
-	if r.Method != "DELETE" {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	// Try to delete from both GitHub and Gitea
+	githubErr := h.runner.runner.DeleteGithubEndpoint(ctx, name)
+	if githubErr == nil {
+		// Successfully deleted GitHub endpoint
+		w.Header().Set("HX-Trigger", "endpointDeleted")
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
-
-	if err := h.runner.runner.DeleteGithubEndpoint(ctx, name); err != nil {
-		slog.ErrorContext(ctx, "Failed to delete endpoint", "error", err)
-		http.Error(w, "Failed to delete endpoint", http.StatusInternalServerError)
+	
+	// If GitHub deletion failed, try Gitea
+	giteaErr := h.runner.runner.DeleteGiteaEndpoint(ctx, name)
+	if giteaErr == nil {
+		// Successfully deleted Gitea endpoint
+		w.Header().Set("HX-Trigger", "endpointDeleted")
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
-
-	w.WriteHeader(http.StatusNoContent)
+	
+	// Both failed
+	slog.ErrorContext(ctx, "Failed to delete endpoint from both GitHub and Gitea", 
+		"githubError", githubErr, "giteaError", giteaErr, "name", name)
+	w.Header().Set("HX-Trigger", "endpointDeleteError")
+	http.Error(w, "Failed to delete endpoint", http.StatusInternalServerError)
 }

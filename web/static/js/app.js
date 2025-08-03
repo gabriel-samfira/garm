@@ -346,4 +346,36 @@ document.addEventListener('keydown', function(e) {
     }
 });
 
+// Logout functionality
+function logout() {
+    console.log('Logout initiated');
+    
+    // Clear token from local storage (if using local storage authentication)
+    localStorage.removeItem('garm_token');
+    
+    // Also clear any other auth-related items from storage
+    localStorage.removeItem('garm_user');
+    sessionStorage.removeItem('garm_token');
+    sessionStorage.removeItem('garm_user');
+    
+    // Make a request to the logout endpoint to clear the server-side cookie
+    fetch('/web/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => {
+        console.log('Logout response:', response.status);
+        // Always redirect to login regardless of response
+        window.location.href = '/web/login';
+    })
+    .catch(error => {
+        console.error('Logout error:', error);
+        // Even if logout request fails, redirect to login since we cleared local storage
+        window.location.href = '/web/login';
+    });
+}
+
 console.log('GARM Web Interface loaded');

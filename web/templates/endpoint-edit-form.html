@@ -1,15 +1,15 @@
-{{define "endpoint-form.html"}}
-<!-- Endpoint Form Modal -->
+{{define "endpoint-edit-form.html"}}
+<!-- Endpoint Edit Form Modal -->
 <div class="fixed inset-0 bg-black bg-opacity-50 dark:bg-gray-900 dark:bg-opacity-75 flex items-center justify-center z-50" 
      onclick="const modal = this.closest('.fixed'); if (modal) modal.remove();">
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-screen overflow-y-auto" onclick="event.stopPropagation()">
         <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
             <div>
                 <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-                    Add {{if eq .ForgeType "github"}}GitHub{{else if eq .ForgeType "gitea"}}Gitea{{end}} Endpoint
+                    Edit {{if .IsGitea}}Gitea{{else}}GitHub{{end}} Endpoint
                 </h3>
                 <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    {{if eq .ForgeType "github"}}Connect to GitHub.com or GitHub Enterprise Server{{else if eq .ForgeType "gitea"}}Connect to self-hosted Gitea instance{{end}}
+                    Update {{if .IsGitea}}Gitea{{else}}GitHub{{end}} endpoint configuration
                 </p>
             </div>
             <button onclick="const modal = this.closest('.fixed'); if (modal) modal.remove();" class="text-gray-400 hover:text-gray-600 dark:text-gray-300 dark:hover:text-gray-100">
@@ -19,30 +19,28 @@
             </button>
         </div>
         
-        <form hx-post="/web/api/endpoints" 
+        <form hx-put="/web/api/endpoints/{{.Endpoint.Name}}" 
               hx-trigger="submit"
               hx-target="closest .fixed" 
               hx-swap="outerHTML"
               hx-indicator="#loading"
               x-data="{ 
-                  name: '',
-                  description: '',
-                  baseUrl: '',
-                  apiBaseUrl: '',
-                  uploadBaseUrl: '',
+                  name: '{{.Endpoint.Name}}',
+                  description: '{{.Endpoint.Description}}',
+                  baseUrl: '{{.Endpoint.BaseURL}}',
+                  apiBaseUrl: '{{.Endpoint.APIBaseURL}}',
+                  uploadBaseUrl: '{{if not .IsGitea}}{{.Endpoint.UploadBaseURL}}{{end}}',
                   caCertBundle: '',
+                  removeCert: false,
                   isFormValid() {
-                      if (!this.name || !this.description || !this.baseUrl) return false;
-                      {{if eq .ForgeType "github"}}
-                      return this.apiBaseUrl.length > 0;
-                      {{else}}
-                      return true;
-                      {{end}}
+                      return this.name && this.description && this.baseUrl && 
+                             ({{if .IsGitea}}true{{else}}this.apiBaseUrl{{end}});
                   }
               }"
               class="p-6 space-y-4">
             
-            <input type="hidden" name="endpoint_type" value="{{.ForgeType}}">
+            <input type="hidden" name="_method" value="PUT">
+            <input type="hidden" name="endpoint_type" value="{{if .IsGitea}}gitea{{else}}github{{end}}">
             
             <div>
                 <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -52,22 +50,23 @@
                        id="name" 
                        name="name" 
                        x-model="name"
-                       required
-                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                       placeholder="{{if eq .ForgeType "github"}}e.g., github-enterprise or github-com{{else}}e.g., gitea-main or my-gitea{{end}}">
+                       readonly
+                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                       value="{{.Endpoint.Name}}">
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Endpoint name cannot be changed</p>
             </div>
 
             <div>
                 <label for="description" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Description <span class="text-red-500">*</span>
                 </label>
-                <textarea id="description" 
-                          name="description" 
-                          x-model="description"
-                          rows="2"
-                          required
-                          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                          placeholder="Brief description of this endpoint"></textarea>
+                <input type="text" 
+                       id="description" 
+                       name="description" 
+                       x-model="description"
+                       required
+                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                       placeholder="Brief description of this endpoint">
             </div>
 
             <div>
@@ -80,10 +79,10 @@
                        x-model="baseUrl"
                        required
                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                       placeholder="{{if eq .ForgeType "github"}}https://github.com or https://github.example.com{{else}}https://gitea.example.com{{end}}">
+                       placeholder="{{if .IsGitea}}https://gitea.example.com{{else}}https://github.com{{end}}">
             </div>
 
-            {{if eq .ForgeType "github"}}
+            {{if not .IsGitea}}
             <div>
                 <label for="api_base_url" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     API Base URL <span class="text-red-500">*</span>
@@ -94,7 +93,7 @@
                        x-model="apiBaseUrl"
                        required
                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                       placeholder="https://api.github.com or https://github.example.com/api/v3">
+                       placeholder="https://api.github.com">
             </div>
 
             <div>
@@ -123,31 +122,66 @@
             </div>
             {{end}}
 
-            <!-- CA Certificate Upload -->
+            <!-- CA Certificate Section -->
             <div class="space-y-3 border-t border-gray-200 dark:border-gray-700 pt-4">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">CA Certificate Bundle (Optional)</label>
-                <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center hover:border-blue-400 dark:hover:border-blue-400 transition-colors" 
-                     ondrop="handleCACertDrop(event)" ondragover="handleCACertDragOver(event)">
-                    <input type="file" 
-                           id="ca_cert_file" 
-                           accept=".pem,.crt,.cer,.cert"
-                           onchange="handleCACertUpload(this)"
-                           class="hidden">
-                    <div class="space-y-2">
-                        <svg class="mx-auto h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                        </svg>
-                        <p class="text-sm text-gray-600 dark:text-gray-400">
-                            <button type="button" onclick="document.getElementById('ca_cert_file').click()" class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">
-                                Choose a file
-                            </button>
-                            or drag and drop
-                        </p>
-                        <p class="text-xs text-gray-500 dark:text-gray-400">PEM, CRT, CER, CERT files only</p>
+                <div class="flex items-center justify-between">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        CA Certificate Bundle
+                    </label>
+                    {{if .Endpoint.CACertBundle}}
+                    <div class="flex items-center space-x-2">
+                        <span class="inline-flex items-center px-2 py-1 text-xs font-medium bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300 rounded-full">
+                            Certificate installed
+                        </span>
+                        <input type="checkbox" 
+                               id="remove_cert" 
+                               name="remove_cert"
+                               x-model="removeCert"
+                               class="h-4 w-4 text-red-600 border-gray-300 dark:border-gray-600 rounded focus:ring-red-500">
+                        <label for="remove_cert" class="text-sm text-red-600 dark:text-red-400">Remove existing certificate</label>
                     </div>
-                    <div id="ca_cert_info" class="hidden mt-2 p-2 bg-green-50 dark:bg-green-900/20 rounded text-sm text-green-700 dark:text-green-300"></div>
+                    {{end}}
                 </div>
-                <input type="hidden" id="ca_cert_bundle" name="ca_cert_bundle" x-model="caCertBundle">
+                
+                <div x-show="{{if .Endpoint.CACertBundle}}!removeCert{{else}}true{{end}}" x-transition>
+                    <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center hover:border-blue-400 dark:hover:border-blue-400 transition-colors" 
+                         ondrop="handleCACertDrop(event)" ondragover="handleCACertDragOver(event)">
+                        <input type="file" 
+                               id="ca_cert_file" 
+                               accept=".pem,.crt,.cer,.cert"
+                               onchange="handleCertificateUpload(this)"
+                               class="hidden">
+                        <div class="space-y-2">
+                            <svg class="mx-auto h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">
+                                <button type="button" onclick="document.getElementById('ca_cert_file').click()" class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">
+                                    {{if .Endpoint.CACertBundle}}Choose new file{{else}}Choose a file{{end}}
+                                </button>
+                                or drag and drop
+                            </p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">PEM, CRT, CER, CERT files only</p>
+                        </div>
+                        <div id="ca_cert_info" class="hidden mt-2 p-2 bg-green-50 dark:bg-green-900/20 rounded text-sm text-green-700 dark:text-green-300"></div>
+                    </div>
+                    <input type="hidden" id="ca_cert_bundle" name="ca_cert_bundle" x-model="caCertBundle">
+                    {{if .Endpoint.CACertBundle}}
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Upload a new certificate to replace the existing one
+                    </p>
+                    {{end}}
+                </div>
+                
+                {{if .Endpoint.CACertBundle}}
+                <div x-show="removeCert" x-transition>
+                    <div class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
+                        <p class="text-sm text-red-800 dark:text-red-200">
+                            ⚠️ Removing the CA certificate bundle will disable certificate verification for this endpoint.
+                        </p>
+                    </div>
+                </div>
+                {{end}}
             </div>
 
             <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
@@ -160,7 +194,7 @@
                         :disabled="!isFormValid()"
                         :class="isFormValid() ? 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500' : 'bg-gray-400 cursor-not-allowed'"
                         class="px-4 py-2 text-sm font-medium text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors">
-                    Create Endpoint
+                    Update Endpoint
                 </button>
             </div>
         </form>
@@ -168,7 +202,7 @@
 </div>
 
 <script>
-function handleCACertUpload(input) {
+function handleCertificateUpload(input) {
     const file = input.files[0];
     const info = document.getElementById('ca_cert_info');
     
@@ -209,7 +243,7 @@ function handleCACertDrop(event) {
     if (files.length > 0) {
         const fileInput = document.getElementById('ca_cert_file');
         fileInput.files = files;
-        handleCACertUpload(fileInput);
+        handleCertificateUpload(fileInput);
     }
 }
 

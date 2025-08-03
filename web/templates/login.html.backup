@@ -88,10 +88,25 @@ x-init="document.documentElement.classList.toggle('dark', theme === 'dark')"
 
             <div>
                 <button type="submit" 
-                        class="w-full flex justify-center items-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed dark:focus:ring-offset-gray-900 transition-colors">
-                    <span id="login-text">
-                        Sign in
-                    </span>
+                        class="w-full grid grid-cols-3 items-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed dark:focus:ring-offset-gray-900 transition-colors">
+                    <div class="flex justify-start">
+                        <svg class="h-5 w-5 text-blue-200" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                    <div class="flex justify-center">
+                        <span id="login-loading" class="htmx-indicator flex items-center">
+                            <svg class="animate-spin h-5 w-5 mr-3 text-white" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 818-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Signing in...
+                        </span>
+                        <span id="login-text">
+                            Sign in
+                        </span>
+                    </div>
+                    <div></div>
                 </button>
             </div>
 
@@ -106,7 +121,7 @@ document.body.addEventListener('htmx:beforeRequest', function(evt) {
     if (evt.detail.elt.tagName === 'FORM') {
         const loginText = document.getElementById('login-text');
         if (loginText) {
-            loginText.textContent = 'Signing in...';
+            loginText.style.display = 'none';
         }
     }
 });
@@ -115,7 +130,7 @@ document.body.addEventListener('htmx:afterRequest', function(evt) {
     if (evt.detail.elt.tagName === 'FORM') {
         const loginText = document.getElementById('login-text');
         if (loginText) {
-            loginText.textContent = 'Sign in';
+            loginText.style.display = 'inline';
         }
     }
 });

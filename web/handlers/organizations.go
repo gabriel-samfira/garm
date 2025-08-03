@@ -184,29 +184,47 @@ func (h *WebHandler) OrganizationsAPIHandler(w http.ResponseWriter, r *http.Requ
 }
 
 func (h *WebHandler) NewOrganizationHandler(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
+	// Check if forge type is specified
+	forgeType := r.URL.Query().Get("forge_type")
+	
+	if forgeType == "" {
+		// Show forge type selector
+		if err := h.templates.ExecuteTemplate(w, "organization-forge-selector.html", nil); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		return
+	}
 
-	// Get both GitHub and Gitea credentials for the form
-	githubCreds, err := h.runner.ListCredentials(ctx)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	ctx := r.Context()
+	var credentials []params.ForgeCredentials
+	var err error
+
+	// Get credentials based on forge type
+	if forgeType == "github" {
+		credentials, err = h.runner.ListCredentials(ctx)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	} else if forgeType == "gitea" {
+		credentials, err = h.runner.ListGiteaCredentials(ctx)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	} else {
+		http.Error(w, "Invalid forge type", http.StatusBadRequest)
 		return
 	}
-	
-	giteaCreds, err := h.runner.ListGiteaCredentials(ctx)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	
-	// Combine all credentials
-	allCreds := append(githubCreds, giteaCreds...)
 
 	data := struct {
 		Organization *params.Organization
 		Credentials  []params.ForgeCredentials
+		ForgeType    string
 	}{
-		Credentials: allCreds,
+		Credentials: credentials,
+		ForgeType:   forgeType,
 	}
 
 	if err := h.templates.ExecuteTemplate(w, "organization-form.html", data); err != nil {

@@ -66,11 +66,23 @@
             </div>
             <!-- Mobile sidebar content -->
             <div class="flex-1 h-0 pt-5 pb-4 overflow-y-auto">
-                <div class="flex-shrink-0 flex items-center px-4">
-                    <img :src="theme === 'dark' ? '/assets/garm-dark.svg' : '/assets/garm-light.svg'" 
-                         alt="GARM Logo" 
-                         class="h-20 w-20">
-                    <h1 class="ml-3 text-xl font-bold text-gray-900 dark:text-white">GARM</h1>
+                <div class="flex-shrink-0 flex items-center justify-between px-4">
+                    <div class="flex items-center">
+                        <img :src="theme === 'dark' ? '/assets/garm-dark.svg' : '/assets/garm-light.svg'" 
+                             alt="GARM Logo" 
+                             class="h-20 w-20">
+                        <h1 class="ml-3 text-xl font-bold text-gray-900 dark:text-white">GARM</h1>
+                    </div>
+                    <button @click="toggleTheme()" 
+                            class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                            title="Toggle theme">
+                        <svg x-show="theme === 'light'" class="w-5 h-5 text-black hover:text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+                        </svg>
+                        <svg x-show="theme === 'dark'" class="w-5 h-5 text-yellow-400 hover:text-yellow-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                        </svg>
+                    </button>
                 </div>
                 <nav class="mt-5 px-2 space-y-1">
                     <a href="/web/" 
@@ -140,6 +152,15 @@
                             Endpoints
                         </a>
                     </div>
+                    <div class="border-t border-gray-200 dark:border-gray-600 mt-4 pt-4">
+                        <button onclick="logout()" 
+                                class="group flex items-center px-2 py-2 text-base font-medium rounded-md w-full text-left text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white">
+                            <svg class="mr-4 h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            </svg>
+                            Logout
+                        </button>
+                    </div>
                 </nav>
             </div>
         </div>
@@ -150,11 +171,23 @@
         <div class="flex flex-col w-64">
             <div class="flex flex-col h-full bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
                 <div class="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
-                    <div class="flex items-center flex-shrink-0 px-4">
-                        <img :src="theme === 'dark' ? '/assets/garm-dark.svg' : '/assets/garm-light.svg'" 
-                             alt="GARM Logo" 
-                             class="h-8 w-8">
-                        <h1 class="ml-3 text-xl font-bold text-gray-900 dark:text-white">GARM</h1>
+                    <div class="flex items-center justify-between flex-shrink-0 px-4">
+                        <div class="flex items-center">
+                            <img :src="theme === 'dark' ? '/assets/garm-dark.svg' : '/assets/garm-light.svg'" 
+                                 alt="GARM Logo" 
+                                 class="h-8 w-8">
+                            <h1 class="ml-3 text-xl font-bold text-gray-900 dark:text-white">GARM</h1>
+                        </div>
+                        <button @click="toggleTheme()" 
+                                class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                title="Toggle theme">
+                            <svg x-show="theme === 'light'" class="w-4 h-4 text-black hover:text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                            </svg>
+                            <svg x-show="theme === 'dark'" class="w-4 h-4 text-yellow-400 hover:text-yellow-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                            </svg>
+                        </button>
                     </div>
                     <nav class="mt-5 flex-1 px-2 space-y-1">
                         <a href="/web/" 
@@ -224,6 +257,15 @@
                                 Endpoints
                             </a>
                         </div>
+                        <div class="border-t border-gray-200 dark:border-gray-600 mt-4 pt-4">
+                            <button onclick="logout()" 
+                                    class="group flex items-center px-2 py-2 text-sm font-medium rounded-md w-full text-left text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white">
+                                <svg class="mr-3 h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                </svg>
+                                Logout
+                            </button>
+                        </div>
                     </nav>
                 </div>
             </div>
@@ -246,12 +288,12 @@
                 <h1 class="text-xl font-bold text-gray-900 dark:text-white">GARM</h1>
             </div>
             <button @click="toggleTheme()" 
-                    class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-gray-500 hover:text-gray-600 dark:text-gray-400 dark:hover:text-gray-300"
+                    class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                     title="Toggle theme">
-                <svg x-show="theme === 'light'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg x-show="theme === 'light'" class="w-5 h-5 text-black hover:text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
                 </svg>
-                <svg x-show="theme === 'dark'" class="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg x-show="theme === 'dark'" class="w-5 h-5 text-yellow-400 hover:text-yellow-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
                 </svg>
             </button>
@@ -331,7 +373,7 @@
     </main>
 
     <!-- Loading indicator -->
-    <div id="loading" class="htmx-indicator fixed top-4 right-4 bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-lg z-50">
+    <div id="loading" class="htmx-indicator fixed top-20 right-4 bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-lg z-50">
         <div class="flex items-center space-x-2">
             <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
             <span>Loading...</span>

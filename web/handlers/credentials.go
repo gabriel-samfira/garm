@@ -171,21 +171,58 @@ func (h *CredentialsHandler) ListCredentialsHandler(w http.ResponseWriter, r *ht
 	}
 }
 
-// NewCredentialFormHandler serves the new credential form
+// NewCredentialFormHandler serves the forge type selector or credential form
 func (h *CredentialsHandler) NewCredentialFormHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	
-	// Get available endpoints for the dropdown
-	endpoints, err := h.runner.runner.ListGithubEndpoints(ctx)
-	if err != nil {
-		slog.ErrorContext(ctx, "Failed to list endpoints", "error", err)
-		endpoints = []params.ForgeEndpoint{} // Continue with empty list
+	// Check if forge_type is specified in query params
+	forgeType := r.URL.Query().Get("forge_type")
+	
+	if forgeType == "" {
+		// Show forge type selector
+		if err := h.templates.ExecuteTemplate(w, "credential-forge-selector.html", nil); err != nil {
+			slog.ErrorContext(ctx, "Failed to execute forge selector template", "error", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		return
+	}
+	
+	// Show credential form for the selected forge type
+	var endpoints []params.ForgeEndpoint
+	var isGitea bool
+	
+	if forgeType == "gitea" {
+		giteaEndpoints, err := h.runner.runner.ListGiteaEndpoints(ctx)
+		if err != nil {
+			slog.ErrorContext(ctx, "Failed to list Gitea endpoints", "error", err)
+			endpoints = []params.ForgeEndpoint{}
+		} else {
+			endpoints = giteaEndpoints
+		}
+		isGitea = true
+	} else {
+		// Default to GitHub
+		githubEndpoints, err := h.runner.runner.ListGithubEndpoints(ctx)
+		if err != nil {
+			slog.ErrorContext(ctx, "Failed to list GitHub endpoints", "error", err)
+			endpoints = []params.ForgeEndpoint{}
+		} else {
+			endpoints = githubEndpoints
+		}
+		isGitea = false
 	}
 
 	data := struct {
-		Endpoints []params.ForgeEndpoint
+		Credential *params.ForgeCredentials
+		Endpoints  []params.ForgeEndpoint
+		IsGitea    bool
+		ForgeType  string
 	}{
-		Endpoints: endpoints,
+		Credential: nil, // No credential for new form
+		Endpoints:  endpoints,
+		IsGitea:    isGitea,
+		ForgeType:  forgeType,
 	}
 
 	if err := h.templates.ExecuteTemplate(w, "credential-form.html", data); err != nil {
@@ -204,22 +241,89 @@ func (h *CredentialsHandler) CreateCredentialHandler(w http.ResponseWriter, r *h
 		return
 	}
 
-	var createParams params.CreateGithubCredentialsParams
-	if err := json.NewDecoder(r.Body).Decode(&createParams); err != nil {
+	// Parse the JSON to get the endpoint name first to determine forge type
+	var rawData map[string]interface{}
+	if err := json.NewDecoder(r.Body).Decode(&rawData); err != nil {
 		slog.ErrorContext(ctx, "Failed to decode create credential request", "error", err)
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
 
-	credential, err := h.runner.runner.CreateGithubCredentials(ctx, createParams)
-	if err != nil {
-		slog.ErrorContext(ctx, "Failed to create credential", "error", err)
-		http.Error(w, "Failed to create credential", http.StatusInternalServerError)
+	endpointName, ok := rawData["endpoint"].(string)
+	if !ok || endpointName == "" {
+		slog.ErrorContext(ctx, "Missing or invalid endpoint in request")
+		http.Error(w, "Endpoint is required", http.StatusBadRequest)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(credential)
+	// Determine if this endpoint is GitHub or Gitea by trying to find it in both lists
+	githubEndpoints, _ := h.runner.runner.ListGithubEndpoints(ctx)
+	giteaEndpoints, _ := h.runner.runner.ListGiteaEndpoints(ctx)
+	
+	var isGitea bool
+	for _, ep := range githubEndpoints {
+		if ep.Name == endpointName {
+			isGitea = false
+			break
+		}
+	}
+	if !isGitea {
+		// Check if it's in Gitea endpoints
+		for _, ep := range giteaEndpoints {
+			if ep.Name == endpointName {
+				isGitea = true
+				break
+			}
+		}
+	}
+
+	// Convert rawData back to JSON for decoding into the appropriate struct
+	rawJSON, err := json.Marshal(rawData)
+	if err != nil {
+		slog.ErrorContext(ctx, "Failed to marshal request data", "error", err)
+		http.Error(w, "Invalid request data", http.StatusInternalServerError)
+		return
+	}
+
+	if isGitea {
+		var createParams params.CreateGiteaCredentialsParams
+		if err := json.Unmarshal(rawJSON, &createParams); err != nil {
+			slog.ErrorContext(ctx, "Failed to decode create Gitea credential request", "error", err)
+			http.Error(w, "Invalid JSON for Gitea credentials", http.StatusBadRequest)
+			return
+		}
+
+		credential, err := h.runner.runner.CreateGiteaCredentials(ctx, createParams)
+		if err != nil {
+			slog.ErrorContext(ctx, "Failed to create Gitea credential", "error", err)
+			w.Header().Set("HX-Trigger", "credentialCreateError")
+			http.Error(w, "Failed to create credential", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("HX-Trigger", "credentialCreated")
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(credential)
+	} else {
+		var createParams params.CreateGithubCredentialsParams
+		if err := json.Unmarshal(rawJSON, &createParams); err != nil {
+			slog.ErrorContext(ctx, "Failed to decode create GitHub credential request", "error", err)
+			http.Error(w, "Invalid JSON for GitHub credentials", http.StatusBadRequest)
+			return
+		}
+
+		credential, err := h.runner.runner.CreateGithubCredentials(ctx, createParams)
+		if err != nil {
+			slog.ErrorContext(ctx, "Failed to create GitHub credential", "error", err)
+			w.Header().Set("HX-Trigger", "credentialCreateError")
+			http.Error(w, "Failed to create credential", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("HX-Trigger", "credentialCreated")
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(credential)
+	}
 }
 
 // EditCredentialFormHandler serves the edit credential form
@@ -235,30 +339,61 @@ func (h *CredentialsHandler) EditCredentialFormHandler(w http.ResponseWriter, r 
 		return
 	}
 
-	credential, err := h.runner.runner.GetGithubCredentials(ctx, uint(id))
-	if err != nil {
-		slog.ErrorContext(ctx, "Failed to get credential", "error", err)
-		http.Error(w, "Failed to get credential", http.StatusInternalServerError)
-		return
+	// Try to get the credential from both GitHub and Gitea
+	var credential params.ForgeCredentials
+	var isGitea bool
+	
+	// First try GitHub
+	githubCred, err := h.runner.runner.GetGithubCredentials(ctx, uint(id))
+	if err == nil {
+		credential = githubCred
+		isGitea = false
+	} else {
+		// If GitHub fails, try Gitea
+		giteaCred, err := h.runner.runner.GetGiteaCredentials(ctx, uint(id))
+		if err != nil {
+			slog.ErrorContext(ctx, "Failed to get credential from both GitHub and Gitea", "error", err)
+			http.Error(w, "Credential not found", http.StatusNotFound)
+			return
+		}
+		credential = giteaCred
+		isGitea = true
 	}
 
-	// Get available endpoints for the dropdown
-	endpoints, err := h.runner.runner.ListGithubEndpoints(ctx)
-	if err != nil {
-		slog.ErrorContext(ctx, "Failed to list endpoints", "error", err)
-		endpoints = []params.ForgeEndpoint{} // Continue with empty list
+	// Get available endpoints based on the credential type
+	var endpoints []params.ForgeEndpoint
+	if isGitea {
+		giteaEndpoints, err := h.runner.runner.ListGiteaEndpoints(ctx)
+		if err != nil {
+			slog.ErrorContext(ctx, "Failed to list Gitea endpoints", "error", err)
+			endpoints = []params.ForgeEndpoint{}
+		} else {
+			endpoints = giteaEndpoints
+		}
+	} else {
+		githubEndpoints, err := h.runner.runner.ListGithubEndpoints(ctx)
+		if err != nil {
+			slog.ErrorContext(ctx, "Failed to list GitHub endpoints", "error", err)
+			endpoints = []params.ForgeEndpoint{}
+		} else {
+			endpoints = githubEndpoints
+		}
 	}
 
 	data := struct {
 		Credential params.ForgeCredentials
 		Endpoints  []params.ForgeEndpoint
+		IsGitea    bool
+		ForgeType  string
 	}{
 		Credential: credential,
 		Endpoints:  endpoints,
+		IsGitea:    isGitea,
+		ForgeType:  string(credential.ForgeType),
 	}
 
-	if err := h.templates.ExecuteTemplate(w, "credential-edit-form.html", data); err != nil {
-		slog.ErrorContext(ctx, "Failed to execute credential edit form template", "error", err)
+	if err := h.templates.ExecuteTemplate(w, "credential-form.html", data); err != nil {
+		slog.ErrorContext(ctx, "Failed to execute credential form template", "error", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -282,22 +417,59 @@ func (h *CredentialsHandler) UpdateCredentialHandler(w http.ResponseWriter, r *h
 		return
 	}
 
-	var updateParams params.UpdateGithubCredentialsParams
-	if err := json.NewDecoder(r.Body).Decode(&updateParams); err != nil {
-		slog.ErrorContext(ctx, "Failed to decode update credential request", "error", err)
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
-		return
-	}
-
-	credential, err := h.runner.runner.UpdateGithubCredentials(ctx, uint(id), updateParams)
+	// Determine if this is a GitHub or Gitea credential
+	var isGitea bool
+	_, err = h.runner.runner.GetGithubCredentials(ctx, uint(id))
 	if err != nil {
-		slog.ErrorContext(ctx, "Failed to update credential", "error", err)
-		http.Error(w, "Failed to update credential", http.StatusInternalServerError)
-		return
+		// Try Gitea
+		_, err = h.runner.runner.GetGiteaCredentials(ctx, uint(id))
+		if err != nil {
+			slog.ErrorContext(ctx, "Credential not found in both GitHub and Gitea", "error", err)
+			http.Error(w, "Credential not found", http.StatusNotFound)
+			return
+		}
+		isGitea = true
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(credential)
+	if isGitea {
+		var updateParams params.UpdateGiteaCredentialsParams
+		if err := json.NewDecoder(r.Body).Decode(&updateParams); err != nil {
+			slog.ErrorContext(ctx, "Failed to decode update Gitea credential request", "error", err)
+			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			return
+		}
+
+		credential, err := h.runner.runner.UpdateGiteaCredentials(ctx, uint(id), updateParams)
+		if err != nil {
+			slog.ErrorContext(ctx, "Failed to update Gitea credential", "error", err)
+			w.Header().Set("HX-Trigger", "credentialUpdateError")
+			http.Error(w, "Failed to update credential", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("HX-Trigger", "credentialUpdated")
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(credential)
+	} else {
+		var updateParams params.UpdateGithubCredentialsParams
+		if err := json.NewDecoder(r.Body).Decode(&updateParams); err != nil {
+			slog.ErrorContext(ctx, "Failed to decode update GitHub credential request", "error", err)
+			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			return
+		}
+
+		credential, err := h.runner.runner.UpdateGithubCredentials(ctx, uint(id), updateParams)
+		if err != nil {
+			slog.ErrorContext(ctx, "Failed to update GitHub credential", "error", err)
+			w.Header().Set("HX-Trigger", "credentialUpdateError")
+			http.Error(w, "Failed to update credential", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("HX-Trigger", "credentialUpdated")
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(credential)
+	}
 }
 
 // DeleteCredentialHandler handles credential deletion
