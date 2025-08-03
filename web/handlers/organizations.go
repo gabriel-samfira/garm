@@ -10,47 +10,6 @@ import (
 	"github.com/cloudbase/garm/params"
 )
 
-func (h *WebHandler) OrganizationsHandler(w http.ResponseWriter, r *http.Request) {
-	data := PageData{
-		Title:      "Organizations",
-		PageTitle:  "Organizations",
-		ActivePage: "organizations",
-		CreateButton: &CreateButton{
-			URL:  "/web/organizations/new",
-			Text: "Add Organization",
-		},
-	}
-
-	if err := h.templates.ExecuteTemplate(w, "base.html", data); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
-
-func (h *WebHandler) OrganizationDetailHandler(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	vars := mux.Vars(r)
-	orgID := vars["id"]
-
-	org, err := h.runner.GetOrganizationByID(ctx, orgID)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
-		return
-	}
-
-	data := PageData{
-		Title:        org.Name + " - Organization",
-		PageTitle:    org.Name,
-		ActivePage:   "organizations",
-		IsDetailView: true,
-		Entity:       org,
-	}
-
-	if err := h.templates.ExecuteTemplate(w, "base.html", data); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
 
 func (h *WebHandler) OrganizationsAPIHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -183,87 +142,6 @@ func (h *WebHandler) OrganizationsAPIHandler(w http.ResponseWriter, r *http.Requ
 	}
 }
 
-func (h *WebHandler) NewOrganizationHandler(w http.ResponseWriter, r *http.Request) {
-	// Check if forge type is specified
-	forgeType := r.URL.Query().Get("forge_type")
-	
-	if forgeType == "" {
-		// Show forge type selector
-		if err := h.templates.ExecuteTemplate(w, "organization-forge-selector.html", nil); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		return
-	}
-
-	ctx := r.Context()
-	var credentials []params.ForgeCredentials
-	var err error
-
-	// Get credentials based on forge type
-	if forgeType == "github" {
-		credentials, err = h.runner.ListCredentials(ctx)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-	} else if forgeType == "gitea" {
-		credentials, err = h.runner.ListGiteaCredentials(ctx)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-	} else {
-		http.Error(w, "Invalid forge type", http.StatusBadRequest)
-		return
-	}
-
-	data := struct {
-		Organization *params.Organization
-		Credentials  []params.ForgeCredentials
-		ForgeType    string
-	}{
-		Credentials: credentials,
-		ForgeType:   forgeType,
-	}
-
-	if err := h.templates.ExecuteTemplate(w, "organization-form.html", data); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
-
-func (h *WebHandler) EditOrganizationHandler(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	vars := mux.Vars(r)
-	orgID := vars["id"]
-
-	org, err := h.runner.GetOrganizationByID(ctx, orgID)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
-		return
-	}
-
-	// Get credentials for the form
-	creds, err := h.runner.ListCredentials(ctx)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	data := struct {
-		Organization *params.Organization
-		Credentials  []params.ForgeCredentials
-	}{
-		Organization: &org,
-		Credentials:  creds,
-	}
-
-	if err := h.templates.ExecuteTemplate(w, "organization-form.html", data); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
 
 func (h *WebHandler) CreateOrganizationHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -434,10 +312,9 @@ func (h *WebHandler) OrganizationInstancesAPIHandler(w http.ResponseWriter, r *h
 			<thead class="bg-gray-50 dark:bg-gray-700">
 				<tr>
 					<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Name</th>
+					<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Created</th>
 					<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
 					<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Runner Status</th>
-					<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Created</th>
-					<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
 				</tr>
 			</thead>
 			<tbody class="divide-y divide-gray-200 dark:divide-gray-700">`)
@@ -457,22 +334,21 @@ func (h *WebHandler) OrganizationInstancesAPIHandler(w http.ResponseWriter, r *h
 
 		fmt.Fprintf(w, `
 			<tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
-				<td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">%s</td>
+				<td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+					<a href="/web/instances/%s/detail?from=organization&entity_id=%s" 
+					   class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline">
+						%s
+					</a>
+				</td>
+				<td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">%s</td>
 				<td class="px-3 py-4 whitespace-nowrap">
 					<span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full %s">%s</span>
 				</td>
 				<td class="px-3 py-4 whitespace-nowrap">
 					<span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">%s</span>
 				</td>
-				<td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">%s</td>
-				<td class="px-3 py-4 whitespace-nowrap text-right text-sm font-medium">
-					<a href="/web/instances/%s/detail?from=organization&entity_id=%s" 
-					   class="text-purple-600 dark:text-purple-400 hover:text-purple-900 dark:hover:text-purple-300 hover:underline">
-						View
-					</a>
-				</td>
 			</tr>`,
-			instance.Name, statusClass, status, string(instance.RunnerStatus), instance.CreatedAt.Format("Jan 2, 15:04"), instance.Name, orgID)
+			instance.Name, orgID, instance.Name, instance.CreatedAt.Format("Jan 2, 15:04"), statusClass, status, string(instance.RunnerStatus))
 	}
 
 	fmt.Fprintf(w, `

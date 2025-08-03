@@ -1,9 +1,9 @@
-{{define "organizations-content"}}
-<!-- Organization List -->
+{{define "entity-list"}}
+<!-- {{.EntityType | title}} List -->
 <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
     <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
         <div class="flex justify-between items-center">
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Organizations</h3>
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{{.EntityType | title}}</h3>
         </div>
         <!-- Search Bar -->
         <div class="mt-4">
@@ -14,12 +14,12 @@
                     </svg>
                 </div>
                 <input type="text" 
-                       id="organizations-search" 
+                       id="{{.EntityType}}-search" 
                        name="search"
                        class="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm" 
-                       placeholder="Search organizations by name..." 
-                       hx-get="/web/api/organizations"
-                       hx-target="#organizations-table"
+                       placeholder="{{.SearchPlaceholder}}" 
+                       hx-get="/web/api/{{.EntityType}}"
+                       hx-target="#{{.EntityType}}-table"
                        hx-trigger="keyup changed delay:300ms, search"
                        hx-include="[name='page'],[name='per_page']">
             </div>
@@ -37,14 +37,14 @@
                     <th class="px-3 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
                 </tr>
             </thead>
-            <tbody id="organizations-table" 
-                   hx-get="/web/api/organizations" 
-                   hx-trigger="load, every 5s" 
+            <tbody id="{{.EntityType}}-table" 
+                   hx-get="/web/api/{{.EntityType}}" 
+                   hx-trigger="load, every 5s{{if eq .EntityType "repositories"}}, refresh{{end}}" 
                    hx-indicator="#loading" 
                    hx-include="[name='page'],[name='per_page'],[name='search']"
                    class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 <tr>
-                    <td colspan="5" class="px-6 py-4 text-center text-gray-500">Loading organizations...</td>
+                    <td colspan="5" class="px-6 py-4 text-center text-gray-500">Loading {{.EntityType}}...</td>
                 </tr>
             </tbody>
         </table>
@@ -56,8 +56,8 @@
             <div class="flex items-center space-x-2">
                 <span class="text-sm text-gray-700 dark:text-gray-300">Show</span>
                 <select name="per_page" 
-                        hx-get="/web/api/organizations" 
-                        hx-target="#organizations-table"
+                        hx-{{if eq .EntityType "repositories"}}post{{else}}get{{end}}="/web/api/{{.EntityType}}" 
+                        hx-target="#{{.EntityType}}-table"
                         hx-include="[name='page'],[name='search']"
                         class="border border-gray-300 dark:border-gray-600 rounded-md px-3 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
                     <option value="25" selected>25</option>
@@ -68,14 +68,14 @@
             </div>
             
             <div id="pagination-info" class="text-sm text-gray-700 dark:text-gray-300">
-                Showing organizations
+                Showing {{.EntityType}}
             </div>
             
             <div class="flex items-center space-x-2">
                 <input type="hidden" id="current-page" name="page" value="1">
                 <button type="button" 
                         id="prev-page"
-                        onclick="changePage(-1)"
+                        onclick="changePage(-1)" 
                         disabled
                         class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed">
                     Previous
@@ -97,16 +97,79 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize pagination for organizations
+    // Initialize pagination for {{.EntityType}}
     window.entityPagination = createEntityPagination({
-        entityType: 'organizations',
-        tableId: 'organizations-table',
-        searchInputId: 'organizations-search',
-        apiEndpoint: '/web/api/organizations',
-        searchPlaceholder: 'Search organizations by name...'
+        entityType: '{{.EntityType}}',
+        tableId: '{{.EntityType}}-table',
+        searchInputId: '{{.EntityType}}-search',
+        apiEndpoint: '/web/api/{{.EntityType}}',
+        searchPlaceholder: '{{.SearchPlaceholder}}'
     });
     
     window.entityPagination.init();
 });
+
+{{if eq .EntityType "enterprises"}}
+function showDeleteEnterpriseConfirm(enterpriseId, enterpriseName) {
+    const modal = document.createElement('div');
+    modal.innerHTML = `
+        <div class="fixed inset-0 bg-black bg-opacity-50 dark:bg-gray-900 dark:bg-opacity-75 flex items-center justify-center z-50" 
+             onclick="this.remove()">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4" onclick="event.stopPropagation()">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Confirm Delete</h3>
+                </div>
+                
+                <div class="p-6">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <svg class="w-8 h-8 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm text-gray-900 dark:text-white">Are you sure you want to delete enterprise <strong>${enterpriseName}</strong>? This action cannot be undone.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end space-x-3">
+                    <button onclick="this.closest('.fixed').remove()" 
+                            class="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-white rounded-lg font-medium">
+                        Cancel
+                    </button>
+                    <button onclick="deleteEnterprise('${enterpriseId}'); this.closest('.fixed').remove()" 
+                            class="px-4 py-2 bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 text-white rounded-lg font-medium">
+                        Delete Enterprise
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+function deleteEnterprise(enterpriseId) {
+    fetch('/web/api/enterprises/' + enterpriseId, {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => {
+        if (response.ok) {
+            return response.text();
+        }
+        throw new Error('Failed to delete enterprise');
+    })
+    .then(html => {
+        document.getElementById('enterprises-table').innerHTML = html;
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to delete enterprise: ' + error.message);
+    });
+}
+{{end}}
 </script>
 {{end}}

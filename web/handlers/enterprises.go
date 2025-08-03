@@ -9,47 +9,6 @@ import (
 	"github.com/cloudbase/garm/params"
 )
 
-func (h *WebHandler) EnterprisesHandler(w http.ResponseWriter, r *http.Request) {
-	data := PageData{
-		Title:      "Enterprises",
-		PageTitle:  "Enterprises",
-		ActivePage: "enterprises",
-		CreateButton: &CreateButton{
-			URL:  "/web/enterprises/new",
-			Text: "Add Enterprise",
-		},
-	}
-
-	if err := h.templates.ExecuteTemplate(w, "base.html", data); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
-
-func (h *WebHandler) EnterpriseDetailHandler(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	vars := mux.Vars(r)
-	enterpriseID := vars["id"]
-
-	enterprise, err := h.runner.GetEnterpriseByID(ctx, enterpriseID)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
-		return
-	}
-
-	data := PageData{
-		Title:        enterprise.Name + " - Enterprise",
-		PageTitle:    enterprise.Name,
-		ActivePage:   "enterprises",
-		IsDetailView: true,
-		Entity:       enterprise,
-	}
-
-	if err := h.templates.ExecuteTemplate(w, "base.html", data); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
 
 func (h *WebHandler) EnterprisesAPIHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -125,83 +84,6 @@ func (h *WebHandler) EnterprisesAPIHandler(w http.ResponseWriter, r *http.Reques
 	}
 }
 
-func (h *WebHandler) EnterpriseDetailsHandler(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	vars := mux.Vars(r)
-	enterpriseID := vars["id"]
-
-	enterprise, err := h.runner.GetEnterpriseByID(ctx, enterpriseID)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
-		return
-	}
-
-	data := struct {
-		Enterprise interface{}
-	}{
-		Enterprise: enterprise,
-	}
-
-	if err := h.templates.ExecuteTemplate(w, "enterprise-details.html", data); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
-
-func (h *WebHandler) NewEnterpriseHandler(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	// Get credentials for the form
-	creds, err := h.runner.ListCredentials(ctx)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	data := struct {
-		Enterprise  *params.Enterprise
-		Credentials []params.ForgeCredentials
-	}{
-		Credentials: creds,
-	}
-
-	if err := h.templates.ExecuteTemplate(w, "enterprise-form.html", data); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
-
-func (h *WebHandler) EditEnterpriseHandler(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	vars := mux.Vars(r)
-	enterpriseID := vars["id"]
-
-	enterprise, err := h.runner.GetEnterpriseByID(ctx, enterpriseID)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
-		return
-	}
-
-	// Get credentials for the form
-	creds, err := h.runner.ListCredentials(ctx)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	data := struct {
-		Enterprise  *params.Enterprise
-		Credentials []params.ForgeCredentials
-	}{
-		Enterprise:  &enterprise,
-		Credentials: creds,
-	}
-
-	if err := h.templates.ExecuteTemplate(w, "enterprise-form.html", data); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
 
 func (h *WebHandler) CreateEnterpriseHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -372,10 +254,9 @@ func (h *WebHandler) EnterpriseInstancesAPIHandler(w http.ResponseWriter, r *htt
 			<thead class="bg-gray-50 dark:bg-gray-700">
 				<tr>
 					<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Name</th>
+					<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Created</th>
 					<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
 					<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Runner Status</th>
-					<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Created</th>
-					<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
 				</tr>
 			</thead>
 			<tbody class="divide-y divide-gray-200 dark:divide-gray-700">`)
@@ -395,22 +276,21 @@ func (h *WebHandler) EnterpriseInstancesAPIHandler(w http.ResponseWriter, r *htt
 
 		fmt.Fprintf(w, `
 			<tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
-				<td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">%s</td>
+				<td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+					<a href="/web/instances/%s/detail?from=enterprise&entity_id=%s" 
+					   class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline">
+						%s
+					</a>
+				</td>
+				<td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">%s</td>
 				<td class="px-3 py-4 whitespace-nowrap">
 					<span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full %s">%s</span>
 				</td>
 				<td class="px-3 py-4 whitespace-nowrap">
 					<span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">%s</span>
 				</td>
-				<td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">%s</td>
-				<td class="px-3 py-4 whitespace-nowrap text-right text-sm font-medium">
-					<a href="/web/instances/%s/detail?from=enterprise&entity_id=%s" 
-					   class="text-purple-600 dark:text-purple-400 hover:text-purple-900 dark:hover:text-purple-300 hover:underline">
-						View
-					</a>
-				</td>
 			</tr>`,
-			instance.Name, statusClass, status, string(instance.RunnerStatus), instance.CreatedAt.Format("Jan 2, 15:04"), instance.Name, enterpriseID)
+			instance.Name, enterpriseID, instance.Name, instance.CreatedAt.Format("Jan 2, 15:04"), statusClass, status, string(instance.RunnerStatus))
 	}
 
 	fmt.Fprintf(w, `

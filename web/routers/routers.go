@@ -71,24 +71,23 @@ func AddWebRoutes(router *mux.Router, webHandler *handlers.WebHandler, store dbC
 	// Repositories
 	webRouter.HandleFunc("/repositories", webHandler.RepositoriesHandler).Methods("GET")
 	webRouter.HandleFunc("/repositories/", webHandler.RepositoriesHandler).Methods("GET")
-	webRouter.HandleFunc("/repositories/new", webHandler.NewRepositoryHandler).Methods("GET")
+	webRouter.HandleFunc("/repositories/new", webHandler.RepositoryNewFormHandler).Methods("GET")
 	webRouter.HandleFunc("/repositories/{id}", webHandler.RepositoryDetailHandler).Methods("GET")
-	webRouter.HandleFunc("/repositories/{id}/edit", webHandler.EditRepositoryHandler).Methods("GET")
+	webRouter.HandleFunc("/repositories/{id}/edit", webHandler.RepositoryEditFormHandler).Methods("GET")
 
 	// Organizations
 	webRouter.HandleFunc("/organizations", webHandler.OrganizationsHandler).Methods("GET")
 	webRouter.HandleFunc("/organizations/", webHandler.OrganizationsHandler).Methods("GET")
-	webRouter.HandleFunc("/organizations/new", webHandler.NewOrganizationHandler).Methods("GET")
+	webRouter.HandleFunc("/organizations/new", webHandler.OrganizationNewFormHandler).Methods("GET")
 	webRouter.HandleFunc("/organizations/{id}", webHandler.OrganizationDetailHandler).Methods("GET")
-	webRouter.HandleFunc("/organizations/{id}/edit", webHandler.EditOrganizationHandler).Methods("GET")
+	webRouter.HandleFunc("/organizations/{id}/edit", webHandler.OrganizationEditFormHandler).Methods("GET")
 
 	// Enterprises
 	webRouter.HandleFunc("/enterprises", webHandler.EnterprisesHandler).Methods("GET")
 	webRouter.HandleFunc("/enterprises/", webHandler.EnterprisesHandler).Methods("GET")
-	webRouter.HandleFunc("/enterprises/new", webHandler.NewEnterpriseHandler).Methods("GET")
+	webRouter.HandleFunc("/enterprises/new", webHandler.EnterpriseNewFormHandler).Methods("GET")
 	webRouter.HandleFunc("/enterprises/{id}", webHandler.EnterpriseDetailHandler).Methods("GET")
-	webRouter.HandleFunc("/enterprises/{id}/edit", webHandler.EditEnterpriseHandler).Methods("GET")
-	webRouter.HandleFunc("/enterprises/{id}/details", webHandler.EnterpriseDetailsHandler).Methods("GET")
+	webRouter.HandleFunc("/enterprises/{id}/edit", webHandler.EnterpriseEditFormHandler).Methods("GET")
 
 	// Scale Sets
 	webRouter.HandleFunc("/scalesets", webHandler.ScaleSetsHandler).Methods("GET")

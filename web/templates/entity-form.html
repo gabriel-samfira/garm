@@ -1,16 +1,26 @@
-{{define "repository-form.html"}}
-<!-- Repository Form Modal -->
+{{define "entity-form"}}
+<!-- Entity Form Modal -->
 <div class="fixed inset-0 bg-black bg-opacity-50 dark:bg-gray-900 dark:bg-opacity-75 flex items-center justify-center z-50" 
      onclick="const modal = this.closest('.fixed'); if (modal) modal.remove();">
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4" onclick="event.stopPropagation()">
         <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
             <div>
                 <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-                    {{if .Repository}}Edit Repository{{else}}Add {{if eq .ForgeType "github"}}GitHub{{else if eq .ForgeType "gitea"}}Gitea{{end}} Repository{{end}}
+                    {{if .Entity}}
+                        Edit {{if eq .EntityType "repositories"}}Repository{{else if eq .EntityType "organizations"}}Organization{{else if eq .EntityType "enterprises"}}Enterprise{{end}}
+                    {{else}}
+                        Add {{if ne .EntityType "enterprises"}}{{if eq .ForgeType "github"}}GitHub{{else if eq .ForgeType "gitea"}}Gitea{{end}} {{end}}{{if eq .EntityType "repositories"}}Repository{{else if eq .EntityType "organizations"}}Organization{{else if eq .EntityType "enterprises"}}Enterprise{{end}}
+                    {{end}}
                 </h3>
-                {{if not .Repository}}
+                {{if not .Entity}}
                 <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    {{if eq .ForgeType "github"}}Create repository for GitHub or GitHub Enterprise Server{{else if eq .ForgeType "gitea"}}Create repository for self-hosted Gitea instance{{end}}
+                    {{if eq .EntityType "enterprises"}}
+                        Create enterprise for GitHub Enterprise Server
+                    {{else if eq .ForgeType "github"}}
+                        Create {{.EntityType | trimSuffix "s"}} for GitHub or GitHub Enterprise Server
+                    {{else if eq .ForgeType "gitea"}}
+                        Create {{.EntityType | trimSuffix "s"}} for self-hosted Gitea instance
+                    {{end}}
                 </p>
                 {{end}}
             </div>
@@ -21,82 +31,104 @@
             </button>
         </div>
         
-        <form hx-post="{{if .Repository}}/web/api/repositories/{{.Repository.ID}}{{else}}/web/api/repositories{{end}}" 
+        <form hx-post="{{if .Entity}}/web/api/{{.EntityType}}/{{.Entity.ID}}{{else}}/web/api/{{.EntityType}}{{end}}" 
               hx-trigger="submit"
-              hx-target="closest .fixed" 
-              hx-swap="outerHTML"
+              hx-target="{{if eq .EntityType "enterprises"}}#enterprises-table{{else}}closest .fixed{{end}}" 
+              hx-swap="{{if eq .EntityType "enterprises"}}innerHTML{{else}}outerHTML{{end}}"
               hx-indicator="#loading"
+              {{if ne .EntityType "enterprises"}}
               x-data="{ 
-                  name: '{{if .Repository}}{{.Repository.Name}}{{end}}',
-                  owner: '{{if .Repository}}{{.Repository.Owner}}{{end}}',
-                  credentials: '{{if .Repository}}{{.Repository.CredentialsName}}{{end}}',
+                  {{if eq .EntityType "repositories"}}
+                  owner: '{{if .Entity}}{{.Entity.Owner}}{{end}}',
+                  {{end}}
+                  name: '{{if .Entity}}{{.Entity.Name}}{{end}}',
+                  credentials: '{{if .Entity}}{{.Entity.CredentialsName}}{{end}}',
                   installWebhook: false,
                   autoGenerateSecret: true,
                   customSecret: '',
                   isFormValid() {
+                      {{if eq .EntityType "repositories"}}
                       if (!this.name || !this.owner || !this.credentials) return false;
-                      {{if not .Repository}}
+                      {{else}}
+                      if (!this.name || !this.credentials) return false;
+                      {{end}}
+                      {{if not .Entity}}
                       if (this.installWebhook && !this.autoGenerateSecret && !this.customSecret.trim()) return false;
                       {{end}}
                       return true;
                   }
               }"
+              {{end}}
               class="p-6 space-y-4">
             
-            {{if .Repository}}
+            {{if .Entity}}
             <input type="hidden" name="_method" value="PUT">
             {{end}}
             
+            {{if eq .EntityType "repositories"}}
             <div>
                 <label for="owner" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Owner</label>
                 <input type="text" 
                        id="owner" 
                        name="owner" 
-                       x-model="owner"
+                       {{if ne .EntityType "enterprises"}}x-model="owner"{{else}}value="{{if .Entity}}{{.Entity.Owner}}{{end}}"{{end}}
                        required
                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
                        placeholder="e.g., octocat or organization-name">
             </div>
+            {{end}}
 
             <div>
-                <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Repository Name</label>
+                <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{if eq .EntityType "repositories"}}Repository{{else if eq .EntityType "organizations"}}Organization{{else if eq .EntityType "enterprises"}}Enterprise{{end}} Name</label>
                 <input type="text" 
                        id="name" 
                        name="name" 
-                       x-model="name"
+                       {{if ne .EntityType "enterprises"}}x-model="name"{{else}}value="{{if .Entity}}{{.Entity.Name}}{{end}}"{{end}}
+                       {{if and .Entity (eq .EntityType "enterprises")}}readonly{{end}}
                        required
-                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                       placeholder="e.g., my-repository">
+                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white {{if and .Entity (eq .EntityType "enterprises")}}bg-gray-50 dark:bg-gray-600 text-gray-500 dark:text-gray-400{{end}}"
+                       placeholder="e.g., {{if eq .EntityType "repositories"}}my-repository{{else if eq .EntityType "organizations"}}my-organization{{else}}my-enterprise{{end}}">
             </div>
 
             <div>
                 <label for="credentials_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Credentials</label>
                 <select id="credentials_name" 
                         name="credentials_name" 
-                        x-model="credentials"
+                        {{if ne .EntityType "enterprises"}}x-model="credentials"{{end}}
                         required
                         class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
-                    <option value="">Select credentials</option>
+                    <option value="">{{if eq .EntityType "enterprises"}}Select credentials...{{else}}Select credentials{{end}}</option>
                     {{range .Credentials}}
-                    <option value="{{.Name}}" {{if and $.Repository (eq .Name $.Repository.CredentialsName)}}selected{{end}}>
-                        {{.Name}} - {{.Description}}
+                    <option value="{{.Name}}" {{if and $.Entity (eq .Name $.Entity.CredentialsName)}}selected{{end}}>
+                        {{if eq $.EntityType "enterprises"}}{{.Name}} ({{.AuthType}}){{else}}{{.Name}} - {{.Description}}{{end}}
                     </option>
                     {{end}}
                 </select>
             </div>
+
+            {{if eq .EntityType "enterprises"}}
+            <div>
+                <label for="webhook_secret" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Webhook Secret (optional)</label>
+                <input type="password" 
+                       id="webhook_secret" 
+                       name="webhook_secret" 
+                       value="{{if .Entity}}{{.Entity.WebhookSecret}}{{end}}"
+                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+            </div>
+            {{end}}
 
             <div>
                 <label for="pool_balancer_type" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Pool Balancer Type</label>
                 <select id="pool_balancer_type" 
                         name="pool_balancer_type" 
                         class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
-                    <option value="roundrobin" {{if and .Repository (eq .Repository.PoolBalancerType "roundrobin")}}selected{{end}}>Round Robin</option>
-                    <option value="pack" {{if and .Repository (eq .Repository.PoolBalancerType "pack")}}selected{{end}}>Pack</option>
+                    <option value="roundrobin" {{if and .Entity (eq .Entity.PoolBalancerType "roundrobin")}}selected{{else}}{{if not .Entity}}selected{{end}}{{end}}>Round Robin</option>
+                    <option value="pack" {{if and .Entity (eq .Entity.PoolBalancerType "pack")}}selected{{end}}>Pack</option>
                 </select>
             </div>
 
-            {{if not .Repository}}
-            <!-- Webhook options for new repositories only -->
+            {{if and (not .Entity) (ne .EntityType "enterprises")}}
+            <!-- Webhook options for new repositories and organizations only -->
             <div class="space-y-3 border-t border-gray-200 dark:border-gray-700 pt-4">
                 <div class="flex items-center">
                     <input type="checkbox" 
@@ -107,7 +139,7 @@
                     <label for="install_webhook" class="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300">Install Webhook</label>
                 </div>
                 
-                <div x-show="installWebhook" x-transition class="space-y-3 ml-6">
+                <div x-show="installWebhook" x-transition class="space-y-3">
                     <div class="flex items-center">
                         <input type="checkbox" 
                                id="auto_generate_secret" 
@@ -137,10 +169,10 @@
                     Cancel
                 </button>
                 <button type="submit"
-                        :disabled="!isFormValid()"
-                        :class="isFormValid() ? 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500' : 'bg-gray-400 cursor-not-allowed'"
-                        class="px-4 py-2 text-sm font-medium text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors">
-                    {{if .Repository}}Update Repository{{else}}Create Repository{{end}}
+                        {{if ne .EntityType "enterprises"}}:disabled="!isFormValid()"
+                        :class="isFormValid() ? 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500' : 'bg-gray-400 cursor-not-allowed'"{{else}}class="bg-blue-600 hover:bg-blue-700 focus:ring-blue-500"{{end}}
+                        class="px-4 py-2 text-sm font-medium text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 {{if ne .EntityType "enterprises"}}transition-colors{{end}}">
+                    {{if .Entity}}Update {{.EntityType | title | trimSuffix "s"}}{{else}}Create {{.EntityType | title | trimSuffix "s"}}{{end}}
                 </button>
             </div>
         </form>

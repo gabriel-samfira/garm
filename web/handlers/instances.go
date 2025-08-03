@@ -36,7 +36,7 @@ func (h *WebHandler) InstancesAPIHandler(w http.ResponseWriter, r *http.Request)
 	w.Header().Set("Content-Type", "text/html")
 	
 	if len(instances) == 0 {
-		fmt.Fprintf(w, `<tr><td colspan="6" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No instances found</td></tr>`)
+		fmt.Fprintf(w, `<tr><td colspan="5" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No instances found</td></tr>`)
 		return
 	}
 
@@ -69,23 +69,16 @@ func (h *WebHandler) InstancesAPIHandler(w http.ResponseWriter, r *http.Request)
 				<td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white min-w-0">
 					<div class="truncate">%s</div>
 				</td>
+				<td class="px-3 py-4 whitespace-nowrap w-28 text-sm text-gray-500 dark:text-gray-400">%s</td>
 				<td class="px-3 py-4 whitespace-nowrap w-24">
 					<span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full %s">%s</span>
 				</td>
 				<td class="px-3 py-4 whitespace-nowrap w-32">
 					<span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full %s">%s</span>
 				</td>
-				<td class="px-3 py-4 whitespace-nowrap w-28 text-sm text-gray-500 dark:text-gray-400">%s</td>
-				<td class="px-3 py-4 whitespace-nowrap w-20 text-right text-sm font-medium">
-					<button hx-delete="/web/api/instances/%s" 
-							hx-target="#instances-table" 
-							hx-confirm="Are you sure you want to delete this instance?"
-							class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">Delete</button>
-				</td>
 			</tr>`,
-			instance.Name, instance.Name, instance.ID, instance.PoolID,
-			statusClass, string(instance.Status), runnerStatusClass, string(instance.RunnerStatus),
-			createdTime, instance.Name)
+			instance.Name, instance.Name, instance.ID, instance.PoolID, createdTime,
+			statusClass, string(instance.Status), runnerStatusClass, string(instance.RunnerStatus))
 	}
 }
 
