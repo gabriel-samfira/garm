@@ -51,7 +51,7 @@ func (h *WebHandler) EnterprisesAPIHandler(w http.ResponseWriter, r *http.Reques
 				<td class="px-6 py-4 whitespace-nowrap">
 					<div class="flex items-center">
 						<div>
-							<a href="/web/enterprises/%s" class="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline">%s</a>
+							<a href="/web/enterprises/%s" class="text-sm font-medium text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-300 hover:underline">%s</a>
 						</div>
 					</div>
 				</td>
@@ -207,7 +207,7 @@ func (h *WebHandler) EnterprisePoolsAPIHandler(w http.ResponseWriter, r *http.Re
 				<td class="px-3 py-4 text-sm font-mono" title="%s">
 					<div class="truncate">
 						<a href="/web/pools/%s/details?from=enterprise&entity_id=%s" 
-								class="text-purple-600 dark:text-purple-400 hover:text-purple-900 dark:hover:text-purple-300 hover:underline">%s</a>
+								class="text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-300 hover:underline">%s</a>
 					</div>
 				</td>
 				<td class="px-3 py-4 text-sm text-gray-900 dark:text-white" title="%s">
@@ -278,7 +278,7 @@ func (h *WebHandler) EnterpriseInstancesAPIHandler(w http.ResponseWriter, r *htt
 			<tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
 				<td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
 					<a href="/web/instances/%s/detail?from=enterprise&entity_id=%s" 
-					   class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline">
+					   class="text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-300 hover:underline">
 						%s
 					</a>
 				</td>

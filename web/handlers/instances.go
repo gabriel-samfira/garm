@@ -36,7 +36,7 @@ func (h *WebHandler) InstancesAPIHandler(w http.ResponseWriter, r *http.Request)
 	w.Header().Set("Content-Type", "text/html")
 	
 	if len(instances) == 0 {
-		fmt.Fprintf(w, `<tr><td colspan="5" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No instances found</td></tr>`)
+		fmt.Fprintf(w, `<tr><td colspan="6" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No instances found</td></tr>`)
 		return
 	}
 
@@ -61,7 +61,7 @@ func (h *WebHandler) InstancesAPIHandler(w http.ResponseWriter, r *http.Request)
 				<td class="px-4 py-4 whitespace-nowrap">
 					<div class="flex items-center">
 						<div class="min-w-0 flex-1">
-							<a href="/web/instances/%s/detail" class="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline">%s</a>
+							<a href="/web/instances/%s/detail" class="text-sm font-medium text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-300 hover:underline">%s</a>
 							<div class="text-sm text-gray-500 dark:text-gray-400 truncate">%s</div>
 						</div>
 					</div>
@@ -76,9 +76,15 @@ func (h *WebHandler) InstancesAPIHandler(w http.ResponseWriter, r *http.Request)
 				<td class="px-3 py-4 whitespace-nowrap w-32">
 					<span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full %s">%s</span>
 				</td>
+				<td class="px-3 py-4 whitespace-nowrap text-right text-sm font-medium">
+					<button hx-delete="/web/api/instances/%s" 
+							hx-target="#instances-table" 
+							hx-confirm="Are you sure you want to delete this instance?"
+							class="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300">Delete</button>
+				</td>
 			</tr>`,
 			instance.Name, instance.Name, instance.ID, instance.PoolID, createdTime,
-			statusClass, string(instance.Status), runnerStatusClass, string(instance.RunnerStatus))
+			statusClass, string(instance.Status), runnerStatusClass, string(instance.RunnerStatus), instance.Name)
 	}
 }
 

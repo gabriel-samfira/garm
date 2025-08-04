@@ -5,7 +5,7 @@
         <nav class="flex mb-4" aria-label="Breadcrumb">
             <ol class="inline-flex items-center space-x-1 md:space-x-3">
                 <li class="inline-flex items-center">
-                    <a href="/web/{{.EntityType}}" class="inline-flex items-center text-sm font-medium text-gray-700 hover:text-blue-600 dark:text-gray-400 dark:hover:text-white">
+                    <a href="/web/{{.EntityType}}" class="inline-flex items-center text-sm font-medium text-gray-700 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:underline">
                         <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-3a1 1 0 011-1h2a1 1 0 011 1v3a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path>
                         </svg>
@@ -28,7 +28,7 @@
             <!-- Main Info -->
             <div class="lg:col-span-2">
                 <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                    <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">{{.EntityType | title | trimSuffix "s"}} Information</h3>
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">{{if eq .EntityType "repositories"}}Repository{{else if eq .EntityType "organizations"}}Organization{{else if eq .EntityType "enterprises"}}Enterprise{{end}} Information</h3>
                     <dl class="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
                         <div>
                             <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Name</dt>
@@ -69,7 +69,7 @@
                             </dd>
                         </div>
                         <div class="sm:col-span-2">
-                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">{{.EntityType | title | trimSuffix "s"}} ID</dt>
+                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">{{if eq .EntityType "repositories"}}Repository{{else if eq .EntityType "organizations"}}Organization{{else if eq .EntityType "enterprises"}}Enterprise{{end}} ID</dt>
                             <dd class="mt-1 text-sm text-gray-900 dark:text-white font-mono">{{.Entity.ID}}</dd>
                         </div>
                     </dl>
@@ -85,12 +85,12 @@
                         <button hx-get="/web/{{.EntityType}}/{{.Entity.ID}}/edit" 
                                 hx-target="#modal-container"
                                 class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium">
-                            Edit {{.EntityType | title | trimSuffix "s"}}
+                            Edit {{if eq .EntityType "repositories"}}Repository{{else if eq .EntityType "organizations"}}Organization{{else if eq .EntityType "enterprises"}}Enterprise{{end}}
                         </button>
                         {{end}}
-                        <button onclick="showDelete{{.EntityType | title | trimSuffix "s"}}Confirm('{{.Entity.ID}}', '{{.Entity.Name}}')"
+                        <button onclick="showDelete{{if eq .EntityType "repositories"}}Repository{{else if eq .EntityType "organizations"}}Organization{{else if eq .EntityType "enterprises"}}Enterprise{{end}}Confirm('{{.Entity.ID}}', '{{.Entity.Name}}')"
                                 class="w-full bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium">
-                            Delete {{.EntityType | title | trimSuffix "s"}}
+                            Delete {{if eq .EntityType "repositories"}}Repository{{else if eq .EntityType "organizations"}}Organization{{else if eq .EntityType "enterprises"}}Enterprise{{end}}
                         </button>
                     </div>
                 </div>
@@ -101,7 +101,7 @@
         <div class="mt-8">
             <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Pools</h3>
             <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-                <div id="{{.EntityType | trimSuffix "s"}}-pools-table" 
+                <div id="{{if eq .EntityType "repositories"}}repository{{else if eq .EntityType "organizations"}}organization{{else if eq .EntityType "enterprises"}}enterprise{{end}}-pools-table" 
                      hx-get="/web/api/{{.EntityType}}/{{.Entity.ID}}/pools" 
                      hx-trigger="load"
                      hx-indicator="#loading">
@@ -114,7 +114,7 @@
         <div class="mt-8">
             <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Instances</h3>
             <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-                <div id="{{.EntityType | trimSuffix "s"}}-instances-table" 
+                <div id="{{if eq .EntityType "repositories"}}repository{{else if eq .EntityType "organizations"}}organization{{else if eq .EntityType "enterprises"}}enterprise{{end}}-instances-table" 
                      hx-get="/web/api/{{.EntityType}}/{{.Entity.ID}}/instances" 
                      hx-trigger="load"
                      hx-indicator="#loading">
@@ -132,7 +132,7 @@
                         <div class="w-2 h-2 bg-gray-400 rounded-full" id="ws-indicator"></div>
                         <span class="text-xs text-gray-500 dark:text-gray-400" id="ws-status-text">Connecting...</span>
                     </div>
-                    <button onclick="refreshEntityEvents('{{.Entity.ID}}'{{if ne .EntityType "repositories"}}, '{{.EntityType | trimSuffix "s"}}'{{end}})" 
+                    <button onclick="refreshEntityEvents('{{.Entity.ID}}'{{if ne .EntityType "repositories"}}, '{{if eq .EntityType "organizations"}}organization{{else if eq .EntityType "enterprises"}}enterprise{{end}}'{{end}})" 
                             class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
                             title="Refresh events">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -142,7 +142,7 @@
                 </div>
             </div>
             <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-                <div id="{{.EntityType | trimSuffix "s"}}-events-{{.Entity.ID}}" 
+                <div id="{{if eq .EntityType "repositories"}}repository{{else if eq .EntityType "organizations"}}organization{{else if eq .EntityType "enterprises"}}enterprise{{end}}-events-{{.Entity.ID}}" 
                      hx-get="/web/api/{{.EntityType}}/{{.Entity.ID}}/events" 
                      hx-trigger="load, refreshEvents, every 5s"
                      hx-indicator="#events-loading"
@@ -184,44 +184,44 @@
             // Check status periodically
             setInterval(updateWebSocketStatus, 1000);
             
-            // Subscribe to {{.EntityType | trimSuffix "s"}} events for real-time updates
+            // Subscribe to {{if eq .EntityType "organizations"}}organization{{else}}enterprise{{end}} events for real-time updates
             if (window.garmWebSocket) {
-                window.garmWebSocket.subscribe('{{.EntityType | trimSuffix "s"}}', '*', function(payload, operation) {
-                    if (payload.id === {{.EntityType | trimSuffix "s"}}Id) {
-                        // Refresh events when {{.EntityType | trimSuffix "s"}} is updated
-                        const eventsEl = document.getElementById('{{.EntityType | trimSuffix "s"}}-events-' + {{.EntityType | trimSuffix "s"}}Id);
+                window.garmWebSocket.subscribe('{{if eq .EntityType "organizations"}}organization{{else}}enterprise{{end}}', '*', function(payload, operation) {
+                    if (payload.id === {{if eq .EntityType "organizations"}}organization{{else}}enterprise{{end}}Id) {
+                        // Refresh events when {{if eq .EntityType "organizations"}}organization{{else}}enterprise{{end}} is updated
+                        const eventsEl = document.getElementById('{{if eq .EntityType "organizations"}}organization{{else}}enterprise{{end}}-events-' + {{if eq .EntityType "organizations"}}organization{{else}}enterprise{{end}}Id);
                         if (eventsEl && eventsEl.isConnected) {
                             try {
                                 htmx.trigger(eventsEl, 'refreshEvents');
                             } catch (error) {
-                                console.error('Error triggering {{.EntityType | trimSuffix "s"}} events refresh:', error);
+                                console.error('Error triggering {{if eq .EntityType "organizations"}}organization{{else}}enterprise{{end}} events refresh:', error);
                             }
                         }
                     }
                 });
                 
-                // Also subscribe to pool and instance events for this {{.EntityType | trimSuffix "s"}}
+                // Also subscribe to pool and instance events for this {{if eq .EntityType "organizations"}}organization{{else}}enterprise{{end}}
                 window.garmWebSocket.subscribe('pool', '*', function(payload, operation) {
-                    if (payload.{{.EntityType | trimSuffix "s"}}_id === {{.EntityType | trimSuffix "s"}}Id) {
-                        const eventsEl = document.getElementById('{{.EntityType | trimSuffix "s"}}-events-' + {{.EntityType | trimSuffix "s"}}Id);
+                    if (payload.{{if eq .EntityType "organizations"}}organization{{else}}enterprise{{end}}_id === {{if eq .EntityType "organizations"}}organization{{else}}enterprise{{end}}Id) {
+                        const eventsEl = document.getElementById('{{if eq .EntityType "organizations"}}organization{{else}}enterprise{{end}}-events-' + {{if eq .EntityType "organizations"}}organization{{else}}enterprise{{end}}Id);
                         if (eventsEl && eventsEl.isConnected) {
                             try {
                                 htmx.trigger(eventsEl, 'refreshEvents');
                             } catch (error) {
-                                console.error('Error triggering pool events refresh for {{.EntityType | trimSuffix "s"}}:', error);
+                                console.error('Error triggering pool events refresh for {{if eq .EntityType "organizations"}}organization{{else}}enterprise{{end}}:', error);
                             }
                         }
                     }
                 });
                 
                 window.garmWebSocket.subscribe('instance', '*', function(payload, operation) {
-                    if (payload.{{.EntityType | trimSuffix "s"}}_id === {{.EntityType | trimSuffix "s"}}Id) {
-                        const eventsEl = document.getElementById('{{.EntityType | trimSuffix "s"}}-events-' + {{.EntityType | trimSuffix "s"}}Id);
+                    if (payload.{{if eq .EntityType "organizations"}}organization{{else}}enterprise{{end}}_id === {{if eq .EntityType "organizations"}}organization{{else}}enterprise{{end}}Id) {
+                        const eventsEl = document.getElementById('{{if eq .EntityType "organizations"}}organization{{else}}enterprise{{end}}-events-' + {{if eq .EntityType "organizations"}}organization{{else}}enterprise{{end}}Id);
                         if (eventsEl && eventsEl.isConnected) {
                             try {
                                 htmx.trigger(eventsEl, 'refreshEvents');
                             } catch (error) {
-                                console.error('Error triggering instance events refresh for {{.EntityType | trimSuffix "s"}}:', error);
+                                console.error('Error triggering instance events refresh for {{if eq .EntityType "organizations"}}organization{{else}}enterprise{{end}}:', error);
                             }
                         }
                     }

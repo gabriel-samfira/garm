@@ -142,7 +142,7 @@ func (h *WebHandler) PoolsAPIHandler(w http.ResponseWriter, r *http.Request) {
 				<td class="px-3 py-4 text-sm font-mono" title="%s">
 					<div class="truncate">
 						<a href="/web/pools/%s/details" 
-								class="text-purple-600 dark:text-purple-400 hover:text-purple-900 dark:hover:text-purple-300 hover:underline">%s</a>
+								class="text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-300 hover:underline">%s</a>
 					</div>
 				</td>
 				<td class="px-3 py-4 text-sm text-gray-900 dark:text-white" title="%s">
@@ -150,7 +150,7 @@ func (h *WebHandler) PoolsAPIHandler(w http.ResponseWriter, r *http.Request) {
 				</td>
 				<td class="px-3 py-4 text-sm">
 					<div class="truncate">
-						<span onclick="alert('Navigate to %s details - not implemented yet')" class="text-purple-600 dark:text-purple-400 hover:text-purple-900 dark:hover:text-purple-300 cursor-pointer">%s</span>
+						<span onclick="alert('Navigate to %s details - not implemented yet')" class="text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-300 cursor-pointer hover:underline">%s</span>
 					</div>
 					<div class="text-xs text-gray-500 dark:text-gray-400 truncate">%s</div>
 				</td>

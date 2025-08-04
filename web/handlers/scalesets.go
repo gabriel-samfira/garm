@@ -151,11 +151,11 @@ func (h *WebHandler) ScaleSetsAPIHandler(w http.ResponseWriter, r *http.Request)
 			<tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
 				<td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
 					<a href="/web/scalesets/%d/details" 
-						class="text-purple-600 dark:text-purple-400 hover:text-purple-900 dark:hover:text-purple-300 hover:underline">%s</a>
+						class="text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-300 hover:underline">%s</a>
 				</td>
 				<td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white" title="%s">%s</td>
 				<td class="px-3 py-4 whitespace-nowrap text-sm">
-					<span onclick="alert('Navigate to %s details - not implemented yet')" class="text-purple-600 dark:text-purple-400 hover:text-purple-900 dark:hover:text-purple-300 cursor-pointer">%s</span>
+					<span onclick="alert('Navigate to %s details - not implemented yet')" class="text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-300 cursor-pointer hover:underline">%s</span>
 					<div class="text-xs text-gray-500 dark:text-gray-400">%s</div>
 				</td>
 				<td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400" title="%s">%s</td>

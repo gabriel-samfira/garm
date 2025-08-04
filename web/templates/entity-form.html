@@ -17,9 +17,9 @@
                     {{if eq .EntityType "enterprises"}}
                         Create enterprise for GitHub Enterprise Server
                     {{else if eq .ForgeType "github"}}
-                        Create {{.EntityType | trimSuffix "s"}} for GitHub or GitHub Enterprise Server
+                        Create {{if eq .EntityType "repositories"}}repository{{else if eq .EntityType "organizations"}}organization{{else if eq .EntityType "enterprises"}}enterprise{{end}} for GitHub or GitHub Enterprise Server
                     {{else if eq .ForgeType "gitea"}}
-                        Create {{.EntityType | trimSuffix "s"}} for self-hosted Gitea instance
+                        Create {{if eq .EntityType "repositories"}}repository{{else if eq .EntityType "organizations"}}organization{{else if eq .EntityType "enterprises"}}enterprise{{end}} for self-hosted Gitea instance
                     {{end}}
                 </p>
                 {{end}}
@@ -172,7 +172,7 @@
                         {{if ne .EntityType "enterprises"}}:disabled="!isFormValid()"
                         :class="isFormValid() ? 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500' : 'bg-gray-400 cursor-not-allowed'"{{else}}class="bg-blue-600 hover:bg-blue-700 focus:ring-blue-500"{{end}}
                         class="px-4 py-2 text-sm font-medium text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 {{if ne .EntityType "enterprises"}}transition-colors{{end}}">
-                    {{if .Entity}}Update {{.EntityType | title | trimSuffix "s"}}{{else}}Create {{.EntityType | title | trimSuffix "s"}}{{end}}
+                    {{if .Entity}}Update {{if eq .EntityType "repositories"}}Repository{{else if eq .EntityType "organizations"}}Organization{{else if eq .EntityType "enterprises"}}Enterprise{{end}}{{else}}Create {{if eq .EntityType "repositories"}}Repository{{else if eq .EntityType "organizations"}}Organization{{else if eq .EntityType "enterprises"}}Enterprise{{end}}{{end}}
                 </button>
             </div>
         </form>

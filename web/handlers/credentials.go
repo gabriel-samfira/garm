@@ -139,22 +139,22 @@ func (h *CredentialsHandler) ListCredentialsHandler(w http.ResponseWriter, r *ht
 			<td class="px-6 py-4 whitespace-nowrap">
 				<div class="text-sm font-medium text-gray-900 dark:text-white">%s</div>
 			</td>
-			<td class="px-6 py-4 whitespace-nowrap">
+			<td class="px-3 py-4 whitespace-nowrap">
 				<div class="text-sm text-gray-900 dark:text-white">%s</div>
 			</td>
-			<td class="px-6 py-4 whitespace-nowrap">
+			<td class="px-3 py-4 whitespace-nowrap">
 				<div class="text-sm text-gray-900 dark:text-white">%s</div>
 			</td>
-			<td class="px-6 py-4 whitespace-nowrap">
+			<td class="px-3 py-4 whitespace-nowrap">
 				<span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full %s">
 					%s
 				</span>
 			</td>
-			<td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-				<div class="flex space-x-2">
+			<td class="px-3 py-4 whitespace-nowrap text-right text-sm font-medium">
+				<div class="flex space-x-2 justify-end">
 					<button hx-get="/web/credentials/%d/edit" 
 							hx-target="#modal-container"
-							class="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 transition-colors">
+							class="text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300 transition-colors">
 						Edit
 					</button>
 					<button hx-delete="/web/api/credentials/%d" 

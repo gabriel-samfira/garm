@@ -1,5 +1,7 @@
 package assets
 
+//go:generate sh -c "cd ../.. && tailwindcss -c web/tailwind.config.js -i web/assets/css/input.css -o web/assets/css/tailwind.min.css --minify"
+
 import (
 	"embed"
 	"net/http"
