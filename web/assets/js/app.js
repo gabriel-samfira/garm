@@ -446,3 +446,61 @@ function logout() {
 }
 
 console.log('GARM Web Interface loaded');
+
+// Delete confirmation functions for unified entity template
+function showDeleteRepositoryConfirm(id, name) {
+    if (confirm(`Are you sure you want to delete the repository "${name}"? This action cannot be undone.`)) {
+        // Use HTMX to make the DELETE request
+        htmx.ajax('DELETE', `/web/api/repositories/${id}`, {
+            target: 'body',
+            swap: 'none',
+            headers: {
+                'HX-Request': 'true'
+            }
+        }).then(() => {
+            showToast('Repository deleted successfully', 'success');
+            // Redirect to repositories list
+            window.location.href = '/web/repositories';
+        }).catch(() => {
+            showToast('Failed to delete repository', 'error');
+        });
+    }
+}
+
+function showDeleteOrganizationConfirm(id, name) {
+    if (confirm(`Are you sure you want to delete the organization "${name}"? This action cannot be undone.`)) {
+        // Use HTMX to make the DELETE request
+        htmx.ajax('DELETE', `/web/api/organizations/${id}`, {
+            target: 'body',
+            swap: 'none',
+            headers: {
+                'HX-Request': 'true'
+            }
+        }).then(() => {
+            showToast('Organization deleted successfully', 'success');
+            // Redirect to organizations list
+            window.location.href = '/web/organizations';
+        }).catch(() => {
+            showToast('Failed to delete organization', 'error');
+        });
+    }
+}
+
+function showDeleteEnterpriseConfirm(id, name) {
+    if (confirm(`Are you sure you want to delete the enterprise "${name}"? This action cannot be undone.`)) {
+        // Use HTMX to make the DELETE request
+        htmx.ajax('DELETE', `/web/api/enterprises/${id}`, {
+            target: 'body',
+            swap: 'none',
+            headers: {
+                'HX-Request': 'true'
+            }
+        }).then(() => {
+            showToast('Enterprise deleted successfully', 'success');
+            // Redirect to enterprises list
+            window.location.href = '/web/enterprises';
+        }).catch(() => {
+            showToast('Failed to delete enterprise', 'error');
+        });
+    }
+}

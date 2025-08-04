@@ -1,0 +1,32 @@
+<tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+    <td class="px-3 py-4 text-sm font-mono" title="{{.ID}}">
+        <div class="truncate">
+            <a href="/web/pools/{{.ID}}/details" 
+                    class="text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-300 hover:underline">{{.ID}}</a>
+        </div>
+    </td>
+    <td class="px-3 py-4 text-sm text-gray-900 dark:text-white" title="{{.Image}}">
+        <div class="truncate">{{.Image}}</div>
+    </td>
+    <td class="px-3 py-4 text-sm">
+        <div class="truncate">
+            <span onclick="alert('Navigate to {{.EntityType}} details - not implemented yet')" class="text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-300 cursor-pointer hover:underline">{{.EntityName}}</span>
+        </div>
+        <div class="text-xs text-gray-500 dark:text-gray-400 truncate">{{.EntityType}}</div>
+    </td>
+    <td class="px-3 py-4 text-sm text-gray-900 dark:text-white" title="{{.EndpointName}}">
+        <div class="flex items-center truncate">
+            {{.ForgeIcon}}<span class="truncate">{{.EndpointName}}</span>
+        </div>
+    </td>
+    <td class="px-3 py-4">
+        <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {{.StatusClass}}">{{.Status}}</span>
+    </td>
+    <td class="px-3 py-4 text-right text-sm font-medium">
+        <button hx-get="/web/pools/{{.ID}}/edit" 
+                hx-target="#modal-container" 
+                class="text-orange-600 dark:text-orange-400 hover:text-orange-900 dark:hover:text-orange-300 mr-1 text-xs">Edit</button>
+        <button onclick="showDeleteConfirm('{{.ID}}', '{{.ID}}')"
+                class="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 text-xs">Delete</button>
+    </td>
+</tr>

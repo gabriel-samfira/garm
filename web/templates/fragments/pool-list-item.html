@@ -1,0 +1,35 @@
+<div class="px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+    <div class="flex items-start justify-between">
+        <div class="flex-1">
+            <div class="flex items-center space-x-2">
+                <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {{.StatusClass}}">
+                    {{.Status}}
+                </span>
+                <span class="text-sm text-gray-500 dark:text-gray-400">{{.Provider}}</span>
+            </div>
+            <p class="mt-1 text-sm text-gray-900 dark:text-white">{{.Image}}</p>
+            <div class="mt-1 flex items-center space-x-4 text-xs text-gray-500 dark:text-gray-400">
+                <span>{{.MaxRunners}} max runners</span>
+                <span>{{.MinIdle}} min idle</span>
+                {{if .Tags}}
+                <span>Tags: {{.Tags}}</span>
+                {{end}}
+            </div>
+        </div>
+        <div class="flex items-center space-x-2">
+            <a href="/web/pools/{{.ID}}/details" 
+               class="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 text-sm">
+                View
+            </a>
+            <button hx-get="/web/pools/{{.ID}}/edit" 
+                    hx-target="#modal-container"
+                    class="text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300 text-sm">
+                Edit
+            </button>
+            <button onclick="showDeletePoolConfirm('{{.ID}}')"
+                    class="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 text-sm">
+                Delete
+            </button>
+        </div>
+    </div>
+</div>

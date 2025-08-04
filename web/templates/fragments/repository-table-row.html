@@ -1,0 +1,32 @@
+<tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+    <td class="px-6 py-4 whitespace-nowrap">
+        <div class="flex items-center">
+            <div>
+                <a href="/web/repositories/{{.ID}}" class="text-sm font-medium text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-300 hover:underline">{{.DisplayName}}</a>
+            </div>
+        </div>
+    </td>
+    <td class="px-3 py-4 whitespace-nowrap">
+        <div class="flex items-center space-x-2">
+            <div class="flex items-center text-gray-600 dark:text-gray-400" title="{{.ForgeType}}">
+                {{.ForgeIcon}}
+            </div>
+            <span class="text-sm text-gray-500 dark:text-gray-400">{{.EndpointName}}</span>
+        </div>
+    </td>
+    <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{{.CredentialsName}}</td>
+    <td class="px-3 py-4 whitespace-nowrap">
+        <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {{.StatusClass}}">{{.Status}}</span>
+    </td>
+    <td class="px-3 py-4 whitespace-nowrap text-right text-sm font-medium">
+        <div class="flex justify-end space-x-2">
+            <button hx-get="/web/repositories/{{.ID}}/edit" 
+                    hx-target="#modal-container" 
+                    class="text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300">Edit</button>
+            <button hx-delete="/web/api/repositories/{{.ID}}" 
+                    hx-target="#repositories-table" 
+                    hx-confirm="Are you sure you want to delete this repository?"
+                    class="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300">Delete</button>
+        </div>
+    </td>
+</tr>

@@ -1,0 +1,15 @@
+<tr>
+    <td colspan="{{.ColSpan}}" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+        <div class="flex flex-col items-center py-8">
+            {{if .Icon}}
+            <svg class="w-12 h-12 text-gray-400 dark:text-gray-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {{.Icon}}
+            </svg>
+            {{end}}
+            <p class="text-sm">{{.Message}}</p>
+            {{if .SubMessage}}
+            <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">{{.SubMessage}}</p>
+            {{end}}
+        </div>
+    </td>
+</tr>

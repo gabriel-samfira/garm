@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"log/slog"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -36,7 +37,15 @@ func (h *WebHandler) InstancesAPIHandler(w http.ResponseWriter, r *http.Request)
 	w.Header().Set("Content-Type", "text/html")
 	
 	if len(instances) == 0 {
-		fmt.Fprintf(w, `<tr><td colspan="6" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No instances found</td></tr>`)
+		emptyData := SimpleEmptyTableRowData{
+			ColSpan:    6,
+			ItemType:   "instances",
+			SearchTerm: "",
+		}
+		if err := h.templates.ExecuteTemplate(w, "simple-empty-table-row.html", emptyData); err != nil {
+			slog.Error("Failed to execute empty table row template", "error", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 		return
 	}
 
@@ -56,35 +65,22 @@ func (h *WebHandler) InstancesAPIHandler(w http.ResponseWriter, r *http.Request)
 			createdTime = instance.CreatedAt.Format("Jan 2, 15:04")
 		}
 
-		fmt.Fprintf(w, `
-			<tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
-				<td class="px-4 py-4 whitespace-nowrap">
-					<div class="flex items-center">
-						<div class="min-w-0 flex-1">
-							<a href="/web/instances/%s/detail" class="text-sm font-medium text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-300 hover:underline">%s</a>
-							<div class="text-sm text-gray-500 dark:text-gray-400 truncate">%s</div>
-						</div>
-					</div>
-				</td>
-				<td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white min-w-0">
-					<div class="truncate">%s</div>
-				</td>
-				<td class="px-3 py-4 whitespace-nowrap w-28 text-sm text-gray-500 dark:text-gray-400">%s</td>
-				<td class="px-3 py-4 whitespace-nowrap w-24">
-					<span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full %s">%s</span>
-				</td>
-				<td class="px-3 py-4 whitespace-nowrap w-32">
-					<span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full %s">%s</span>
-				</td>
-				<td class="px-3 py-4 whitespace-nowrap text-right text-sm font-medium">
-					<button hx-delete="/web/api/instances/%s" 
-							hx-target="#instances-table" 
-							hx-confirm="Are you sure you want to delete this instance?"
-							class="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300">Delete</button>
-				</td>
-			</tr>`,
-			instance.Name, instance.Name, instance.ID, instance.PoolID, createdTime,
-			statusClass, string(instance.Status), runnerStatusClass, string(instance.RunnerStatus), instance.Name)
+		rowData := InstanceRowData{
+			Name:              instance.Name,
+			ID:                instance.ID,
+			PoolID:            instance.PoolID,
+			CreatedTime:       createdTime,
+			Status:            string(instance.Status),
+			StatusClass:       statusClass,
+			RunnerStatus:      string(instance.RunnerStatus),
+			RunnerStatusClass: runnerStatusClass,
+		}
+		
+		if err := h.templates.ExecuteTemplate(w, "instance-table-row.html", rowData); err != nil {
+			slog.Error("Failed to execute instance table row template", "error", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 }
 

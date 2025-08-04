@@ -275,21 +275,97 @@ func (h *AuthHandler) InitHandler(w http.ResponseWriter, r *http.Request) {
 		Enabled:  true,
 	}
 
-	// For now, we'll return success and assume the system can be initialized
-	// This would typically need to be integrated with GARM's actual initialization system
+	ctx := r.Context()
 	slog.Info("System initialization request", "username", newUserParams.Username)
 
-	// For now, we'll return a placeholder response since this is initialization
-	// In production, this would integrate with GARM's actual initialization system
+	// Call the actual InitController function
+	if h.authenticator == nil {
+		slog.Error("Authenticator not available for initialization")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Authentication service not available"})
+		return
+	}
+
+	user, err := h.authenticator.InitController(ctx, newUserParams)
+	if err != nil {
+		slog.ErrorContext(ctx, "Failed to initialize controller", "error", err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to initialize system: " + err.Error()})
+		return
+	}
+
+	slog.Info("System initialized successfully", "username", user.Username, "user_id", user.ID)
+
+	// After successful initialization, log the user in by creating a JWT token
+	// We'll use the same approach as the login handler
+	apiLoginReq := params.PasswordLoginParams{
+		Username: initReq.Username,
+		Password: initReq.Password,
+	}
+
+	apiLoginJSON, err := json.Marshal(apiLoginReq)
+	if err != nil {
+		slog.ErrorContext(ctx, "Failed to marshal API login request after init", "error", err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to complete initialization"})
+		return
+	}
+
+	// Make internal request to the REST API login endpoint
+	resp, err := http.Post("http://localhost:9997/api/v1/auth/login", "application/json", strings.NewReader(string(apiLoginJSON)))
+	if err != nil {
+		slog.ErrorContext(ctx, "Failed to call REST API login after init", "error", err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": "System initialized but login failed"})
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		slog.ErrorContext(ctx, "REST API login failed after init", "status", resp.StatusCode)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": "System initialized but login failed"})
+		return
+	}
+
+	// Parse the REST API response
+	var apiResp params.JWTResponse
+	decoder := json.NewDecoder(resp.Body)
+	if err := decoder.Decode(&apiResp); err != nil {
+		slog.ErrorContext(ctx, "Failed to parse REST API token response after init", "error", err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": "System initialized but login failed"})
+		return
+	}
+
+	tokenString := apiResp.Token
 	expiresAt := time.Now().Add(24 * time.Hour)
 
+	// Set JWT token as HTTP-only cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:     "garm_token",
+		Value:    tokenString,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   r.TLS != nil,
+		SameSite: http.SameSiteLaxMode,
+		Expires:  expiresAt,
+	})
+
 	response := LoginResponse{
-		Token:     "init-placeholder-token",
+		Token:     tokenString,
 		ExpiresAt: expiresAt,
 		User: User{
-			Username: initReq.Username,
-			IsAdmin:  true,
+			Username: user.Username,
+			IsAdmin:  user.IsAdmin,
 		},
+		RedirectURL: "/web/",
 	}
 
 	w.Header().Set("Content-Type", "application/json")

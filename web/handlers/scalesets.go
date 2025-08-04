@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -61,11 +62,12 @@ func (h *WebHandler) ScaleSetsAPIHandler(w http.ResponseWriter, r *http.Request)
 		filteredScaleSets = []params.ScaleSet{}
 		for _, scaleset := range scalesets {
 			entityName := ""
-			if scaleset.RepoName != "" {
+			switch {
+			case scaleset.RepoName != "":
 				entityName = scaleset.RepoName
-			} else if scaleset.OrgName != "" {
+			case scaleset.OrgName != "":
 				entityName = scaleset.OrgName
-			} else if scaleset.EnterpriseName != "" {
+			case scaleset.EnterpriseName != "":
 				entityName = scaleset.EnterpriseName
 			}
 			
@@ -95,10 +97,14 @@ func (h *WebHandler) ScaleSetsAPIHandler(w http.ResponseWriter, r *http.Request)
 	w.Header().Set("Content-Type", "text/html")
 	
 	if len(paginatedScaleSets) == 0 {
-		if search != "" {
-			fmt.Fprintf(w, `<tr><td colspan="7" class="px-3 py-4 text-center text-gray-500 dark:text-gray-400">No scale sets found matching "%s"</td></tr>`, search)
-		} else {
-			fmt.Fprintf(w, `<tr><td colspan="7" class="px-3 py-4 text-center text-gray-500 dark:text-gray-400">No scale sets found</td></tr>`)
+		emptyData := SimpleEmptyTableRowData{
+			ColSpan:    7,
+			ItemType:   "scale sets",
+			SearchTerm: search,
+		}
+		if err := h.templates.ExecuteTemplate(w, "simple-empty-table-row.html", emptyData); err != nil {
+			slog.Error("Failed to execute empty table row template", "error", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 		return
 	}
@@ -119,17 +125,17 @@ func (h *WebHandler) ScaleSetsAPIHandler(w http.ResponseWriter, r *http.Request)
 		// Determine entity type and name
 		entityName := ""
 		entityType := ""
-		if scaleset.RepoName != "" {
+		switch {
+		case scaleset.RepoName != "":
 			entityName = scaleset.RepoName
 			entityType = "repository"
-		} else if scaleset.OrgName != "" {
+		case scaleset.OrgName != "":
 			entityName = scaleset.OrgName
 			entityType = "organization"
-		} else if scaleset.EnterpriseName != "" {
+		case scaleset.EnterpriseName != "":
 			entityName = scaleset.EnterpriseName
 			entityType = "enterprise"
 		}
-
 
 		// Truncate image name if too long
 		displayImage := scaleset.Image
@@ -147,40 +153,32 @@ func (h *WebHandler) ScaleSetsAPIHandler(w http.ResponseWriter, r *http.Request)
 		// Count instances
 		instanceCount := len(scaleset.Instances)
 
-		fmt.Fprintf(w, `
-			<tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
-				<td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-					<a href="/web/scalesets/%d/details" 
-						class="text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-300 hover:underline">%s</a>
-				</td>
-				<td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white" title="%s">%s</td>
-				<td class="px-3 py-4 whitespace-nowrap text-sm">
-					<span onclick="alert('Navigate to %s details - not implemented yet')" class="text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-300 cursor-pointer hover:underline">%s</span>
-					<div class="text-xs text-gray-500 dark:text-gray-400">%s</div>
-				</td>
-				<td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400" title="%s">%s</td>
-				<td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">%d</td>
-				<td class="px-3 py-4 whitespace-nowrap">
-					<span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full %s">%s</span>
-				</td>
-				<td class="px-3 py-4 whitespace-nowrap text-right text-sm font-medium">
-					<button hx-get="/web/scalesets/%d/edit" 
-							hx-target="#modal-container" 
-							class="text-orange-600 dark:text-orange-400 hover:text-orange-900 dark:hover:text-orange-300 mr-2">Edit</button>
-					<button onclick="showDeleteScaleSetConfirm('%d', '%s')"
-							class="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300">Delete</button>
-				</td>
-			</tr>`,
-			scaleset.ID, scaleset.Name, imageTitle, displayImage, 
-			entityType, entityName, entityType, 
-			scaleset.ProviderName, providerName, instanceCount,
-			statusClass, status, 
-			scaleset.ID, scaleset.ID, scaleset.Name)
+		rowData := ScaleSetRowData{
+			ID:            scaleset.ID,
+			Name:          scaleset.Name,
+			Image:         displayImage,
+			ImageTitle:    imageTitle,
+			EntityType:    entityType,
+			EntityName:    entityName,
+			ProviderName:  providerName,
+			InstanceCount: instanceCount,
+			Status:        status,
+			StatusClass:   statusClass,
+		}
+		
+		if err := h.templates.ExecuteTemplate(w, "scaleset-table-row.html", rowData); err != nil {
+			slog.Error("Failed to execute scaleset table row template", "error", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 	
 	// Add a data attribute to help with pagination detection
 	if hasMorePages {
-		fmt.Fprintf(w, `<tr style="display:none" data-has-more="true"></tr>`)
+		if err := h.templates.ExecuteTemplate(w, "pagination-marker.html", nil); err != nil {
+			slog.Error("Failed to execute pagination marker template", "error", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	}
 }
 

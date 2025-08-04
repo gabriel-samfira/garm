@@ -1,0 +1,23 @@
+<tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+    <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+        <a href="/web/scalesets/{{.ID}}/details" 
+            class="text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-300 hover:underline">{{.Name}}</a>
+    </td>
+    <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white" title="{{.ImageTitle}}">{{.Image}}</td>
+    <td class="px-3 py-4 whitespace-nowrap text-sm">
+        <span onclick="alert('Navigate to {{.EntityType}} details - not implemented yet')" class="text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-300 cursor-pointer hover:underline">{{.EntityName}}</span>
+        <div class="text-xs text-gray-500 dark:text-gray-400">{{.EntityType}}</div>
+    </td>
+    <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400" title="{{.ProviderName}}">{{.ProviderName}}</td>
+    <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{{.InstanceCount}}</td>
+    <td class="px-3 py-4 whitespace-nowrap">
+        <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {{.StatusClass}}">{{.Status}}</span>
+    </td>
+    <td class="px-3 py-4 whitespace-nowrap text-right text-sm font-medium">
+        <button hx-get="/web/scalesets/{{.ID}}/edit" 
+                hx-target="#modal-container" 
+                class="text-orange-600 dark:text-orange-400 hover:text-orange-900 dark:hover:text-orange-300 mr-2">Edit</button>
+        <button onclick="showDeleteScaleSetConfirm('{{.ID}}', '{{.Name}}')"
+                class="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300">Delete</button>
+    </td>
+</tr>

@@ -237,9 +237,10 @@ func (h *WebHandler) GenericEntityNewFormHandler(entityType string) http.Handler
 		if forgeType == "" {
 			// Show forge selector template based on entity type
 			templateName := entityType + "-forge-selector.html"
-			if entityType == "repositories" {
+			switch entityType {
+			case "repositories":
 				templateName = "repository-forge-selector.html"
-			} else if entityType == "organizations" {
+			case "organizations":
 				templateName = "organization-forge-selector.html"
 			}
 			
@@ -253,10 +254,10 @@ func (h *WebHandler) GenericEntityNewFormHandler(entityType string) http.Handler
 		var credentials []params.ForgeCredentials
 		var err error
 
-		switch forgeType {
-		case "github":
+		switch params.EndpointType(forgeType) {
+		case params.GithubEndpointType:
 			credentials, err = h.runner.ListCredentials(ctx)
-		case "gitea":
+		case params.GiteaEndpointType:
 			credentials, err = h.runner.ListGiteaCredentials(ctx)
 		default:
 			http.Error(w, "Invalid forge type", http.StatusBadRequest)
@@ -316,7 +317,7 @@ func (h *WebHandler) GenericEntityEditFormHandler(entityType string) http.Handle
 				return
 			}
 			entity = enterprise
-			forgeType = "github" // Enterprises are always GitHub
+			forgeType = string(params.GithubEndpointType) // Enterprises are always GitHub
 		default:
 			http.Error(w, "Unsupported entity type", http.StatusBadRequest)
 			return
@@ -324,10 +325,10 @@ func (h *WebHandler) GenericEntityEditFormHandler(entityType string) http.Handle
 
 		// Get credentials based on forge type
 		var credentials []params.ForgeCredentials
-		switch forgeType {
-		case "github":
+		switch params.EndpointType(forgeType) {
+		case params.GithubEndpointType:
 			credentials, err = h.runner.ListCredentials(ctx)
-		case "gitea":
+		case params.GiteaEndpointType:
 			credentials, err = h.runner.ListGiteaCredentials(ctx)
 		default:
 			http.Error(w, "Invalid forge type", http.StatusInternalServerError)

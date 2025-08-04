@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-//go:embed *.html
+//go:embed *.html fragments/*.html
 var EmbeddedTemplates embed.FS
 
 // Template functions available in templates
@@ -25,5 +25,5 @@ var templateFuncs = template.FuncMap{
 // GetTemplates loads and returns all embedded HTML templates
 func GetTemplates() (*template.Template, error) {
 	tmpl := template.New("").Funcs(templateFuncs)
-	return tmpl.ParseFS(EmbeddedTemplates, "*.html")
+	return tmpl.ParseFS(EmbeddedTemplates, "*.html", "fragments/*.html")
 }
