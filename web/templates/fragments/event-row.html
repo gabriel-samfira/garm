@@ -1,0 +1,13 @@
+<div class="px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+    <div class="flex items-start justify-between">
+        <div class="flex-1">
+            <div class="flex items-center space-x-2">
+                <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {{.LevelClass}}">
+                    {{.Level}}
+                </span>
+                <span class="text-sm text-gray-500 dark:text-gray-400">{{.Timestamp}}</span>
+            </div>
+            <p class="mt-1 text-sm text-gray-900 dark:text-white">{{.Message}}</p>
+        </div>
+    </div>
+</div>

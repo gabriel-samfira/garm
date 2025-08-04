@@ -114,7 +114,14 @@ func (h *WebHandler) InstanceDetailHandler(w http.ResponseWriter, r *http.Reques
 
 	instance, err := h.runner.GetInstance(ctx, instanceName)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		// If this is an HTMX request (auto-refresh), redirect to instances page
+		if r.Header.Get("HX-Request") == "true" {
+			w.Header().Set("HX-Redirect", "/web/instances")
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		// For regular requests, redirect normally
+		http.Redirect(w, r, "/web/instances", http.StatusFound)
 		return
 	}
 
@@ -158,9 +165,18 @@ func (h *WebHandler) InstanceDetailHandler(w http.ResponseWriter, r *http.Reques
 		ReturnLabel:  returnLabel,
 	}
 
-	if err := h.templates.ExecuteTemplate(w, "base.html", data); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	// For HTMX requests (auto-refresh), return just the content template
+	if r.Header.Get("HX-Request") == "true" {
+		if err := h.templates.ExecuteTemplate(w, "instance-detail-content", data); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	} else {
+		// For regular requests, return the full page
+		if err := h.templates.ExecuteTemplate(w, "base.html", data); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 }
 
@@ -175,22 +191,19 @@ func (h *WebHandler) DeleteInstanceHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	h.InstancesAPIHandler(w, r)
+	// For HTMX requests, redirect to instances page
+	if r.Header.Get("HX-Request") == "true" {
+		w.Header().Set("HX-Redirect", "/web/instances")
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	
+	// For regular requests, redirect normally
+	http.Redirect(w, r, "/web/instances", http.StatusFound)
 }
 
 func (h *WebHandler) getInstanceStatusClass(status commonParams.InstanceStatus) string {
-	switch status {
-	case "running":
-		return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-	case "pending":
-		return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
-	case "stopped", "terminated":
-		return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
-	case "stopping":
-		return "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200"
-	default:
-		return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200"
-	}
+	return GetInstanceStatusClass(status)
 }
 
 func (h *WebHandler) getRunnerStatusClass(status params.RunnerStatus) string {

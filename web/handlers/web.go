@@ -335,15 +335,14 @@ func (h *WebHandler) RepositoryEventsAPIHandler(w http.ResponseWriter, r *http.R
 	w.Header().Set("Content-Type", "text/html")
 
 	if len(repo.Events) == 0 {
-		w.Write([]byte(`
-			<div class="px-4 py-8 text-center">
-				<svg class="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-				</svg>
-				<p class="text-sm text-gray-500 dark:text-gray-400">No events found for this repository.</p>
-				<p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Events will appear here as they occur.</p>
-			</div>
-		`))
+		emptyData := EmptyEventsData{
+			Message:    "No events found for this repository.",
+			SubMessage: "Events will appear here as they occur.",
+		}
+		if err := h.templates.ExecuteTemplate(w, "empty-events-section.html", emptyData); err != nil {
+			slog.Error("Failed to execute empty events template", "error", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 		return
 	}
 
@@ -356,46 +355,48 @@ func (h *WebHandler) RepositoryEventsAPIHandler(w http.ResponseWriter, r *http.R
 		events[i], events[len(events)-1-i] = events[len(events)-1-i], events[i]
 	}
 
-	w.Write([]byte(`<div class="divide-y divide-gray-200 dark:divide-gray-700 max-h-96 overflow-y-auto">`))
+	if err := h.templates.ExecuteTemplate(w, "events-container-header.html", nil); err != nil {
+		slog.Error("Failed to execute events container header template", "error", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	for _, event := range events {
-		levelClass := "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
-		eventLevel := string(event.EventLevel)
-		switch strings.ToLower(eventLevel) {
-		case "info":
-			levelClass = "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-		case "warning":
-			levelClass = "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
-		case "error":
-			levelClass = "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+		levelClass := EventLevelDefaultCSS
+		switch event.EventLevel {
+		case params.EventInfo:
+			levelClass = EventLevelInfoCSS
+		case params.EventWarning:
+			levelClass = EventLevelWarningCSS
+		case params.EventError:
+			levelClass = EventLevelErrorCSS
 		}
 
 		// Capitalize first letter of event level
+		eventLevel := string(event.EventLevel)
 		displayLevel := eventLevel
 		if len(displayLevel) > 0 {
 			displayLevel = strings.ToUpper(displayLevel[:1]) + strings.ToLower(displayLevel[1:])
 		}
 
-		html := fmt.Sprintf(`
-			<div class="px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-				<div class="flex items-start justify-between">
-					<div class="flex-1">
-						<div class="flex items-center space-x-2">
-							<span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full %s">
-								%s
-							</span>
-							<span class="text-sm text-gray-500 dark:text-gray-400">%s</span>
-						</div>
-						<p class="mt-1 text-sm text-gray-900 dark:text-white">%s</p>
-					</div>
-				</div>
-			</div>
-		`, levelClass, displayLevel, event.CreatedAt.Format("Jan 2, 15:04:05"), event.Message)
-
-		w.Write([]byte(html))
+		eventRowData := EventRowData{
+			Level:      displayLevel,
+			LevelClass: levelClass,
+			Message:    event.Message,
+			Timestamp:  event.CreatedAt.Format("Jan 2, 15:04:05"),
+		}
+		
+		if err := h.templates.ExecuteTemplate(w, "event-row.html", eventRowData); err != nil {
+			slog.Error("Failed to execute event row template", "error", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 
-	w.Write([]byte(`</div>`))
+	if err := h.templates.ExecuteTemplate(w, "events-container-footer.html", nil); err != nil {
+		slog.Error("Failed to execute events container footer template", "error", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 func (h *WebHandler) UpdateRepositoryHandler(w http.ResponseWriter, r *http.Request) {
@@ -460,23 +461,21 @@ func (h *WebHandler) RepositoryPoolsAPIHandler(w http.ResponseWriter, r *http.Re
 	w.Header().Set("Content-Type", "text/html")
 
 	if len(pools) == 0 {
-		fmt.Fprintf(w, `<div class="px-4 py-8 text-center">
-			<p class="text-sm text-gray-500 dark:text-gray-400">No pools found for this repository.</p>
-		</div>`)
+		emptyData := EmptyContentSectionData{
+			Message: "No pools found for this repository.",
+		}
+		if err := h.templates.ExecuteTemplate(w, "empty-content-section.html", emptyData); err != nil {
+			slog.Error("Failed to execute empty content template", "error", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 		return
 	}
 
-	fmt.Fprintf(w, `<div class="w-full">
-		<table class="w-full table-fixed divide-y divide-gray-200 dark:divide-gray-700">
-			<thead class="bg-gray-50 dark:bg-gray-700">
-				<tr>
-					<th class="w-1/3 px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Pool ID</th>
-					<th class="w-1/3 px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Image</th>
-					<th class="w-20 px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Provider</th>
-					<th class="w-16 px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
-				</tr>
-			</thead>
-			<tbody class="divide-y divide-gray-200 dark:divide-gray-700">`)
+	if err := h.templates.ExecuteTemplate(w, "pools-table-header.html", nil); err != nil {
+		slog.Error("Failed to execute pools table header template", "error", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	for _, pool := range pools {
 		status := "disabled"
@@ -486,31 +485,26 @@ func (h *WebHandler) RepositoryPoolsAPIHandler(w http.ResponseWriter, r *http.Re
 			statusClass = "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200"
 		}
 
-		fmt.Fprintf(w, `
-			<tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
-				<td class="px-3 py-4 text-sm font-mono" title="%s">
-					<div class="truncate">
-						<a href="/web/pools/%s/details?from=repository&entity_id=%s" 
-								class="text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-300 hover:underline">%s</a>
-					</div>
-				</td>
-				<td class="px-3 py-4 text-sm text-gray-900 dark:text-white" title="%s">
-					<div class="truncate">%s</div>
-				</td>
-				<td class="px-3 py-4 text-sm text-gray-900 dark:text-white">
-					<div class="truncate">%s</div>
-				</td>
-				<td class="px-3 py-4">
-					<span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full %s">%s</span>
-				</td>
-			</tr>`,
-			pool.ID, pool.ID, repoID, pool.ID, pool.Image, pool.Image, pool.ProviderName, statusClass, status)
+		rowData := RepositoryPoolRowData{
+			ID:           pool.ID,
+			EntityID:     repoID,
+			Image:        pool.Image,
+			ProviderName: pool.ProviderName,
+			Status:       status,
+			StatusClass:  statusClass,
+		}
+		
+		if err := h.templates.ExecuteTemplate(w, "repository-pool-table-row.html", rowData); err != nil {
+			slog.Error("Failed to execute repository pool table row template", "error", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 
-	fmt.Fprintf(w, `
-			</tbody>
-		</table>
-	</div>`)
+	if err := h.templates.ExecuteTemplate(w, "pools-table-footer.html", nil); err != nil {
+		slog.Error("Failed to execute pools table footer template", "error", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 func (h *WebHandler) RepositoryInstancesAPIHandler(w http.ResponseWriter, r *http.Request) {
@@ -527,85 +521,56 @@ func (h *WebHandler) RepositoryInstancesAPIHandler(w http.ResponseWriter, r *htt
 	w.Header().Set("Content-Type", "text/html")
 
 	if len(instances) == 0 {
-		fmt.Fprintf(w, `<div class="px-4 py-8 text-center">
-			<p class="text-sm text-gray-500 dark:text-gray-400">No instances found for this repository.</p>
-		</div>`)
+		emptyData := EmptyContentSectionData{
+			Message: "No instances found for this repository.",
+		}
+		if err := h.templates.ExecuteTemplate(w, "empty-content-section.html", emptyData); err != nil {
+			slog.Error("Failed to execute empty content template", "error", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 		return
 	}
 
-	fmt.Fprintf(w, `<div class="overflow-x-auto">
-		<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-			<thead class="bg-gray-50 dark:bg-gray-700">
-				<tr>
-					<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Name</th>
-					<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Created</th>
-					<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
-					<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Runner Status</th>
-				</tr>
-			</thead>
-			<tbody class="divide-y divide-gray-200 dark:divide-gray-700">`)
+	if err := h.templates.ExecuteTemplate(w, "instances-table-header.html", nil); err != nil {
+		slog.Error("Failed to execute instances table header template", "error", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	for _, instance := range instances {
 		status := string(instance.Status)
-		statusClass := "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200"
+		statusClass := GetInstanceStatusClass(instance.Status)
 
-		switch status {
-		case "running":
-			statusClass = "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200"
-		case "stopped", "error":
-			statusClass = "bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200"
-		case "pending":
-			statusClass = "bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200"
+		rowData := RepositoryInstanceRowData{
+			Name:         instance.Name,
+			EntityID:     repoID,
+			CreatedTime:  instance.CreatedAt.Format("Jan 2, 15:04"),
+			Status:       status,
+			StatusClass:  statusClass,
+			RunnerStatus: string(instance.RunnerStatus),
 		}
-
-		fmt.Fprintf(w, `
-			<tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
-				<td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-					<a href="/web/instances/%s/detail?from=repository&entity_id=%s" 
-					   class="text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-300 hover:underline">
-						%s
-					</a>
-				</td>
-				<td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">%s</td>
-				<td class="px-3 py-4 whitespace-nowrap">
-					<span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full %s">%s</span>
-				</td>
-				<td class="px-3 py-4 whitespace-nowrap">
-					<span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">%s</span>
-				</td>
-			</tr>`,
-			instance.Name, repoID, instance.Name, instance.CreatedAt.Format("Jan 2, 15:04"), statusClass, status, string(instance.RunnerStatus))
+		
+		if err := h.templates.ExecuteTemplate(w, "repository-instance-table-row.html", rowData); err != nil {
+			slog.Error("Failed to execute repository instance table row template", "error", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 
-	fmt.Fprintf(w, `
-			</tbody>
-		</table>
-	</div>`)
+	if err := h.templates.ExecuteTemplate(w, "instances-table-footer.html", nil); err != nil {
+		slog.Error("Failed to execute instances table footer template", "error", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 func (h *WebHandler) RecentActivityHandler(w http.ResponseWriter, r *http.Request) {
 	// This would typically fetch from a database of recent events
 	// For now, we'll return a placeholder
 	w.Header().Set("Content-Type", "text/html")
-	fmt.Fprintf(w, `
-		<div class="space-y-3">
-			<div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-				<div class="w-2 h-2 bg-green-500 rounded-full"></div>
-				<span class="text-sm text-gray-600">Repository example/repo was updated</span>
-				<span class="text-xs text-gray-400">2 minutes ago</span>
-			</div>
-			<div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-				<div class="w-2 h-2 bg-blue-500 rounded-full"></div>
-				<span class="text-sm text-gray-600">New runner instance started</span>
-				<span class="text-xs text-gray-400">5 minutes ago</span>
-			</div>
-			<div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-				<div class="w-2 h-2 bg-yellow-500 rounded-full"></div>
-				<span class="text-sm text-gray-600">Pool "ubuntu-20.04" scaling up</span>
-				<span class="text-xs text-gray-400">10 minutes ago</span>
-			</div>
-		</div>
-	`)
+	if err := h.templates.ExecuteTemplate(w, "recent-activity-placeholder.html", nil); err != nil {
+		slog.Error("Failed to execute recent activity template", "error", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 // HandleMethodOverride handles method override for forms
