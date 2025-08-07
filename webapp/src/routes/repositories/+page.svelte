@@ -4,6 +4,8 @@
 	import type { Repository, ForgeCredentials, CreateRepoParams, UpdateEntityParams } from '$lib/api/types.js';
 	import { base } from '$app/paths';
 	import CreateRepositoryModal from '$lib/components/CreateRepositoryModal.svelte';
+	import UpdateEntityModal from '$lib/components/UpdateEntityModal.svelte';
+	import DeleteModal from '$lib/components/DeleteModal.svelte';
 	import { websocketStore, type WebSocketEvent } from '$lib/stores/websocket.js';
 
 	let repositories: Repository[] = [];
@@ -22,12 +24,6 @@
 	let unsubscribeWebsocket: (() => void) | null = null;
 
 
-	let updateFormData: UpdateEntityParams & { change_webhook_secret?: boolean } = {
-		credentials_name: '',
-		webhook_secret: '',
-		pool_balancer_type: '',
-		change_webhook_secret: false
-	};
 
 	// Pagination
 	let currentPage = 1;
@@ -105,31 +101,8 @@
 		}
 	}
 
-	async function showEditRepositoryModal(repository: Repository) {
+	function showEditRepositoryModal(repository: Repository) {
 		editingRepository = repository;
-		updateFormData = {
-			credentials_name: repository.credentials_name || '',
-			webhook_secret: '',
-			pool_balancer_type: repository.pool_balancing_type || 'roundrobin',
-			change_webhook_secret: false
-		};
-		
-		// Load credentials for this repository's forge type
-		const forgeType = repository.endpoint.endpoint_type;
-		try {
-			credentialsLoading = true;
-			if (forgeType === 'github') {
-				credentials = await garmApi.listGithubCredentials();
-			} else {
-				credentials = await garmApi.listGiteaCredentials();
-			}
-		} catch (err) {
-			console.error('Error loading credentials:', err);
-			credentials = [];
-		} finally {
-			credentialsLoading = false;
-		}
-		
 		showEditModal = true;
 	}
 
@@ -179,31 +152,15 @@
 		}
 	}
 
-	async function handleUpdateRepository() {
+	async function handleUpdateRepository(params: UpdateEntityParams) {
 		if (!editingRepository) return;
 		
 		try {
-			error = '';
-			
-			const updateParams: UpdateEntityParams = {};
-			
-			if (updateFormData.credentials_name !== editingRepository.credentials_name) {
-				updateParams.credentials_name = updateFormData.credentials_name;
-			}
-			
-			if (updateFormData.pool_balancer_type !== editingRepository.pool_balancing_type) {
-				updateParams.pool_balancer_type = updateFormData.pool_balancer_type;
-			}'Screenshot from 2025-08-07 02-30-06-1.png'
-			
-			if (updateFormData.change_webhook_secret && updateFormData.webhook_secret) {
-				updateParams.webhook_secret = updateFormData.webhook_secret;
-			}
-
-			await garmApi.updateRepository(editingRepository.id, updateParams);
+			await garmApi.updateRepository(editingRepository.id, params);
 			// No need to reload - websocket will handle the update
 			closeModals();
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to update repository';
+			throw err; // Let the modal handle the error
 		}
 	}
 
@@ -523,165 +480,21 @@
 	/>
 {/if}
 
-<!-- Edit Repository Modal -->
 {#if showEditModal && editingRepository}
-	<div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" on:click={closeModals}>
-		<div class="relative top-20 mx-auto p-5 border w-11/12 max-w-md shadow-lg rounded-md bg-white dark:bg-gray-800" on:click|stopPropagation>
-			<div class="mt-3">
-				<h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Edit Repository</h3>
-				
-				<form on:submit|preventDefault={handleUpdateRepository} class="space-y-4">
-					{#if error}
-						<div class="rounded-md bg-red-50 dark:bg-red-900 p-4">
-							<div class="flex">
-								<div class="flex-shrink-0">
-									<svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-										<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
-									</svg>
-								</div>
-								<div class="ml-3">
-									<p class="text-sm text-red-800 dark:text-red-200">{error}</p>
-								</div>
-							</div>
-						</div>
-					{/if}
-
-					<div>
-						<label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Repository</label>
-						<div class="mt-1 text-sm text-gray-900 dark:text-white">
-							{editingRepository.owner}/{editingRepository.name}
-						</div>
-					</div>
-
-					<div>
-						<label for="edit-credentials" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Credentials</label>
-						<select
-							id="edit-credentials"
-							bind:value={updateFormData.credentials_name}
-							class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:text-white sm:text-sm"
-						>
-							{#each credentials as credential}
-								<option value={credential.name}>
-									{credential.name} ({credential.endpoint?.name || credential.endpoint_name || 'Unknown'})
-								</option>
-							{/each}
-						</select>
-					</div>
-
-					<div>
-						<label for="edit-pool-balancer" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Pool Balancer Type</label>
-						<select
-							id="edit-pool-balancer"
-							bind:value={updateFormData.pool_balancer_type}
-							class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:text-white sm:text-sm"
-						>
-							<option value="roundrobin">Round Robin</option>
-							<option value="pack">Pack</option>
-						</select>
-					</div>
-
-					<div class="space-y-3">
-						<div class="flex items-center">
-							<input
-								id="change-webhook-secret"
-								type="checkbox"
-								bind:checked={updateFormData.change_webhook_secret}
-								class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700"
-							/>
-							<label for="change-webhook-secret" class="ml-2 block text-sm text-gray-900 dark:text-white">
-								I want to change the webhook secret
-							</label>
-						</div>
-
-						{#if updateFormData.change_webhook_secret}
-							<div>
-								<label for="edit-webhook-secret" class="block text-sm font-medium text-gray-700 dark:text-gray-300">New Webhook Secret</label>
-								<input
-									id="edit-webhook-secret"
-									type="password"
-									bind:value={updateFormData.webhook_secret}
-									required={updateFormData.change_webhook_secret}
-									class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm"
-									placeholder="Enter new webhook secret"
-								/>
-							</div>
-						{/if}
-					</div>
-
-					<div class="flex justify-end space-x-3 pt-4">
-						<button
-							type="button"
-							class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-							on:click={closeModals}
-						>
-							Cancel
-						</button>
-						<button
-							type="submit"
-							disabled={updateFormData.change_webhook_secret && !updateFormData.webhook_secret}
-							class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-						>
-							Update Repository
-						</button>
-					</div>
-				</form>
-			</div>
-		</div>
-	</div>
+	<UpdateEntityModal
+		entity={editingRepository}
+		entityType="repository"
+		on:close={closeModals}
+		on:submit={(e) => handleUpdateRepository(e.detail)}
+	/>
 {/if}
 
-<!-- Delete Repository Modal -->
 {#if showDeleteModal && deletingRepository}
-	<div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" on:click={closeModals}>
-		<div class="relative top-20 mx-auto p-5 border w-11/12 max-w-md shadow-lg rounded-md bg-white dark:bg-gray-800" on:click|stopPropagation>
-			<div class="mt-3">
-				<div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900">
-					<svg class="h-6 w-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
-					</svg>
-				</div>
-				<div class="mt-3 text-center sm:mt-5">
-					<h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">Delete Repository</h3>
-					<div class="mt-2">
-						<p class="text-sm text-gray-500 dark:text-gray-400">
-							Are you sure you want to delete <strong>{deletingRepository.owner}/{deletingRepository.name}</strong>? 
-							This action cannot be undone and will remove all associated pools and runners.
-						</p>
-					</div>
-				</div>
-			</div>
-
-			{#if error}
-				<div class="mt-4 rounded-md bg-red-50 dark:bg-red-900 p-4">
-					<div class="flex">
-						<div class="flex-shrink-0">
-							<svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-								<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
-							</svg>
-						</div>
-						<div class="ml-3">
-							<p class="text-sm text-red-800 dark:text-red-200">{error}</p>
-						</div>
-					</div>
-				</div>
-			{/if}
-
-			<div class="mt-5 sm:mt-6 flex justify-end space-x-3">
-				<button
-					type="button"
-					class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-					on:click={closeModals}
-				>
-					Cancel
-				</button>
-				<button
-					type="button"
-					class="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-					on:click={handleDeleteRepository}
-				>
-					Delete Repository
-				</button>
-			</div>
-		</div>
-	</div>
+	<DeleteModal
+		title="Delete Repository"
+		message="Are you sure you want to delete this repository? This action cannot be undone and will remove all associated pools and runners."
+		itemName="{deletingRepository.owner}/{deletingRepository.name}"
+		on:close={closeModals}
+		on:confirm={handleDeleteRepository}
+	/>
 {/if}

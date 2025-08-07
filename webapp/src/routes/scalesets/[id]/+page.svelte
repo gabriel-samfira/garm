@@ -237,6 +237,14 @@
 								</div>
 							</dd>
 						</div>
+						<div>
+							<dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Created At</dt>
+							<dd class="mt-1 text-sm text-gray-900 dark:text-white">{formatDate(scaleSet.created_at)}</dd>
+						</div>
+						<div>
+							<dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Updated At</dt>
+							<dd class="mt-1 text-sm text-gray-900 dark:text-white">{formatDate(scaleSet.updated_at)}</dd>
+						</div>
 					</dl>
 				</div>
 			</div>
@@ -276,26 +284,25 @@
 								<dd class="mt-1 text-sm text-gray-900 dark:text-white">{scaleSet.github_runner_group}</dd>
 							</div>
 						{/if}
+						{#if scaleSet.tags && scaleSet.tags.length > 0}
+							<div>
+								<dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Tags</dt>
+								<dd class="mt-1">
+									<div class="flex flex-wrap gap-2">
+										{#each scaleSet.tags as tag}
+											<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
+												{typeof tag === 'string' ? tag : tag.name}
+											</span>
+										{/each}
+									</div>
+								</dd>
+							</div>
+						{/if}
 					</dl>
 				</div>
 			</div>
 		</div>
 
-		<!-- Tags -->
-		{#if scaleSet.tags && scaleSet.tags.length > 0}
-			<div class="bg-white dark:bg-gray-800 shadow rounded-lg">
-				<div class="px-4 py-5 sm:p-6">
-					<h2 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Tags</h2>
-					<div class="flex flex-wrap gap-2">
-						{#each scaleSet.tags as tag}
-							<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
-								{typeof tag === 'string' ? tag : tag.name}
-							</span>
-						{/each}
-					</div>
-				</div>
-			</div>
-		{/if}
 
 		<!-- Extra Specs -->
 		{#if scaleSet.extra_specs}
@@ -307,22 +314,6 @@
 			</div>
 		{/if}
 
-		<!-- Timestamps -->
-		<div class="bg-white dark:bg-gray-800 shadow rounded-lg">
-			<div class="px-4 py-5 sm:p-6">
-				<h2 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Timestamps</h2>
-				<dl class="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
-					<div>
-						<dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Created At</dt>
-						<dd class="mt-1 text-sm text-gray-900 dark:text-white">{formatDate(scaleSet.created_at)}</dd>
-					</div>
-					<div>
-						<dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Updated At</dt>
-						<dd class="mt-1 text-sm text-gray-900 dark:text-white">{formatDate(scaleSet.updated_at)}</dd>
-					</div>
-				</dl>
-			</div>
-		</div>
 	{/if}
 </div>
 

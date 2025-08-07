@@ -4,7 +4,7 @@
 	import type { Organization, CreateOrgParams, UpdateEntityParams, Endpoint, Credential } from '$lib/api/types.js';
 	import { base } from '$app/paths';
 	import CreateOrganizationModal from '$lib/components/CreateOrganizationModal.svelte';
-	import UpdateOrganizationModal from '$lib/components/UpdateOrganizationModal.svelte';
+	import UpdateEntityModal from '$lib/components/UpdateEntityModal.svelte';
 	import DeleteModal from '$lib/components/DeleteModal.svelte';
 	import { websocketStore, type WebSocketEvent } from '$lib/stores/websocket.js';
 
@@ -381,8 +381,9 @@
 {/if}
 
 {#if showUpdateModal && selectedOrganization}
-	<UpdateOrganizationModal
-		organization={selectedOrganization}
+	<UpdateEntityModal
+		entity={selectedOrganization}
+		entityType="organization"
 		on:close={() => { showUpdateModal = false; selectedOrganization = null; }}
 		on:submit={(e) => handleUpdateOrganization(e.detail)}
 	/>

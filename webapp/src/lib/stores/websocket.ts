@@ -56,11 +56,8 @@ function createWebSocketStore() {
 	let reconnectInterval = 1000; // Current interval
 	let maxReconnectInterval = 30000; // Max 30 seconds
 	let reconnectTimeout: number | null = null;
-	let pingInterval: number | null = null;
-	let healthCheckInterval: number | null = null;
 	let currentFilters: EventFilter[] = [];
 	let manuallyDisconnected = false;
-	let lastPongReceived = Date.now();
 
 	// Event callbacks organized by entity type
 	const eventCallbacks = new Map<EntityType, ((event: WebSocketEvent) => void)[]>();
@@ -99,7 +96,6 @@ function createWebSocketStore() {
 				console.log('[WebSocket] Connected to events endpoint');
 				reconnectAttempts = 0;
 				reconnectInterval = baseReconnectInterval;
-				lastPongReceived = Date.now();
 				
 				update(state => ({ ...state, connected: true, connecting: false, error: null }));
 
@@ -108,22 +104,14 @@ function createWebSocketStore() {
 					sendFilters(currentFilters);
 				}
 
-				// Setup ping to keep connection alive
+				// Setup heartbeat (currently no-op, but ready for future use)
 				startHeartbeat();
 			};
 
 			ws.onmessage = (event) => {
 				try {
 					const data = JSON.parse(event.data);
-					
-					// Handle pong responses
-					if (data.type === 'pong' || data.type === 'ping') {
-						lastPongReceived = Date.now();
-						return;
-					}
-
 					console.log('[WebSocket] Received event:', data);
-					lastPongReceived = Date.now(); // Any message counts as activity
 
 					// Update the store with the last event
 					update(state => ({ ...state, lastEvent: data }));
@@ -198,51 +186,16 @@ function createWebSocketStore() {
 		// Clear any existing intervals
 		cleanup();
 
-		// Setup ping to keep connection alive and detect dead connections
-		pingInterval = window.setInterval(() => {
-			if (ws && ws.readyState === WebSocket.OPEN) {
-				// Check if we received a pong recently
-				const timeSinceLastPong = Date.now() - lastPongReceived;
-				if (timeSinceLastPong > 90000) { // No pong for 90 seconds
-					console.log('[WebSocket] Connection appears dead (no pong), reconnecting...');
-					ws.close();
-					return;
-				}
-
-				// Send ping (note: browser WebSocket doesn't support ping frames, 
-				// so we'll send a JSON ping message that the server should echo)
-				try {
-					ws.send(JSON.stringify({ type: 'ping', timestamp: Date.now() }));
-				} catch (err) {
-					console.error('[WebSocket] Failed to send ping:', err);
-					ws.close();
-				}
-			}
-		}, 30000); // Ping every 30 seconds
-
-		// Health check interval to detect stale connections
-		healthCheckInterval = window.setInterval(() => {
-			if (ws && ws.readyState === WebSocket.OPEN) {
-				// Additional health check - if we haven't received any data for too long,
-				// assume the connection is stale
-				const timeSinceLastPong = Date.now() - lastPongReceived;
-				if (timeSinceLastPong > 120000) { // No activity for 2 minutes
-					console.log('[WebSocket] Connection appears stale, reconnecting...');
-					ws.close();
-				}
-			}
-		}, 60000); // Check every minute
+		// No need for client-side heartbeat checks since:
+		// 1. Server handles ping/pong automatically (every ~54 seconds)
+		// 2. Browser WebSocket automatically responds to ping frames with pong frames
+		// 3. Server will close connection if it doesn't receive pong responses
+		// 4. Server may not send any messages if there are no events to stream
+		// 5. onclose/onerror handlers will trigger reconnection if needed
 	}
 
 	function cleanup() {
-		if (pingInterval) {
-			clearInterval(pingInterval);
-			pingInterval = null;
-		}
-		if (healthCheckInterval) {
-			clearInterval(healthCheckInterval);
-			healthCheckInterval = null;
-		}
+		// No intervals to clean up currently
 	}
 
 	function scheduleReconnect() {

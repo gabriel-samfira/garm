@@ -4,7 +4,7 @@
 	import type { Enterprise, CreateEnterpriseParams, UpdateEntityParams, Endpoint, Credential } from '$lib/api/types.js';
 	import { base } from '$app/paths';
 	import CreateEnterpriseModal from '$lib/components/CreateEnterpriseModal.svelte';
-	import UpdateEnterpriseModal from '$lib/components/UpdateEnterpriseModal.svelte';
+	import UpdateEntityModal from '$lib/components/UpdateEntityModal.svelte';
 	import DeleteModal from '$lib/components/DeleteModal.svelte';
 	import { websocketStore, type WebSocketEvent } from '$lib/stores/websocket.js';
 
@@ -373,8 +373,9 @@
 {/if}
 
 {#if showUpdateModal && selectedEnterprise}
-	<UpdateEnterpriseModal
-		enterprise={selectedEnterprise}
+	<UpdateEntityModal
+		entity={selectedEnterprise}
+		entityType="enterprise"
 		on:close={() => { showUpdateModal = false; selectedEnterprise = null; }}
 		on:submit={(e) => handleUpdateEnterprise(e.detail)}
 	/>
