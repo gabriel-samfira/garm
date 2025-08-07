@@ -7,13 +7,18 @@
 	import { base } from '$app/paths';
 	import UpdateScaleSetModal from '$lib/components/UpdateScaleSetModal.svelte';
 	import DeleteModal from '$lib/components/DeleteModal.svelte';
+	import InstancesSection from '$lib/components/InstancesSection.svelte';
+	import DetailHeader from '$lib/components/DetailHeader.svelte';
 	import { toastStore } from '$lib/stores/toast.js';
+	import type { Instance } from '$lib/api/types.js';
 
 	let scaleSet: ScaleSet | null = null;
 	let loading = true;
 	let error = '';
 	let showUpdateModal = false;
 	let showDeleteModal = false;
+	let showDeleteInstanceModal = false;
+	let selectedInstance: Instance | null = null;
 
 	$: scaleSetId = parseInt($page.params.id);
 
@@ -91,6 +96,34 @@
 		return new Date(dateString).toLocaleString();
 	}
 
+	async function handleDeleteInstance() {
+		if (!selectedInstance) return;
+		try {
+			await garmApi.deleteInstance(selectedInstance.name);
+			toastStore.success(
+				'Instance Deleted',
+				`Instance ${selectedInstance.name} has been deleted successfully.`
+			);
+			// Reload scale set to update instances list
+			await loadScaleSet();
+			showDeleteInstanceModal = false;
+			selectedInstance = null;
+		} catch (err) {
+			const errorMessage = err instanceof Error ? err.message : 'Failed to delete instance';
+			toastStore.error(
+				'Delete Failed',
+				errorMessage
+			);
+		}
+		showDeleteInstanceModal = false;
+		selectedInstance = null;
+	}
+
+	function openDeleteInstanceModal(instance: Instance) {
+		selectedInstance = instance;
+		showDeleteInstanceModal = true;
+	}
+
 	function formatExtraSpecs(extraSpecs: any): string {
 		if (!extraSpecs) return '{}';
 		try {
@@ -149,43 +182,13 @@
 		</div>
 	{:else if scaleSet}
 		<!-- Header -->
-		<div class="bg-white dark:bg-gray-800 shadow rounded-lg">
-			<div class="px-4 py-5 sm:p-6">
-				<div class="sm:flex sm:items-center sm:justify-between">
-					<div class="flex items-center space-x-3">
-						<div class="flex-shrink-0">
-							{@html getForgeIcon()}
-						</div>
-						<div>
-							<h1 class="text-2xl font-bold text-gray-900 dark:text-white">{scaleSet.name}</h1>
-							<p class="text-sm text-gray-500 dark:text-gray-400">
-								Scale set for {getEntityName(scaleSet)} ({getEntityType(scaleSet)}) • GitHub Runner Scale Set
-							</p>
-						</div>
-					</div>
-					<div class="mt-4 sm:mt-0 flex space-x-3">
-						<button
-							on:click={() => showUpdateModal = true}
-							class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-						>
-							<svg class="-ml-1 mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-							</svg>
-							Edit
-						</button>
-						<button
-							on:click={() => showDeleteModal = true}
-							class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-						>
-							<svg class="-ml-1 mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-							</svg>
-							Delete
-						</button>
-					</div>
-				</div>
-			</div>
-		</div>
+		<DetailHeader
+			title={scaleSet.name}
+			subtitle="Scale set for {getEntityName(scaleSet)} ({getEntityType(scaleSet)}) • GitHub Runner Scale Set"
+			forgeIcon={getForgeIcon()}
+			onEdit={() => showUpdateModal = true}
+			onDelete={() => showDeleteModal = true}
+		/>
 
 		<!-- Scale Set Details -->
 		<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -314,6 +317,11 @@
 			</div>
 		{/if}
 
+		<!-- Instances -->
+		{#if scaleSet.instances}
+			<InstancesSection instances={scaleSet.instances} entityType="scaleset" onDeleteInstance={openDeleteInstanceModal} />
+		{/if}
+
 	{/if}
 </div>
 
@@ -333,5 +341,15 @@
 		itemName={`Scale Set ${scaleSet.name} (${getEntityName(scaleSet)})`}
 		on:close={() => showDeleteModal = false}
 		on:confirm={handleDelete}
+	/>
+{/if}
+
+{#if showDeleteInstanceModal && selectedInstance}
+	<DeleteModal
+		title="Delete Instance"
+		message="Are you sure you want to delete this instance? This action cannot be undone."
+		itemName={selectedInstance.name}
+		on:close={() => { showDeleteInstanceModal = false; selectedInstance = null; }}
+		on:confirm={handleDeleteInstance}
 	/>
 {/if}

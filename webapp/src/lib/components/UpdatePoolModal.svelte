@@ -117,7 +117,7 @@
 	<div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto mx-auto">
 		<div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
 			<h2 class="text-xl font-semibold text-gray-900 dark:text-white">
-				Update Pool {pool.id.slice(0, 8)}...
+				Update Pool {pool.id}
 			</h2>
 		</div>
 
