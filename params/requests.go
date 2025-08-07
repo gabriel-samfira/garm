@@ -39,6 +39,7 @@ type InstanceRequest struct {
 	OSVersion string              `json:"os_version"`
 }
 
+// swagger:model CreateRepoParams
 type CreateRepoParams struct {
 	Owner            string           `json:"owner,omitempty"`
 	Name             string           `json:"name,omitempty"`
@@ -80,6 +81,7 @@ func (c *CreateRepoParams) Validate() error {
 	return nil
 }
 
+// swagger:model CreateOrgParams
 type CreateOrgParams struct {
 	Name             string           `json:"name,omitempty"`
 	CredentialsName  string           `json:"credentials_name,omitempty"`
@@ -115,6 +117,7 @@ func (c *CreateOrgParams) Validate() error {
 	return nil
 }
 
+// swagger:model CreateEnterpriseParams
 type CreateEnterpriseParams struct {
 	Name             string           `json:"name,omitempty"`
 	CredentialsName  string           `json:"credentials_name,omitempty"`
@@ -143,6 +146,7 @@ func (c *CreateEnterpriseParams) Validate() error {
 
 // NewUserParams holds the needed information to create
 // a new user
+// swagger:model NewUserParams
 type NewUserParams struct {
 	Email    string `json:"email,omitempty"`
 	Username string `json:"username,omitempty"`
@@ -152,6 +156,7 @@ type NewUserParams struct {
 	Enabled  bool   `json:"-"`
 }
 
+// swagger:model UpdatePoolParams
 type UpdatePoolParams struct {
 	RunnerPrefix
 
@@ -172,6 +177,7 @@ type UpdatePoolParams struct {
 	Priority          *uint   `json:"priority,omitempty"`
 }
 
+// swagger:model CreateInstanceParams
 type CreateInstanceParams struct {
 	Name         string                      `json:"name,omitempty"`
 	OSType       commonParams.OSType         `json:"os_type,omitempty"`
@@ -189,6 +195,7 @@ type CreateInstanceParams struct {
 	JitConfiguration  map[string]string `json:"jit_configuration,omitempty"`
 }
 
+// swagger:model CreatePoolParams
 type CreatePoolParams struct {
 	RunnerPrefix
 
@@ -238,6 +245,7 @@ func (p *CreatePoolParams) Validate() error {
 	return nil
 }
 
+// swagger:model UpdateInstanceParams
 type UpdateInstanceParams struct {
 	ProviderID string `json:"provider_id,omitempty"`
 	// OSName is the name of the OS. Eg: ubuntu, centos, etc.
@@ -257,12 +265,14 @@ type UpdateInstanceParams struct {
 	JitConfiguration map[string]string           `json:"-"`
 }
 
+// swagger:model UpdateUserParams
 type UpdateUserParams struct {
 	FullName string `json:"full_name,omitempty"`
 	Password string `json:"password,omitempty"`
 	Enabled  *bool  `json:"enabled,omitempty"`
 }
 
+// swagger:model PasswordLoginParams
 // PasswordLoginParams holds information used during
 // password authentication, that will be passed to a
 // password login function
@@ -279,18 +289,21 @@ func (p PasswordLoginParams) Validate() error {
 	return nil
 }
 
+// swagger:model UpdateEntityParams
 type UpdateEntityParams struct {
 	CredentialsName  string           `json:"credentials_name,omitempty"`
 	WebhookSecret    string           `json:"webhook_secret,omitempty"`
 	PoolBalancerType PoolBalancerType `json:"pool_balancer_type,omitempty"`
 }
 
+// swagger:model InstanceUpdateMessage
 type InstanceUpdateMessage struct {
 	Status  RunnerStatus `json:"status,omitempty"`
 	Message string       `json:"message,omitempty"`
 	AgentID *int64       `json:"agent_id,omitempty"`
 }
 
+// swagger:model CreateGithubEndpointParams
 type CreateGithubEndpointParams struct {
 	Name          string `json:"name,omitempty"`
 	Description   string `json:"description,omitempty"`
@@ -358,6 +371,7 @@ func (c CreateGithubEndpointParams) Validate() error {
 	return nil
 }
 
+// swagger:model UpdateGithubEndpointParams
 type UpdateGithubEndpointParams struct {
 	Description   *string `json:"description,omitempty"`
 	APIBaseURL    *string `json:"api_base_url,omitempty"`
@@ -416,10 +430,12 @@ func (u UpdateGithubEndpointParams) Validate() error {
 	return nil
 }
 
+// swagger:model GithubPAT
 type GithubPAT struct {
 	OAuth2Token string `json:"oauth2_token,omitempty"`
 }
 
+// swagger:model GithubApp
 type GithubApp struct {
 	AppID           int64  `json:"app_id,omitempty"`
 	InstallationID  int64  `json:"installation_id,omitempty"`
@@ -452,6 +468,7 @@ func (g GithubApp) Validate() error {
 	return nil
 }
 
+// swagger:model CreateGithubCredentialsParams
 type CreateGithubCredentialsParams struct {
 	Name        string        `json:"name,omitempty"`
 	Description string        `json:"description,omitempty"`
@@ -491,6 +508,7 @@ func (c CreateGithubCredentialsParams) Validate() error {
 	return nil
 }
 
+// swagger:model UpdateGithubCredentialsParams
 type UpdateGithubCredentialsParams struct {
 	Name        *string    `json:"name,omitempty"`
 	Description *string    `json:"description,omitempty"`
@@ -518,6 +536,7 @@ func (u UpdateGithubCredentialsParams) Validate() error {
 	return nil
 }
 
+// swagger:model UpdateControllerParams
 type UpdateControllerParams struct {
 	MetadataURL          *string `json:"metadata_url,omitempty"`
 	CallbackURL          *string `json:"callback_url,omitempty"`
@@ -550,6 +569,7 @@ func (u UpdateControllerParams) Validate() error {
 	return nil
 }
 
+// swagger:model CreateScaleSetParams
 type CreateScaleSetParams struct {
 	RunnerPrefix
 
@@ -602,6 +622,7 @@ func (s *CreateScaleSetParams) Validate() error {
 	return nil
 }
 
+// swagger:model UpdateScaleSetParams
 type UpdateScaleSetParams struct {
 	RunnerPrefix
 
@@ -623,6 +644,7 @@ type UpdateScaleSetParams struct {
 	ExtendedState     *string        `json:"extended_state"`
 }
 
+// swagger:model CreateGiteaEndpointParams
 type CreateGiteaEndpointParams struct {
 	Name         string `json:"name,omitempty"`
 	Description  string `json:"description,omitempty"`
@@ -674,6 +696,7 @@ func (c CreateGiteaEndpointParams) Validate() error {
 	return nil
 }
 
+// swagger:model UpdateGiteaEndpointParams
 type UpdateGiteaEndpointParams struct {
 	Description  *string `json:"description,omitempty"`
 	APIBaseURL   *string `json:"api_base_url,omitempty"`
@@ -719,6 +742,7 @@ func (u UpdateGiteaEndpointParams) Validate() error {
 	return nil
 }
 
+// swagger:model CreateGiteaCredentialsParams
 type CreateGiteaCredentialsParams struct {
 	Name        string        `json:"name,omitempty"`
 	Description string        `json:"description,omitempty"`
@@ -752,6 +776,7 @@ func (c CreateGiteaCredentialsParams) Validate() error {
 	return nil
 }
 
+// swagger:model UpdateGiteaCredentialsParams
 type UpdateGiteaCredentialsParams struct {
 	Name        *string    `json:"name,omitempty"`
 	Description *string    `json:"description,omitempty"`

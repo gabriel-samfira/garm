@@ -355,24 +355,33 @@ func (s *sqlDatabase) sqlToCommonScaleSet(scaleSet ScaleSet) (params.ScaleSet, e
 		DesiredRunnerCount:     scaleSet.DesiredRunnerCount,
 	}
 
+	var ep GithubEndpoint
 	if scaleSet.RepoID != nil {
 		ret.RepoID = scaleSet.RepoID.String()
 		if scaleSet.Repository.Owner != "" && scaleSet.Repository.Name != "" {
 			ret.RepoName = fmt.Sprintf("%s/%s", scaleSet.Repository.Owner, scaleSet.Repository.Name)
 		}
+		ep = scaleSet.Repository.Endpoint
 	}
 
 	if scaleSet.OrgID != nil {
 		ret.OrgID = scaleSet.OrgID.String()
 		ret.OrgName = scaleSet.Organization.Name
+		ep = scaleSet.Organization.Endpoint
 	}
 
 	if scaleSet.EnterpriseID != nil {
 		ret.EnterpriseID = scaleSet.EnterpriseID.String()
 		ret.EnterpriseName = scaleSet.Enterprise.Name
+		ep = scaleSet.Enterprise.Endpoint
 	}
 
-	var err error
+	endpoint, err := s.sqlToCommonGithubEndpoint(ep)
+	if err != nil {
+		return params.ScaleSet{}, errors.Wrap(err, "converting endpoint")
+	}
+	ret.Endpoint = endpoint
+
 	for idx, inst := range scaleSet.Instances {
 		ret.Instances[idx], err = s.sqlToParamsInstance(inst)
 		if err != nil {
