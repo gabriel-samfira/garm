@@ -1,0 +1,472 @@
+import type {
+	Repository,
+	Organization,
+	Enterprise,
+	Endpoint,
+	Pool,
+	ScaleSet,
+	Instance,
+	ForgeCredentials,
+	Provider,
+	ControllerInfo,
+	CreateRepoParams,
+	CreateOrgParams,
+	CreateEnterpriseParams,
+	CreateEndpointParams,
+	UpdateEndpointParams,
+	CreateCredentialsParams,
+	UpdateCredentialsParams,
+	CreatePoolParams,
+	CreateScaleSetParams,
+	UpdateEntityParams,
+	UpdatePoolParams,
+	LoginRequest,
+	LoginResponse,
+	APIError
+} from './types.js';
+
+export class GarmApiClient {
+	private baseUrl: string;
+
+	constructor(baseUrl: string = '') {
+		// Default to current origin if no baseUrl provided
+		this.baseUrl = baseUrl || window.location.origin;
+	}
+
+	private async request<T>(
+		endpoint: string,
+		options: RequestInit = {}
+	): Promise<T> {
+		const url = `${this.baseUrl}/api/v1${endpoint}`;
+		
+		const headers: HeadersInit = {
+			'Content-Type': 'application/json',
+			...options.headers
+		};
+
+		const response = await fetch(url, {
+			...options,
+			headers,
+			credentials: 'include' // Include cookies for authentication
+		});
+
+		if (!response.ok) {
+			const errorData: APIError = await response.json().catch(() => ({
+				error: `HTTP ${response.status}: ${response.statusText}`
+			}));
+			throw new Error(errorData.error || 'API request failed');
+		}
+
+		// Handle empty responses (like DELETE operations)
+		if (response.status === 204 || response.headers.get('content-length') === '0') {
+			return {} as T;
+		}
+
+		return response.json();
+	}
+
+	// Authentication
+	async login(credentials: LoginRequest): Promise<LoginResponse> {
+		return this.request<LoginResponse>('/auth/login', {
+			method: 'POST',
+			body: JSON.stringify(credentials)
+		});
+	}
+
+	async getControllerInfo(): Promise<ControllerInfo> {
+		return this.request<ControllerInfo>('/controller-info');
+	}
+
+	// GitHub Endpoints
+	async listGithubEndpoints(): Promise<Endpoint[]> {
+		return this.request<Endpoint[]>('/github/endpoints');
+	}
+
+	async getGithubEndpoint(name: string): Promise<Endpoint> {
+		return this.request<Endpoint>(`/github/endpoints/${name}`);
+	}
+
+	async createGithubEndpoint(params: CreateEndpointParams): Promise<Endpoint> {
+		return this.request<Endpoint>('/github/endpoints', {
+			method: 'POST',
+			body: JSON.stringify(params)
+		});
+	}
+
+	async updateGithubEndpoint(name: string, params: UpdateEndpointParams): Promise<Endpoint> {
+		return this.request<Endpoint>(`/github/endpoints/${name}`, {
+			method: 'PUT',
+			body: JSON.stringify(params)
+		});
+	}
+
+	async deleteGithubEndpoint(name: string): Promise<void> {
+		return this.request<void>(`/github/endpoints/${name}`, {
+			method: 'DELETE'
+		});
+	}
+
+	// Gitea Endpoints
+	async listGiteaEndpoints(): Promise<Endpoint[]> {
+		return this.request<Endpoint[]>('/gitea/endpoints');
+	}
+
+	async getGiteaEndpoint(name: string): Promise<Endpoint> {
+		return this.request<Endpoint>(`/gitea/endpoints/${name}`);
+	}
+
+	async createGiteaEndpoint(params: CreateEndpointParams): Promise<Endpoint> {
+		return this.request<Endpoint>('/gitea/endpoints', {
+			method: 'POST',
+			body: JSON.stringify(params)
+		});
+	}
+
+	async updateGiteaEndpoint(name: string, params: UpdateEndpointParams): Promise<Endpoint> {
+		return this.request<Endpoint>(`/gitea/endpoints/${name}`, {
+			method: 'PUT',
+			body: JSON.stringify(params)
+		});
+	}
+
+	async deleteGiteaEndpoint(name: string): Promise<void> {
+		return this.request<void>(`/gitea/endpoints/${name}`, {
+			method: 'DELETE'
+		});
+	}
+
+	// Combined Endpoints helper
+	async listAllEndpoints(): Promise<Endpoint[]> {
+		const [githubEndpoints, giteaEndpoints] = await Promise.all([
+			this.listGithubEndpoints().catch(() => []),
+			this.listGiteaEndpoints().catch(() => [])
+		]);
+		
+		return [
+			...githubEndpoints.map(ep => ({ ...ep, endpoint_type: 'github' as const })),
+			...giteaEndpoints.map(ep => ({ ...ep, endpoint_type: 'gitea' as const }))
+		];
+	}
+
+	// GitHub Credentials
+	async listGithubCredentials(): Promise<ForgeCredentials[]> {
+		return this.request<ForgeCredentials[]>('/github/credentials');
+	}
+
+	async getGithubCredentials(id: string): Promise<ForgeCredentials> {
+		return this.request<ForgeCredentials>(`/github/credentials/${id}`);
+	}
+
+	async createGithubCredentials(params: CreateCredentialsParams): Promise<ForgeCredentials> {
+		return this.request<ForgeCredentials>('/github/credentials', {
+			method: 'POST',
+			body: JSON.stringify(params)
+		});
+	}
+
+	async updateGithubCredentials(id: string, params: UpdateCredentialsParams): Promise<ForgeCredentials> {
+		return this.request<ForgeCredentials>(`/github/credentials/${id}`, {
+			method: 'PUT',
+			body: JSON.stringify(params)
+		});
+	}
+
+	async deleteGithubCredentials(id: string): Promise<void> {
+		return this.request<void>(`/github/credentials/${id}`, {
+			method: 'DELETE'
+		});
+	}
+
+	// Gitea Credentials
+	async listGiteaCredentials(): Promise<ForgeCredentials[]> {
+		return this.request<ForgeCredentials[]>('/gitea/credentials');
+	}
+
+	async getGiteaCredentials(id: string): Promise<ForgeCredentials> {
+		return this.request<ForgeCredentials>(`/gitea/credentials/${id}`);
+	}
+
+	async createGiteaCredentials(params: CreateCredentialsParams): Promise<ForgeCredentials> {
+		return this.request<ForgeCredentials>('/gitea/credentials', {
+			method: 'POST',
+			body: JSON.stringify(params)
+		});
+	}
+
+	async updateGiteaCredentials(id: string, params: UpdateCredentialsParams): Promise<ForgeCredentials> {
+		return this.request<ForgeCredentials>(`/gitea/credentials/${id}`, {
+			method: 'PUT',
+			body: JSON.stringify(params)
+		});
+	}
+
+	async deleteGiteaCredentials(id: string): Promise<void> {
+		return this.request<void>(`/gitea/credentials/${id}`, {
+			method: 'DELETE'
+		});
+	}
+
+	// Combined Credentials helper
+	async listAllCredentials(): Promise<ForgeCredentials[]> {
+		const [githubCredentials, giteaCredentials] = await Promise.all([
+			this.listGithubCredentials().catch(() => []),
+			this.listGiteaCredentials().catch(() => [])
+		]);
+		
+		// The API already returns the correct structure with forge_type and endpoint fields
+		return [...githubCredentials, ...giteaCredentials];
+	}
+
+	// Alias for backward compatibility
+	async listCredentials(): Promise<ForgeCredentials[]> {
+		return this.listAllCredentials();
+	}
+
+	// Alias for backward compatibility  
+	async listEndpoints(): Promise<Endpoint[]> {
+		return this.listAllEndpoints();
+	}
+
+	// Repositories
+	async listRepositories(): Promise<Repository[]> {
+		return this.request<Repository[]>('/repositories');
+	}
+
+	async getRepository(id: string): Promise<Repository> {
+		return this.request<Repository>(`/repositories/${id}`);
+	}
+
+	async createRepository(params: CreateRepoParams): Promise<Repository> {
+		return this.request<Repository>('/repositories', {
+			method: 'POST',
+			body: JSON.stringify(params)
+		});
+	}
+
+	async updateRepository(id: string, params: UpdateEntityParams): Promise<Repository> {
+		return this.request<Repository>(`/repositories/${id}`, {
+			method: 'PUT',
+			body: JSON.stringify(params)
+		});
+	}
+
+	async deleteRepository(id: string): Promise<void> {
+		return this.request<void>(`/repositories/${id}`, {
+			method: 'DELETE'
+		});
+	}
+
+	async installRepoWebhook(id: string): Promise<void> {
+		await this.request(`/repositories/${id}/webhook`, {
+			method: 'POST'
+		});
+	}
+
+	async listRepositoryPools(id: string): Promise<Pool[]> {
+		return this.request<Pool[]>(`/repositories/${id}/pools`);
+	}
+
+	async listRepositoryInstances(id: string): Promise<Instance[]> {
+		return this.request<Instance[]>(`/repositories/${id}/instances`);
+	}
+
+	async createRepositoryPool(id: string, params: CreatePoolParams): Promise<Pool> {
+		return this.request<Pool>(`/repositories/${id}/pools`, {
+			method: 'POST',
+			body: JSON.stringify(params)
+		});
+	}
+
+	// Organizations
+	async listOrganizations(): Promise<Organization[]> {
+		return this.request<Organization[]>('/organizations');
+	}
+
+	async getOrganization(id: string): Promise<Organization> {
+		return this.request<Organization>(`/organizations/${id}`);
+	}
+
+	async createOrganization(params: CreateOrgParams): Promise<Organization> {
+		return this.request<Organization>('/organizations', {
+			method: 'POST',
+			body: JSON.stringify(params)
+		});
+	}
+
+	async updateOrganization(id: string, params: UpdateEntityParams): Promise<Organization> {
+		return this.request<Organization>(`/organizations/${id}`, {
+			method: 'PUT',
+			body: JSON.stringify(params)
+		});
+	}
+
+	async deleteOrganization(id: string): Promise<void> {
+		return this.request<void>(`/organizations/${id}`, {
+			method: 'DELETE'
+		});
+	}
+
+	async listOrganizationPools(id: string): Promise<Pool[]> {
+		return this.request<Pool[]>(`/organizations/${id}/pools`);
+	}
+
+	async listOrganizationInstances(id: string): Promise<Instance[]> {
+		return this.request<Instance[]>(`/organizations/${id}/instances`);
+	}
+
+	async createOrganizationPool(id: string, params: CreatePoolParams): Promise<Pool> {
+		return this.request<Pool>(`/organizations/${id}/pools`, {
+			method: 'POST',
+			body: JSON.stringify(params)
+		});
+	}
+
+	// Enterprises
+	async listEnterprises(): Promise<Enterprise[]> {
+		return this.request<Enterprise[]>('/enterprises');
+	}
+
+	async getEnterprise(id: string): Promise<Enterprise> {
+		return this.request<Enterprise>(`/enterprises/${id}`);
+	}
+
+	async createEnterprise(params: CreateEnterpriseParams): Promise<Enterprise> {
+		return this.request<Enterprise>('/enterprises', {
+			method: 'POST',
+			body: JSON.stringify(params)
+		});
+	}
+
+	async updateEnterprise(id: string, params: UpdateEntityParams): Promise<Enterprise> {
+		return this.request<Enterprise>(`/enterprises/${id}`, {
+			method: 'PUT',
+			body: JSON.stringify(params)
+		});
+	}
+
+	async deleteEnterprise(id: string): Promise<void> {
+		return this.request<void>(`/enterprises/${id}`, {
+			method: 'DELETE'
+		});
+	}
+
+	async listEnterprisePools(id: string): Promise<Pool[]> {
+		return this.request<Pool[]>(`/enterprises/${id}/pools`);
+	}
+
+	async listEnterpriseInstances(id: string): Promise<Instance[]> {
+		return this.request<Instance[]>(`/enterprises/${id}/instances`);
+	}
+
+	async createEnterprisePool(id: string, params: CreatePoolParams): Promise<Pool> {
+		return this.request<Pool>(`/enterprises/${id}/pools`, {
+			method: 'POST',
+			body: JSON.stringify(params)
+		});
+	}
+
+	async createRepositoryScaleSet(id: string, params: CreateScaleSetParams): Promise<ScaleSet> {
+		return this.request<ScaleSet>(`/repositories/${id}/scalesets`, {
+			method: 'POST',
+			body: JSON.stringify(params)
+		});
+	}
+
+	async listRepositoryScaleSets(id: string): Promise<ScaleSet[]> {
+		return this.request<ScaleSet[]>(`/repositories/${id}/scalesets`);
+	}
+
+	async createOrganizationScaleSet(id: string, params: CreateScaleSetParams): Promise<ScaleSet> {
+		return this.request<ScaleSet>(`/organizations/${id}/scalesets`, {
+			method: 'POST',
+			body: JSON.stringify(params)
+		});
+	}
+
+	async listOrganizationScaleSets(id: string): Promise<ScaleSet[]> {
+		return this.request<ScaleSet[]>(`/organizations/${id}/scalesets`);
+	}
+
+	async createEnterpriseScaleSet(id: string, params: CreateScaleSetParams): Promise<ScaleSet> {
+		return this.request<ScaleSet>(`/enterprises/${id}/scalesets`, {
+			method: 'POST',
+			body: JSON.stringify(params)
+		});
+	}
+
+	async listEnterpriseScaleSets(id: string): Promise<ScaleSet[]> {
+		return this.request<ScaleSet[]>(`/enterprises/${id}/scalesets`);
+	}
+
+	// Pools
+	async listPools(): Promise<Pool[]> {
+		return this.request<Pool[]>('/pools');
+	}
+
+	async listAllPools(): Promise<Pool[]> {
+		return this.request<Pool[]>('/pools');
+	}
+
+	async getPool(id: string): Promise<Pool> {
+		return this.request<Pool>(`/pools/${id}`);
+	}
+
+	async updatePool(id: string, params: UpdatePoolParams): Promise<Pool> {
+		return this.request<Pool>(`/pools/${id}`, {
+			method: 'PUT',
+			body: JSON.stringify(params)
+		});
+	}
+
+	async deletePool(id: string): Promise<void> {
+		return this.request<void>(`/pools/${id}`, {
+			method: 'DELETE'
+		});
+	}
+
+	// Scale Sets
+	async listScaleSets(): Promise<ScaleSet[]> {
+		return this.request<ScaleSet[]>('/scalesets');
+	}
+
+	async getScaleSet(id: number): Promise<ScaleSet> {
+		return this.request<ScaleSet>(`/scalesets/${id}`);
+	}
+
+
+	async updateScaleSet(id: number, params: Partial<CreateScaleSetParams>): Promise<ScaleSet> {
+		return this.request<ScaleSet>(`/scalesets/${id}`, {
+			method: 'PUT',
+			body: JSON.stringify(params)
+		});
+	}
+
+	async deleteScaleSet(id: number): Promise<void> {
+		return this.request<void>(`/scalesets/${id}`, {
+			method: 'DELETE'
+		});
+	}
+
+	// Instances
+	async listInstances(): Promise<Instance[]> {
+		return this.request<Instance[]>('/instances');
+	}
+
+	async getInstance(id: string): Promise<Instance> {
+		return this.request<Instance>(`/instances/${id}`);
+	}
+
+	async deleteInstance(id: string): Promise<void> {
+		await this.request(`/instances/${id}`, {
+			method: 'DELETE'
+		});
+	}
+
+	// Providers
+	async listProviders(): Promise<Provider[]> {
+		return this.request<Provider[]>('/providers');
+	}
+}
+
+// Create a singleton instance
+export const garmApi = new GarmApiClient();

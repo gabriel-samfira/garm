@@ -122,7 +122,14 @@ func (h *WebHandler) GenericEntityDetailHandler(entityType string) http.HandlerF
 		case "repositories":
 			repo, repoErr := h.runner.GetRepositoryByID(ctx, entityID)
 			if repoErr != nil {
-				http.Error(w, repoErr.Error(), http.StatusNotFound)
+				// If this is an HTMX request (auto-refresh), redirect to repositories page
+				if r.Header.Get("HX-Request") == "true" {
+					w.Header().Set("HX-Redirect", "/web/repositories")
+					w.WriteHeader(http.StatusNotFound)
+					return
+				}
+				// For regular requests, redirect normally
+				http.Redirect(w, r, "/web/repositories", http.StatusFound)
 				return
 			}
 			entity = repo
@@ -130,7 +137,14 @@ func (h *WebHandler) GenericEntityDetailHandler(entityType string) http.HandlerF
 		case "organizations":
 			org, orgErr := h.runner.GetOrganizationByID(ctx, entityID)
 			if orgErr != nil {
-				http.Error(w, orgErr.Error(), http.StatusNotFound)
+				// If this is an HTMX request (auto-refresh), redirect to organizations page
+				if r.Header.Get("HX-Request") == "true" {
+					w.Header().Set("HX-Redirect", "/web/organizations")
+					w.WriteHeader(http.StatusNotFound)
+					return
+				}
+				// For regular requests, redirect normally
+				http.Redirect(w, r, "/web/organizations", http.StatusFound)
 				return
 			}
 			entity = org
@@ -138,7 +152,14 @@ func (h *WebHandler) GenericEntityDetailHandler(entityType string) http.HandlerF
 		case "enterprises":
 			enterprise, entErr := h.runner.GetEnterpriseByID(ctx, entityID)
 			if entErr != nil {
-				http.Error(w, entErr.Error(), http.StatusNotFound)
+				// If this is an HTMX request (auto-refresh), redirect to enterprises page
+				if r.Header.Get("HX-Request") == "true" {
+					w.Header().Set("HX-Redirect", "/web/enterprises")
+					w.WriteHeader(http.StatusNotFound)
+					return
+				}
+				// For regular requests, redirect normally
+				http.Redirect(w, r, "/web/enterprises", http.StatusFound)
 				return
 			}
 			entity = enterprise
@@ -166,9 +187,18 @@ func (h *WebHandler) GenericEntityDetailHandler(entityType string) http.HandlerF
 			SearchPlaceholder: config.SearchPlaceholder,
 		}
 
-		if err := h.templates.ExecuteTemplate(w, "base.html", data); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+		// For HTMX requests (auto-refresh), return just the content template
+		if r.Header.Get("HX-Request") == "true" {
+			if err := h.templates.ExecuteTemplate(w, "entity-detail", data); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		} else {
+			// For regular requests, return the full page
+			if err := h.templates.ExecuteTemplate(w, "base.html", data); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 		}
 	}
 }

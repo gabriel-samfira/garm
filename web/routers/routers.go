@@ -10,6 +10,7 @@ import (
 	"github.com/cloudbase/garm/web/assets"
 	"github.com/cloudbase/garm/web/handlers"
 	"github.com/cloudbase/garm/web/middleware"
+	spaAssets "github.com/cloudbase/garm/webapp/assets"
 	"github.com/gorilla/mux"
 )
 
@@ -51,6 +52,9 @@ func AddWebRoutes(router *mux.Router, webHandler *handlers.WebHandler, store dbC
 	// Create web-specific middleware
 	webInitMiddleware := middleware.NewWebInitMiddleware(store)
 	webAuthMiddleware := middleware.NewWebAuthMiddleware(store, jwtConfig)
+
+	// SPA routes - serve the embedded SPA (must be before other routes)
+	router.PathPrefix("/webapp/").HandlerFunc(spaAssets.ServeSPA).Methods("GET")
 
 	// Web UI routes (serve HTML pages)
 	webRouter := router.PathPrefix("/web").Subrouter()

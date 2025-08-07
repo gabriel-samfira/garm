@@ -179,7 +179,14 @@ func (h *WebHandler) PoolDetailsHandler(w http.ResponseWriter, r *http.Request) 
 
 	pool, err := h.runner.GetPoolByID(ctx, poolID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		// If this is an HTMX request (auto-refresh), redirect to pools page
+		if r.Header.Get("HX-Request") == "true" {
+			w.Header().Set("HX-Redirect", "/web/pools")
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		// For regular requests, redirect normally
+		http.Redirect(w, r, "/web/pools", http.StatusFound)
 		return
 	}
 
@@ -221,9 +228,18 @@ func (h *WebHandler) PoolDetailsHandler(w http.ResponseWriter, r *http.Request) 
 		FromEntityID:      fromEntityID,
 	}
 
-	if err := h.templates.ExecuteTemplate(w, "base.html", data); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	// For HTMX requests (auto-refresh), return just the content template
+	if r.Header.Get("HX-Request") == "true" {
+		if err := h.templates.ExecuteTemplate(w, "pool-detail-content", data); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	} else {
+		// For regular requests, return the full page
+		if err := h.templates.ExecuteTemplate(w, "base.html", data); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 }
 

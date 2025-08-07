@@ -1,5 +1,9 @@
 {{define "pool-detail-content"}}
-<div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+<div class="bg-white dark:bg-gray-800 shadow rounded-lg"
+     hx-get="{{printf "/web/pools/%s/details" .Entity.ID}}"
+     hx-trigger="every 5s"
+     hx-target="this"
+     hx-swap="outerHTML">
     <div class="px-4 py-5 sm:p-6">
         <!-- Breadcrumb -->
         <nav class="flex mb-4" aria-label="Breadcrumb">

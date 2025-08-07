@@ -19,3 +19,6 @@ bin/
 cmd/temp
 build/
 release/
+node_modules/
+.svelte-kit/
+debug.html

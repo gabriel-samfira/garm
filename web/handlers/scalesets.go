@@ -196,7 +196,14 @@ func (h *WebHandler) ScaleSetDetailsHandler(w http.ResponseWriter, r *http.Reque
 
 	scaleset, err := h.runner.GetScaleSetByID(ctx, scalesetID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		// If this is an HTMX request (auto-refresh), redirect to scale sets page
+		if r.Header.Get("HX-Request") == "true" {
+			w.Header().Set("HX-Redirect", "/web/scalesets")
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		// For regular requests, redirect normally
+		http.Redirect(w, r, "/web/scalesets", http.StatusFound)
 		return
 	}
 
@@ -230,9 +237,18 @@ func (h *WebHandler) ScaleSetDetailsHandler(w http.ResponseWriter, r *http.Reque
 		ExtraSpecsDecoded: extraSpecsDecoded,
 	}
 
-	if err := h.templates.ExecuteTemplate(w, "base.html", data); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	// For HTMX requests (auto-refresh), return just the content template
+	if r.Header.Get("HX-Request") == "true" {
+		if err := h.templates.ExecuteTemplate(w, "scaleset-detail-content", data); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	} else {
+		// For regular requests, return the full page
+		if err := h.templates.ExecuteTemplate(w, "base.html", data); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 }
 
