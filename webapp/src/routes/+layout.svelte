@@ -5,6 +5,7 @@
 	import { goto } from '$app/navigation';
 	import { auth, authStore } from '$lib/stores/auth.js';
 	import Navigation from '$lib/components/Navigation.svelte';
+	import Toast from '$lib/components/Toast.svelte';
 	
 	onMount(() => {
 		auth.init();
@@ -70,3 +71,6 @@
 		</div>
 	</div>
 {/if}
+
+<!-- Toast notifications (rendered globally) -->
+<Toast />

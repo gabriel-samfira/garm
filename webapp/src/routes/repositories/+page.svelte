@@ -21,8 +21,6 @@
 	let deletingRepository: Repository | null = null;
 	let unsubscribeWebsocket: (() => void) | null = null;
 
-	// WebSocket connection status
-	$: wsState = $websocketStore;
 
 	let updateFormData: UpdateEntityParams & { change_webhook_secret?: boolean } = {
 		credentials_name: '',
@@ -280,27 +278,6 @@
 			</p>
 		</div>
 		<div class="flex items-center space-x-4">
-			{#if wsState.connected}
-				<div class="flex items-center text-green-600 dark:text-green-400">
-					<div class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
-					<span class="text-sm">Live updates</span>
-				</div>
-			{:else if wsState.connecting}
-				<div class="flex items-center text-yellow-600 dark:text-yellow-400">
-					<div class="w-2 h-2 bg-yellow-500 rounded-full mr-2 animate-pulse"></div>
-					<span class="text-sm">Connecting...</span>
-				</div>
-			{:else if wsState.error}
-				<div class="flex items-center text-red-600 dark:text-red-400">
-					<div class="w-2 h-2 bg-red-500 rounded-full mr-2"></div>
-					<span class="text-sm">Offline</span>
-				</div>
-			{:else}
-				<div class="flex items-center text-gray-500 dark:text-gray-400">
-					<div class="w-2 h-2 bg-gray-400 rounded-full mr-2"></div>
-					<span class="text-sm">Not connected</span>
-				</div>
-			{/if}
 			<button 
 				id="add-repo-button"
 				class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center space-x-2"

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { garmApi } from '$lib/api/client.js';
@@ -7,6 +7,8 @@
 	import { base } from '$app/paths';
 	import UpdateEnterpriseModal from '$lib/components/UpdateEnterpriseModal.svelte';
 	import DeleteModal from '$lib/components/DeleteModal.svelte';
+	import { websocketStore, type WebSocketEvent } from '$lib/stores/websocket.js';
+	import { toastStore } from '$lib/stores/toast.js';
 
 	let enterprise: Enterprise | null = null;
 	let pools: Pool[] = [];
@@ -15,6 +17,10 @@
 	let error = '';
 	let showUpdateModal = false;
 	let showDeleteModal = false;
+	let showDeleteInstanceModal = false;
+	let selectedInstance: Instance | null = null;
+	let unsubscribeWebsocket: (() => void) | null = null;
+	let eventsContainer: HTMLElement;
 
 	$: enterpriseId = $page.params.id;
 
@@ -46,6 +52,10 @@
 		try {
 			await garmApi.updateEnterprise(enterprise.id, params);
 			await loadEnterprise();
+			toastStore.success(
+				'Enterprise Updated',
+				`Enterprise ${enterprise.name} has been updated successfully.`
+			);
 			showUpdateModal = false;
 		} catch (err) {
 			throw err; // Let the modal handle the error
@@ -63,6 +73,33 @@
 		showDeleteModal = false;
 	}
 
+	async function handleDeleteInstance() {
+		if (!selectedInstance) return;
+		try {
+			await garmApi.deleteInstance(selectedInstance.name);
+			toastStore.success(
+				'Instance Deleted',
+				`Instance ${selectedInstance.name} has been deleted successfully.`
+			);
+			// No need to reload - websocket events will update the UI automatically
+			showDeleteInstanceModal = false;
+			selectedInstance = null;
+		} catch (err) {
+			const errorMessage = err instanceof Error ? err.message : 'Failed to delete instance';
+			toastStore.error(
+				'Delete Failed',
+				errorMessage
+			);
+			showDeleteInstanceModal = false;
+			selectedInstance = null;
+		}
+	}
+
+	function openDeleteInstanceModal(instance: Instance) {
+		selectedInstance = instance;
+		showDeleteInstanceModal = true;
+	}
+
 	// Enterprises are GitHub only
 	function getForgeIcon() {
 		return `<div class="inline-flex w-4 h-4"><svg class="w-4 h-4 dark:hidden" width="98" height="96" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 98 96"><path fill-rule="evenodd" clip-rule="evenodd" d="M48.854 0C21.839 0 0 22 0 49.217c0 21.756 13.993 40.172 33.405 46.69 2.427.49 3.316-1.059 3.316-2.362 0-1.141-.08-5.052-.08-9.127-13.59 2.934-16.42-5.867-16.42-5.867-2.184-5.704-5.42-7.17-5.42-7.17-4.448-3.015.324-3.015.324-3.015 4.934.326 7.523 5.052 7.523 5.052 4.367 7.496 11.404 5.378 14.235 4.074.404-3.178 1.699-5.378 3.074-6.6-10.839-1.141-22.243-5.378-22.243-24.283 0-5.378 1.94-9.778 5.014-13.2-.485-1.222-2.184-6.275.486-13.038 0 0 4.125-1.304 13.426 5.052a46.97 46.97 0 0 1 12.214-1.63c4.125 0 8.33.571 12.213 1.63 9.302-6.356 13.427-5.052 13.427-5.052 2.67 6.763.97 11.816.485 13.038 3.155 3.422 5.015 7.822 5.015 13.2 0 18.905-11.404 23.06-22.324 24.283 1.78 1.548 3.316 4.481 3.316 9.126 0 6.6-.08 11.897-.08 13.526 0 1.304.89 2.853 3.316 2.364 19.412-6.52 33.405-24.935 33.405-46.691C97.707 22 75.788 0 48.854 0z" fill="#24292f"/></svg><svg class="w-4 h-4 hidden dark:block" width="98" height="96" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 98 96"><path fill-rule="evenodd" clip-rule="evenodd" d="M48.854 0C21.839 0 0 22 0 49.217c0 21.756 13.993 40.172 33.405 46.69 2.427.49 3.316-1.059 3.316-2.362 0-1.141-.08-5.052-.08-9.127-13.59 2.934-16.42-5.867-16.42-5.867-2.184-5.704-5.42-7.17-5.42-7.17-4.448-3.015.324-3.015.324-3.015 4.934.326 7.523 5.052 7.523 5.052 4.367 7.496 11.404 5.378 14.235 4.074.404-3.178 1.699-5.378 3.074-6.6-10.839-1.141-22.243-5.378-22.243-24.283 0-5.378 1.94-9.778 5.014-13.2-.485-1.222-2.184-6.275.486-13.038 0 0 4.125-1.304 13.426 5.052a46.97 46.97 0 0 1 12.214-1.63c4.125 0 8.33.571 12.213 1.63 9.302-6.356 13.427-5.052 13.427-5.052 2.67 6.763.97 11.816.485 13.038 3.155 3.422 5.015 7.822 5.015 13.2 0 18.905-11.404 23.06-22.324 24.283 1.78 1.548 3.316 4.481 3.316 9.126 0 6.6-.08 11.897-.08 13.526 0 1.304.89 2.853 3.316 2.364 19.412-6.52 33.405-24.935 33.405-46.691C97.707 22 75.788 0 48.854 0z" fill="#fff"/></svg></div>`;
@@ -72,8 +109,136 @@
 		return new Date(dateString).toLocaleString();
 	}
 
+	function scrollToBottomEvents() {
+		if (eventsContainer) {
+			eventsContainer.scrollTop = eventsContainer.scrollHeight;
+		}
+	}
+
+	function handleEnterpriseEvent(event: WebSocketEvent) {
+		console.log('[Enterprise Detail] Received websocket event:', event);
+		
+		if (event.operation === 'update') {
+			const updatedEnterprise = event.payload as Enterprise;
+			// Only update if this is the enterprise we're viewing
+			if (enterprise && updatedEnterprise.id === enterprise.id) {
+				// Check if events have been updated
+				const oldEventCount = enterprise.events?.length || 0;
+				const newEventCount = updatedEnterprise.events?.length || 0;
+				
+				// Update enterprise
+				enterprise = updatedEnterprise;
+				
+				// Auto-scroll if new events were added
+				if (newEventCount > oldEventCount) {
+					// Use setTimeout to ensure the DOM has updated
+					setTimeout(() => {
+						scrollToBottomEvents();
+					}, 100);
+				}
+			}
+		} else if (event.operation === 'delete') {
+			const deletedEnterpriseId = event.payload.id || event.payload;
+			// If this enterprise was deleted, redirect to enterprises list
+			if (enterprise && enterprise.id === deletedEnterpriseId) {
+				goto(`${base}/enterprises`);
+			}
+		}
+	}
+
+	function handlePoolEvent(event: WebSocketEvent) {
+		console.log('[Enterprise Detail] Received pool websocket event:', event);
+		
+		if (!enterprise) return;
+		
+		const pool = event.payload;
+		// Only handle pools that belong to this enterprise
+		if (pool.enterprise_id !== enterprise.id) return;
+
+		if (event.operation === 'create') {
+			// Add new pool to the list
+			pools = [...pools, pool];
+		} else if (event.operation === 'update') {
+			// Update existing pool
+			pools = pools.map(p => 
+				p.id === pool.id ? pool : p
+			);
+		} else if (event.operation === 'delete') {
+			// Remove deleted pool
+			const poolId = pool.id || pool;
+			pools = pools.filter(p => p.id !== poolId);
+		}
+	}
+
+	function handleInstanceEvent(event: WebSocketEvent) {
+		console.log('[Enterprise Detail] Received instance websocket event:', event);
+		
+		if (!enterprise || !pools) return;
+		
+		const instance = event.payload;
+		// Check if instance belongs to any pool that belongs to this enterprise
+		const belongsToEnterprise = pools.some(pool => pool.id === instance.pool_id);
+		if (!belongsToEnterprise) return;
+
+		if (event.operation === 'create') {
+			// Add new instance to the list
+			instances = [...instances, instance];
+		} else if (event.operation === 'update') {
+			// Update existing instance
+			instances = instances.map(inst => 
+				inst.id === instance.id ? instance : inst
+			);
+		} else if (event.operation === 'delete') {
+			// Remove deleted instance
+			const instanceId = instance.id || instance;
+			instances = instances.filter(inst => inst.id !== instanceId);
+		}
+	}
+
 	onMount(() => {
-		loadEnterprise();
+		loadEnterprise().then(() => {
+			// Scroll to bottom on initial load if there are events
+			if (enterprise?.events?.length) {
+				setTimeout(() => {
+					scrollToBottomEvents();
+				}, 100);
+			}
+		});
+		
+		// Subscribe to enterprise events
+		const unsubscribeEnt = websocketStore.subscribeToEntity(
+			'enterprise',
+			['update', 'delete'],
+			handleEnterpriseEvent
+		);
+
+		// Subscribe to pool events
+		const unsubscribePool = websocketStore.subscribeToEntity(
+			'pool',
+			['create', 'update', 'delete'],
+			handlePoolEvent
+		);
+
+		// Subscribe to instance events
+		const unsubscribeInstance = websocketStore.subscribeToEntity(
+			'instance',
+			['create', 'update', 'delete'],
+			handleInstanceEvent
+		);
+
+		// Combine unsubscribe functions
+		unsubscribeWebsocket = () => {
+			unsubscribeEnt();
+			unsubscribePool();
+			unsubscribeInstance();
+		};
+	});
+
+	onDestroy(() => {
+		if (unsubscribeWebsocket) {
+			unsubscribeWebsocket();
+			unsubscribeWebsocket = null;
+		}
 	});
 </script>
 
@@ -175,8 +340,8 @@
 					<div>
 						<dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Status</dt>
 						<dd class="mt-1">
-							<span class="inline-flex px-2 py-1 text-xs font-medium rounded-full {enterprise.pool_manager_status?.is_running ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200' : 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'}">
-								{enterprise.pool_manager_status?.is_running ? 'Running' : 'Stopped'}
+							<span class="inline-flex px-2 py-1 text-xs font-medium rounded-full {enterprise.pool_manager_status?.running ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200' : 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'}">
+								{enterprise.pool_manager_status?.running ? 'Running' : 'Stopped'}
 							</span>
 						</dd>
 					</div>
@@ -262,6 +427,7 @@
 									<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Name</th>
 									<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
 									<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Created</th>
+									<th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
 								</tr>
 							</thead>
 							<tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -280,6 +446,17 @@
 										<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
 											{formatDate(instance.created_at)}
 										</td>
+										<td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+											<button
+												on:click={() => openDeleteInstanceModal(instance)}
+												class="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
+												title="Delete instance"
+											>
+												<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+												</svg>
+											</button>
+										</td>
 									</tr>
 								{/each}
 							</tbody>
@@ -288,6 +465,45 @@
 				{/if}
 			</div>
 		</div>
+
+		<!-- Events -->
+		{#if enterprise.events && enterprise.events.length > 0}
+			<div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+				<div class="px-4 py-5 sm:p-6">
+					<h2 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Events</h2>
+					<div bind:this={eventsContainer} class="space-y-3 max-h-96 overflow-y-auto scroll-smooth">
+						{#each enterprise.events as event}
+							<div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+								<div class="flex justify-between items-start">
+									<p class="text-sm text-gray-900 dark:text-white flex-1 mr-4">{event.message}</p>
+									<div class="flex items-center space-x-2 flex-shrink-0">
+										<span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full
+											{event.event_level === 'error' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' :
+											event.event_level === 'warning' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
+											'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'}">
+											{event.event_level}
+										</span>
+										<span class="text-xs text-gray-500 dark:text-gray-400">{formatDate(event.created_at)}</span>
+									</div>
+								</div>
+							</div>
+						{/each}
+					</div>
+				</div>
+			</div>
+		{:else}
+			<div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+				<div class="px-4 py-5 sm:p-6">
+					<h2 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Events</h2>
+					<div class="text-center py-8">
+						<svg class="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+						</svg>
+						<p class="text-sm text-gray-500 dark:text-gray-400">No events available</p>
+					</div>
+				</div>
+			</div>
+		{/if}
 	{/if}
 </div>
 
@@ -307,5 +523,15 @@
 		itemName={enterprise.name}
 		on:close={() => showDeleteModal = false}
 		on:confirm={handleDelete}
+	/>
+{/if}
+
+{#if showDeleteInstanceModal && selectedInstance}
+	<DeleteModal
+		title="Delete Instance"
+		message="Are you sure you want to delete this instance? This action cannot be undone."
+		itemName={selectedInstance.name}
+		on:close={() => { showDeleteInstanceModal = false; selectedInstance = null; }}
+		on:confirm={handleDeleteInstance}
 	/>
 {/if}

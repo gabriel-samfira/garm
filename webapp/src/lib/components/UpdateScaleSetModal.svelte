@@ -20,14 +20,11 @@
 	let maxRunners = scaleSet.max_runners;
 	let minIdleRunners = scaleSet.min_idle_runners;
 	let runnerBootstrapTimeout = scaleSet.runner_bootstrap_timeout;
-	let priority = scaleSet.priority;
 	let runnerPrefix = scaleSet.runner_prefix || '';
 	let osType = scaleSet.os_type || 'linux';
 	let osArch = scaleSet.os_arch || 'amd64';
 	let githubRunnerGroup = scaleSet.github_runner_group || '';
 	let enabled = scaleSet.enabled;
-	let tags: string[] = (scaleSet.tags || []).map(tag => typeof tag === 'string' ? tag : tag.name);
-	let newTag = '';
 	let extraSpecs = '{}';
 
 	// Initialize extra specs
@@ -49,23 +46,6 @@
 		}
 	});
 
-	function addTag() {
-		if (newTag.trim() && !tags.includes(newTag.trim())) {
-			tags = [...tags, newTag.trim()];
-			newTag = '';
-		}
-	}
-
-	function removeTag(index: number) {
-		tags = tags.filter((_, i) => i !== index);
-	}
-
-	function handleTagKeydown(event: KeyboardEvent) {
-		if (event.key === 'Enter') {
-			event.preventDefault();
-			addTag();
-		}
-	}
 
 	async function handleSubmit() {
 		try {
@@ -89,13 +69,11 @@
 				max_runners: maxRunners !== scaleSet.max_runners ? maxRunners : undefined,
 				min_idle_runners: minIdleRunners !== scaleSet.min_idle_runners ? minIdleRunners : undefined,
 				runner_bootstrap_timeout: runnerBootstrapTimeout !== scaleSet.runner_bootstrap_timeout ? runnerBootstrapTimeout : undefined,
-				priority: priority !== scaleSet.priority ? priority : undefined,
 				runner_prefix: runnerPrefix !== scaleSet.runner_prefix ? runnerPrefix : undefined,
 				os_type: osType !== scaleSet.os_type ? osType as any : undefined,
 				os_arch: osArch !== scaleSet.os_arch ? osArch as any : undefined,
 				github_runner_group: githubRunnerGroup !== scaleSet.github_runner_group ? githubRunnerGroup || undefined : undefined,
 				enabled: enabled !== scaleSet.enabled ? enabled : undefined,
-				tags: JSON.stringify(tags) !== JSON.stringify((scaleSet.tags || []).map(tag => typeof tag === 'string' ? tag : tag.name)) ? tags : undefined,
 				extra_specs: extraSpecs.trim() !== JSON.stringify(scaleSet.extra_specs || {}, null, 2).trim() ? JSON.stringify(parsedExtraSpecs) : undefined
 			};
 
@@ -164,213 +142,171 @@
 				/>
 			</div>
 
-			<!-- Basic Scale Set Configuration -->
-			<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-				<div>
-					<label for="image" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-						Image
-					</label>
-					<input
-						id="image"
-						type="text"
-						bind:value={image}
-						placeholder="e.g., ubuntu:22.04"
-						class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-					/>
-				</div>
-				<div>
-					<label for="flavor" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-						Flavor
-					</label>
-					<input
-						id="flavor"
-						type="text"
-						bind:value={flavor}
-						placeholder="e.g., default"
-						class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-					/>
-				</div>
-			</div>
-
-			<!-- Runner Configuration -->
-			<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-				<div>
-					<label for="maxRunners" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-						Max Runners
-					</label>
-					<input
-						id="maxRunners"
-						type="number"
-						bind:value={maxRunners}
-						min="1"
-						class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-					/>
-				</div>
-				<div>
-					<label for="minIdleRunners" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-						Min Idle Runners
-					</label>
-					<input
-						id="minIdleRunners"
-						type="number"
-						bind:value={minIdleRunners}
-						min="0"
-						class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-					/>
-				</div>
-				<div>
-					<label for="bootstrapTimeout" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-						Bootstrap Timeout (min)
-					</label>
-					<input
-						id="bootstrapTimeout"
-						type="number"
-						bind:value={runnerBootstrapTimeout}
-						min="1"
-						class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-					/>
-				</div>
-			</div>
-
-			<!-- Runner Settings -->
-			<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-				<div>
-					<label for="runnerPrefix" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-						Runner Prefix
-					</label>
-					<input
-						id="runnerPrefix"
-						type="text"
-						bind:value={runnerPrefix}
-						placeholder="garm"
-						class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-					/>
-				</div>
-				<div>
-					<label for="priority" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-						Priority
-					</label>
-					<input
-						id="priority"
-						type="number"
-						bind:value={priority}
-						min="1"
-						class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-					/>
-				</div>
-			</div>
-
-			<!-- OS Configuration -->
-			<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-				<div>
-					<label for="osType" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-						OS Type
-					</label>
-					<select
-						id="osType"
-						bind:value={osType}
-						class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-					>
-						<option value="linux">Linux</option>
-						<option value="windows">Windows</option>
-					</select>
-				</div>
-				<div>
-					<label for="osArch" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-						Architecture
-					</label>
-					<select
-						id="osArch"
-						bind:value={osArch}
-						class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-					>
-						<option value="amd64">AMD64</option>
-						<option value="arm64">ARM64</option>
-					</select>
-				</div>
-			</div>
-
-			<!-- GitHub Runner Group -->
-			<div>
-				<label for="githubRunnerGroup" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-					GitHub Runner Group (optional)
-				</label>
-				<input
-					id="githubRunnerGroup"
-					type="text"
-					bind:value={githubRunnerGroup}
-					placeholder="Default group"
-					class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-				/>
-			</div>
-
-			<!-- Tags -->
-			<div>
-				<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-					Tags
-				</label>
-				<div class="space-y-2">
-					<div class="flex">
+			<!-- Group 1: Image & OS Configuration -->
+			<div class="space-y-4">
+				<h3 class="text-lg font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
+					Image & OS Configuration
+				</h3>
+				<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+					<div>
+						<label for="image" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+							Image
+						</label>
 						<input
+							id="image"
 							type="text"
-							bind:value={newTag}
-							on:keydown={handleTagKeydown}
-							placeholder="Enter a tag"
-							class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-l-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+							bind:value={image}
+							placeholder="e.g., ubuntu:22.04"
+							class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
 						/>
-						<button
-							type="button"
-							on:click={addTag}
-							class="px-3 py-2 bg-blue-600 text-white rounded-r-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-						>
-							Add
-						</button>
 					</div>
-					{#if tags.length > 0}
-						<div class="flex flex-wrap gap-2">
-							{#each tags as tag, index}
-								<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
-									{tag}
-									<button
-										type="button"
-										on:click={() => removeTag(index)}
-										class="ml-1 h-4 w-4 rounded-full hover:bg-blue-200 dark:hover:bg-blue-800 flex items-center justify-center"
-									>
-										<svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-										</svg>
-									</button>
-								</span>
-							{/each}
-						</div>
-					{/if}
+					<div>
+						<label for="flavor" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+							Flavor
+						</label>
+						<input
+							id="flavor"
+							type="text"
+							bind:value={flavor}
+							placeholder="e.g., default"
+							class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+						/>
+					</div>
+					<div>
+						<label for="osType" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+							OS Type
+						</label>
+						<select
+							id="osType"
+							bind:value={osType}
+							class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+						>
+							<option value="linux">Linux</option>
+							<option value="windows">Windows</option>
+						</select>
+					</div>
+					<div>
+						<label for="osArch" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+							Architecture
+						</label>
+						<select
+							id="osArch"
+							bind:value={osArch}
+							class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+						>
+							<option value="amd64">AMD64</option>
+							<option value="arm64">ARM64</option>
+						</select>
+					</div>
 				</div>
 			</div>
 
-			<!-- Extra Specs -->
-			<div>
-				<label for="extraSpecs" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-					Extra Specs (JSON)
-				</label>
-				<textarea
-					id="extraSpecs"
-					bind:value={extraSpecs}
-					rows="4"
-					class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
-				></textarea>
+			<!-- Group 2: Runner Limits & Timing -->
+			<div class="space-y-4">
+				<h3 class="text-lg font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
+					Runner Limits & Timing
+				</h3>
+				<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+					<div>
+						<label for="minIdleRunners" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+							Min Idle Runners
+						</label>
+						<input
+							id="minIdleRunners"
+							type="number"
+							bind:value={minIdleRunners}
+							min="0"
+							placeholder="0"
+							class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+						/>
+					</div>
+					<div>
+						<label for="maxRunners" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+							Max Runners
+						</label>
+						<input
+							id="maxRunners"
+							type="number"
+							bind:value={maxRunners}
+							min="1"
+							placeholder="10"
+							class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+						/>
+					</div>
+					<div>
+						<label for="bootstrapTimeout" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+							Bootstrap Timeout (min)
+						</label>
+						<input
+							id="bootstrapTimeout"
+							type="number"
+							bind:value={runnerBootstrapTimeout}
+							min="1"
+							placeholder="20"
+							class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+						/>
+					</div>
+				</div>
 			</div>
 
-			<!-- Enabled Checkbox -->
-			<div class="flex items-center">
-				<input
-					id="enabled"
-					type="checkbox"
-					bind:checked={enabled}
-					class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded"
-				/>
-				<label for="enabled" class="ml-2 block text-sm text-gray-700 dark:text-gray-300">
-					Scale set enabled
-				</label>
+			<!-- Group 3: Advanced Settings -->
+			<div class="space-y-4">
+				<h3 class="text-lg font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
+					Advanced Settings
+				</h3>
+				<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+					<div>
+						<label for="runnerPrefix" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+							Runner Prefix
+						</label>
+						<input
+							id="runnerPrefix"
+							type="text"
+							bind:value={runnerPrefix}
+							placeholder="garm"
+							class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+						/>
+					</div>
+					<div>
+						<label for="githubRunnerGroup" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+							GitHub Runner Group (optional)
+						</label>
+						<input
+							id="githubRunnerGroup"
+							type="text"
+							bind:value={githubRunnerGroup}
+							placeholder="Default group"
+							class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+						/>
+					</div>
+				</div>
+
+				<!-- Extra Specs -->
+				<div>
+					<label for="extraSpecs" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+						Extra Specs (JSON)
+					</label>
+					<textarea
+						id="extraSpecs"
+						bind:value={extraSpecs}
+						rows="4"
+						placeholder="{'{}'}"
+						class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
+					></textarea>
+				</div>
+
+				<!-- Enabled Checkbox -->
+				<div class="flex items-center">
+					<input
+						id="enabled"
+						type="checkbox"
+						bind:checked={enabled}
+						class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded"
+					/>
+					<label for="enabled" class="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+						Scale set enabled
+					</label>
+				</div>
 			</div>
 
 			<!-- Action Buttons -->

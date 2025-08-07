@@ -7,6 +7,7 @@
 	import { base } from '$app/paths';
 	import UpdateScaleSetModal from '$lib/components/UpdateScaleSetModal.svelte';
 	import DeleteModal from '$lib/components/DeleteModal.svelte';
+	import { toastStore } from '$lib/stores/toast.js';
 
 	let scaleSet: ScaleSet | null = null;
 	let loading = true;
@@ -35,6 +36,10 @@
 		try {
 			await garmApi.updateScaleSet(scaleSet.id, params);
 			await loadScaleSet();
+			toastStore.success(
+				'Scale Set Updated',
+				`Scale Set ${scaleSet.name} has been updated successfully.`
+			);
 			showUpdateModal = false;
 		} catch (err) {
 			throw err; // Let the modal handle the error
@@ -47,7 +52,11 @@
 			await garmApi.deleteScaleSet(scaleSet.id);
 			goto(`${base}/scalesets`);
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to delete scale set';
+			const errorMessage = err instanceof Error ? err.message : 'Failed to delete scale set';
+			toastStore.error(
+				'Delete Failed',
+				errorMessage
+			);
 		}
 		showDeleteModal = false;
 	}

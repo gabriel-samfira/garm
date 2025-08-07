@@ -47,7 +47,7 @@
 </script>
 
 <Modal on:close={() => dispatch('close')}>
-	<div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full">
+	<div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-auto">
 		<div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
 			<h2 class="text-xl font-semibold text-gray-900 dark:text-white">Update Repository</h2>
 			<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{repository.owner}/{repository.name}</p>

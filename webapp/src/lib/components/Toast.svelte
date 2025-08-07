@@ -78,7 +78,7 @@
 </script>
 
 <!-- Toast Container -->
-<div class="fixed top-4 right-4 z-50 space-y-4 max-w-sm">
+<div class="fixed top-4 right-4 z-[60] space-y-4 max-w-sm">
 	{#each toasts as toast (toast.id)}
 		<div 
 			class="relative rounded-lg border p-4 shadow-lg transition-all duration-300 ease-in-out {getToastClasses(toast.type)}"

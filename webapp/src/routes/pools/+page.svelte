@@ -6,7 +6,6 @@
 	import CreatePoolModal from '$lib/components/CreatePoolModal.svelte';
 	import UpdatePoolModal from '$lib/components/UpdatePoolModal.svelte';
 	import DeleteModal from '$lib/components/DeleteModal.svelte';
-	import Toast from '$lib/components/Toast.svelte';
 	import { websocketStore, type WebSocketEvent } from '$lib/stores/websocket.js';
 	import { toastStore } from '$lib/stores/toast.js';
 
@@ -22,8 +21,6 @@
 	let selectedPool: Pool | null = null;
 	let unsubscribeWebsocket: (() => void) | null = null;
 
-	// WebSocket connection status
-	$: wsState = $websocketStore;
 
 	// Filtered and paginated data
 	// Search by entity name since pools don't have names
@@ -206,27 +203,6 @@
 			<p class="mt-2 text-sm text-gray-700 dark:text-gray-300">Manage runner pools across all entities</p>
 		</div>
 		<div class="mt-4 sm:mt-0 flex items-center space-x-4">
-			{#if wsState.connected}
-				<div class="flex items-center text-green-600 dark:text-green-400">
-					<div class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
-					<span class="text-sm">Live updates</span>
-				</div>
-			{:else if wsState.connecting}
-				<div class="flex items-center text-yellow-600 dark:text-yellow-400">
-					<div class="w-2 h-2 bg-yellow-500 rounded-full mr-2 animate-pulse"></div>
-					<span class="text-sm">Connecting...</span>
-				</div>
-			{:else if wsState.error}
-				<div class="flex items-center text-red-600 dark:text-red-400">
-					<div class="w-2 h-2 bg-red-500 rounded-full mr-2"></div>
-					<span class="text-sm">Offline</span>
-				</div>
-			{:else}
-				<div class="flex items-center text-gray-500 dark:text-gray-400">
-					<div class="w-2 h-2 bg-gray-400 rounded-full mr-2"></div>
-					<span class="text-sm">Not connected</span>
-				</div>
-			{/if}
 			<button
 				on:click={openCreateModal}
 				class="inline-flex items-center justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
@@ -466,9 +442,6 @@
 		{/if}
 	</div>
 </div>
-
-<!-- Toast Notifications -->
-<Toast />
 
 <!-- Modals -->
 {#if showCreateModal}

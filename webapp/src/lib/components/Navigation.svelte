@@ -2,11 +2,15 @@
 	import { page } from '$app/stores';
 	import { base } from '$app/paths';
 	import { auth, authStore } from '$lib/stores/auth.js';
+	import { websocketStore } from '$lib/stores/websocket.js';
 	import { onMount } from 'svelte';
 
 	let mobileMenuOpen = false;
 	let userMenuOpen = false;
 	let darkMode = false;
+
+	// WebSocket connection status
+	$: wsState = $websocketStore;
 
 	// Close mobile menu when route changes  
 	$: $page.url.pathname && (mobileMenuOpen = false);
@@ -94,20 +98,70 @@
 <!-- Fixed sidebar for desktop -->
 <div class="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
 	<div class="flex min-h-0 flex-1 flex-col bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
-		<!-- Logo -->
-		<div class="flex h-16 flex-shrink-0 items-center px-4 border-b border-gray-200 dark:border-gray-700">
-			<a href={`${base}/`} class="flex items-center">
-				<img 
-					src="/assets/garm-light.svg" 
-					alt="GARM" 
-					class="h-8 w-auto dark:hidden"
-				/>
-				<img 
-					src="/assets/garm-dark.svg" 
-					alt="GARM" 
-					class="h-8 w-auto hidden dark:block"
-				/>
-			</a>
+		<!-- Logo and Status Section -->
+		<div class="flex-shrink-0 border-b border-gray-200 dark:border-gray-700">
+			<!-- Logo Area - Generous padding and larger size -->
+			<div class="px-6 py-6 bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-700">
+				<a href={`${base}/`} class="flex justify-center">
+					<img 
+						src="/assets/garm-light.svg" 
+						alt="GARM" 
+						class="h-16 w-auto dark:hidden transition-transform hover:scale-105"
+					/>
+					<img 
+						src="/assets/garm-dark.svg" 
+						alt="GARM" 
+						class="h-16 w-auto hidden dark:block transition-transform hover:scale-105"
+					/>
+				</a>
+			</div>
+
+			<!-- Status and Controls Row -->
+			<div class="px-4 py-3 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-100 dark:border-gray-700">
+				<div class="flex items-center justify-between">
+					<!-- WebSocket Status -->
+					<div class="flex items-center space-x-2">
+						{#if wsState.connected}
+							<div class="flex items-center text-green-600 dark:text-green-400">
+								<div class="w-2.5 h-2.5 bg-green-500 rounded-full mr-2 animate-pulse shadow-sm"></div>
+								<span class="text-xs font-medium">Live</span>
+							</div>
+						{:else if wsState.connecting}
+							<div class="flex items-center text-yellow-600 dark:text-yellow-400">
+								<div class="w-2.5 h-2.5 bg-yellow-500 rounded-full mr-2 animate-pulse shadow-sm"></div>
+								<span class="text-xs font-medium">Connecting</span>
+							</div>
+						{:else if wsState.error}
+							<div class="flex items-center text-red-600 dark:text-red-400">
+								<div class="w-2.5 h-2.5 bg-red-500 rounded-full mr-2 shadow-sm"></div>
+								<span class="text-xs font-medium">Offline</span>
+							</div>
+						{:else}
+							<div class="flex items-center text-gray-500 dark:text-gray-400">
+								<div class="w-2.5 h-2.5 bg-gray-400 rounded-full mr-2 shadow-sm"></div>
+								<span class="text-xs font-medium">Disconnected</span>
+							</div>
+						{/if}
+					</div>
+
+					<!-- Theme Toggle -->
+					<button
+						on:click={toggleDarkMode}
+						class="p-2 rounded-lg bg-white dark:bg-gray-700 shadow-sm border border-gray-200 dark:border-gray-600 text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-600 dark:hover:text-white transition-all duration-200 hover:shadow-md"
+						title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+					>
+						{#if darkMode}
+							<svg class="h-4 w-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+							</svg>
+						{:else}
+							<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+							</svg>
+						{/if}
+					</button>
+				</div>
+			</div>
 		</div>
 
 		<!-- Navigation -->
@@ -152,25 +206,6 @@
 				{/each}
 			</div>
 
-			<!-- Theme toggle section -->
-			<div class="border-t border-gray-200 dark:border-gray-600 mt-4 pt-4">
-				<button
-					on:click={toggleDarkMode}
-					class="group flex items-center px-2 py-2 text-sm font-medium rounded-md w-full text-left text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white"
-				>
-					{#if darkMode}
-						<svg class="mr-3 h-6 w-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
-						</svg>
-						Light Mode
-					{:else}
-						<svg class="mr-3 h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
-						</svg>
-						Dark Mode
-					{/if}
-				</button>
-			</div>
 
 			<!-- Logout section -->
 			<div class="border-t border-gray-200 dark:border-gray-600 mt-4 pt-4">

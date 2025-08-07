@@ -80,11 +80,13 @@
 </script>
 
 <Modal on:close={() => dispatch('close')}>
-	<div class="p-6">
-		<h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Update Enterprise</h3>
-		<p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
-			Updating: <span class="font-medium">{enterprise.name}</span>
-		</p>
+	<div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-auto">
+		<div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+			<h2 class="text-xl font-semibold text-gray-900 dark:text-white">Update Enterprise</h2>
+			<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{enterprise.name}</p>
+		</div>
+
+		<div class="p-6">
 
 		{#if error}
 			<div class="mb-4 rounded-md bg-red-50 dark:bg-red-900 p-4">
@@ -200,5 +202,6 @@
 				</div>
 			</form>
 		{/if}
+		</div>
 	</div>
 </Modal>
