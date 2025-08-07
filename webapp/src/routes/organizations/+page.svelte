@@ -100,7 +100,6 @@
 	}
 
 	function handleOrganizationEvent(event: WebSocketEvent) {
-		console.log('[Organizations] Received websocket event:', event);
 		
 		if (event.operation === 'create') {
 			// Add new organization

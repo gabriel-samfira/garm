@@ -101,7 +101,6 @@
 	}
 
 	function handleInstanceEvent(event: WebSocketEvent) {
-		console.log('[Instances] Received websocket event:', event);
 		
 		if (event.operation === 'create') {
 			// Add new instance

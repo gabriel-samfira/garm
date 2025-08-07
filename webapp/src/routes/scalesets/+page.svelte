@@ -66,7 +66,6 @@
 	}
 
 	function handleScaleSetEvent(event: WebSocketEvent) {
-		console.log('[ScaleSets] Received websocket event:', event);
 		
 		if (event.operation === 'create') {
 			const newScaleSet = event.payload as ScaleSet;

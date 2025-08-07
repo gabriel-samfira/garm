@@ -8,10 +8,7 @@ echo "Building GARM SPA (SvelteKit)..."
 cd webapp
 
 # Install dependencies if node_modules doesn't exist
-if [ ! -d "node_modules" ]; then
-    echo "Installing dependencies..."
-    npm install
-fi
+npm install
 
 # Build the SPA
 echo "Building SPA..."

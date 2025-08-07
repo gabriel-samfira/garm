@@ -2,6 +2,7 @@
 	import { createEventDispatcher, onMount } from 'svelte';
 	import type { Pool, UpdatePoolParams } from '$lib/api/types.js';
 	import Modal from './Modal.svelte';
+	import JsonEditor from './JsonEditor.svelte';
 
 	export let pool: Pool;
 
@@ -94,7 +95,7 @@
 				github_runner_group: githubRunnerGroup !== pool.github_runner_group ? githubRunnerGroup || undefined : undefined,
 				enabled: enabled !== pool.enabled ? enabled : undefined,
 				tags: JSON.stringify(tags) !== JSON.stringify((pool.tags || []).map(tag => typeof tag === 'string' ? tag : tag.name)) ? tags : undefined,
-				extra_specs: extraSpecs.trim() !== JSON.stringify(pool.extra_specs || {}, null, 2).trim() ? JSON.stringify(parsedExtraSpecs) : undefined
+				extra_specs: extraSpecs.trim() !== JSON.stringify(pool.extra_specs || {}, null, 2).trim() ? parsedExtraSpecs : undefined
 			};
 
 			// Remove undefined values
@@ -345,16 +346,14 @@
 
 				<!-- Extra Specs -->
 				<div>
-					<label for="extraSpecs" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+					<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
 						Extra Specs (JSON)
 					</label>
-					<textarea
-						id="extraSpecs"
+					<JsonEditor
 						bind:value={extraSpecs}
-						rows="4"
+						rows={4}
 						placeholder="{'{}'}"
-						class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
-					></textarea>
+					/>
 				</div>
 
 				<!-- Enabled Checkbox -->

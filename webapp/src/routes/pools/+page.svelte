@@ -68,7 +68,6 @@
 	}
 
 	function handlePoolEvent(event: WebSocketEvent) {
-		console.log('[Pools] Received websocket event:', event);
 		
 		if (event.operation === 'create') {
 			const newPool = event.payload as Pool;

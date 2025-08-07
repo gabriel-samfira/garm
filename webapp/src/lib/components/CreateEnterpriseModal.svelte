@@ -77,7 +77,7 @@
 </script>
 
 <Modal on:close={() => dispatch('close')}>
-	<div class="p-6">
+	<div class="max-w-3xl w-full p-6">
 		<h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Create Enterprise</h3>
 		<p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
 			Enterprises are only available for GitHub endpoints.
@@ -146,7 +146,7 @@
 							<svg class="w-4 h-4 text-gray-400 cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
 							</svg>
-							<div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-80 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+							<div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
 								<div class="mb-2">
 									<strong>Round Robin:</strong> Cycles through pools in turn. Job 1 → Pool 1, Job 2 → Pool 2, etc.
 								</div>

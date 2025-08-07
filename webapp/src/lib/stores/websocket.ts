@@ -78,7 +78,6 @@ function createWebSocketStore() {
 
 		try {
 			const wsUrl = getWebSocketUrl();
-			console.log(`[WebSocket] Connecting to ${wsUrl} (attempt ${reconnectAttempts + 1}/${maxReconnectAttempts})`);
 			
 			// Use cookie authentication - no need for Bearer token in protocol
 			ws = new WebSocket(wsUrl);
@@ -86,14 +85,12 @@ function createWebSocketStore() {
 			// Set connection timeout
 			const connectionTimeout = setTimeout(() => {
 				if (ws && ws.readyState === WebSocket.CONNECTING) {
-					console.log('[WebSocket] Connection timeout');
 					ws.close();
 				}
 			}, 10000); // 10 second timeout
 
 			ws.onopen = () => {
 				clearTimeout(connectionTimeout);
-				console.log('[WebSocket] Connected to events endpoint');
 				reconnectAttempts = 0;
 				reconnectInterval = baseReconnectInterval;
 				
@@ -111,7 +108,6 @@ function createWebSocketStore() {
 			ws.onmessage = (event) => {
 				try {
 					const data = JSON.parse(event.data);
-					console.log('[WebSocket] Received event:', data);
 
 					// Update the store with the last event
 					update(state => ({ ...state, lastEvent: data }));
@@ -132,7 +128,6 @@ function createWebSocketStore() {
 
 			ws.onclose = (event) => {
 				clearTimeout(connectionTimeout);
-				console.log('[WebSocket] Connection closed:', event.code, event.reason);
 				cleanup();
 				
 				const wasManualDisconnect = event.code === 1000 && manuallyDisconnected;
@@ -148,14 +143,12 @@ function createWebSocketStore() {
 				// Attempt to reconnect unless it was explicitly a manual disconnect
 				// This includes server restarts that result in clean closes (code 1000)
 				if (!wasManualDisconnect) {
-					console.log('[WebSocket] Connection lost, scheduling reconnect...');
 					scheduleReconnect();
 				}
 			};
 
 			ws.onerror = (error) => {
 				clearTimeout(connectionTimeout);
-				console.error('[WebSocket] Connection error:', error);
 				cleanup();
 				
 				update(state => ({ 
@@ -172,7 +165,6 @@ function createWebSocketStore() {
 			};
 
 		} catch (err) {
-			console.error('[WebSocket] Failed to create connection:', err);
 			update(state => ({ 
 				...state, 
 				connected: false, 
@@ -211,13 +203,11 @@ function createWebSocketStore() {
 		
 		// Reset attempts periodically to allow for long-term reconnection
 		if (reconnectAttempts > maxReconnectAttempts) {
-			console.log('[WebSocket] Max reconnect attempts reached, resetting counter for persistent reconnection');
 			reconnectAttempts = 1;
 			reconnectInterval = baseReconnectInterval;
 		}
 
 		const actualInterval = Math.min(reconnectInterval, maxReconnectInterval);
-		console.log(`[WebSocket] Scheduling reconnect attempt ${reconnectAttempts} in ${actualInterval}ms`);
 
 		reconnectTimeout = window.setTimeout(() => {
 			if (!manuallyDisconnected) {
@@ -235,7 +225,6 @@ function createWebSocketStore() {
 				'send-everything': false,
 				filters: filters
 			};
-			console.log('[WebSocket] Sending filters:', message);
 			ws.send(JSON.stringify(message));
 			currentFilters = [...filters];
 		}
@@ -272,7 +261,6 @@ function createWebSocketStore() {
 	// Handle network connectivity changes
 	function handleNetworkChange() {
 		if (navigator.onLine && !manuallyDisconnected) {
-			console.log('[WebSocket] Network came back online, attempting to reconnect');
 			// Delay reconnection slightly to allow network to stabilize
 			setTimeout(() => {
 				if (!ws || ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING) {
@@ -288,17 +276,15 @@ function createWebSocketStore() {
 	if (typeof window !== 'undefined') {
 		window.addEventListener('online', handleNetworkChange);
 		window.addEventListener('offline', () => {
-			console.log('[WebSocket] Network went offline');
 			update(state => ({ ...state, error: 'Network offline' }));
 		});
 
-		// Periodic check to ensure connection is maintained when there are active subscriptions
+		// Periodic check to ensure connection is maintained
 		setInterval(() => {
-			// Only check if we have active subscriptions and are not manually disconnected
-			if (!manuallyDisconnected && eventCallbacks.size > 0) {
+			// Always maintain connection unless manually disconnected
+			if (!manuallyDisconnected) {
 				// If we should be connected but aren't, attempt to reconnect
 				if (!ws || ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING) {
-					console.log('[WebSocket] Periodic check: connection missing with active subscriptions, reconnecting...');
 					connect();
 				}
 			}
@@ -307,8 +293,6 @@ function createWebSocketStore() {
 
 	// Subscribe to events for a specific entity type
 	function subscribeToEntity(entityType: EntityType, operations: Operation[], callback: (event: WebSocketEvent) => void) {
-		// Reset manual disconnect flag when new subscriptions are added
-		manuallyDisconnected = false;
 		
 		// Add callback to the list for this entity type
 		if (!eventCallbacks.has(entityType)) {
@@ -337,9 +321,8 @@ function createWebSocketStore() {
 			sendFilters(currentFilters);
 		}
 
-		// Connect if not already connected or connecting
+		// Ensure connection exists (should already be connected via auto-connect)
 		if (!ws || ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING) {
-			console.log('[WebSocket] New subscription added, ensuring connection...');
 			connect();
 		}
 
@@ -365,6 +348,12 @@ function createWebSocketStore() {
 				}
 			}
 		};
+	}
+
+	// Auto-connect when store is created (browser environment only)
+	if (typeof window !== 'undefined') {
+		// Connect immediately
+		connect();
 	}
 
 	return {

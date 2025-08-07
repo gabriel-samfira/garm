@@ -81,7 +81,6 @@
 	function handleInstanceEvent(event: WebSocketEvent) {
 		if (!instance) return;
 		
-		console.log('[Instance Detail] Received websocket event:', event);
 		
 		if (event.operation === 'update' && event.payload.id === instance.id) {
 			// Check if status messages have been updated

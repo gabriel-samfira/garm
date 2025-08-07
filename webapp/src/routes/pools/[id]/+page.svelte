@@ -44,8 +44,16 @@
 			await garmApi.updatePool(pool.id, params);
 			await loadPool();
 			showUpdateModal = false;
+			toastStore.success(
+				'Pool Updated',
+				`Pool ${pool.id} has been updated successfully.`
+			);
 		} catch (err) {
-			throw err; // Let the modal handle the error
+			const errorMessage = err instanceof Error ? err.message : 'Failed to update pool';
+			toastStore.error(
+				'Update Failed',
+				errorMessage
+			);
 		}
 	}
 
@@ -137,7 +145,6 @@
 	}
 
 	function handlePoolEvent(event: WebSocketEvent) {
-		console.log('[Pool Detail] Received websocket event:', event);
 		
 		if (event.operation === 'update') {
 			const updatedPool = event.payload as Pool;
@@ -155,7 +162,6 @@
 	}
 
 	function handleInstanceEvent(event: WebSocketEvent) {
-		console.log('[Pool Detail] Received instance websocket event:', event);
 		
 		if (!pool || !pool.instances) return;
 		

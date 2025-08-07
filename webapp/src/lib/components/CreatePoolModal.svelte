@@ -9,6 +9,7 @@
 		Provider
 	} from '$lib/api/types.js';
 	import Modal from './Modal.svelte';
+	import JsonEditor from './JsonEditor.svelte';
 
 	const dispatch = createEventDispatcher<{
 		close: void;
@@ -136,7 +137,7 @@
 				github_runner_group: githubRunnerGroup || undefined,
 				enabled,
 				tags,
-				extra_specs: extraSpecs.trim() ? JSON.stringify(parsedExtraSpecs) : undefined
+				extra_specs: extraSpecs.trim() ? parsedExtraSpecs : undefined
 			};
 
 			// Call the appropriate creation method based on entity level
@@ -169,7 +170,7 @@
 </script>
 
 <Modal on:close={() => dispatch('close')}>
-	<div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto mx-auto">
+	<div class="max-w-6xl w-full max-h-[90vh] overflow-y-auto">
 		<div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
 			<h2 class="text-xl font-semibold text-gray-900 dark:text-white">Create New Pool</h2>
 		</div>
@@ -476,16 +477,14 @@
 
 					<!-- Extra Specs -->
 					<div>
-						<label for="extraSpecs" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+						<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
 							Extra Specs (JSON)
 						</label>
-						<textarea
-							id="extraSpecs"
+						<JsonEditor
 							bind:value={extraSpecs}
-							rows="4"
+							rows={4}
 							placeholder="{'{}'}"
-							class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
-						></textarea>
+						/>
 					</div>
 
 					<!-- Enabled Checkbox -->

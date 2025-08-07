@@ -61,11 +61,26 @@
 		}
 	}
 
+	// Generate secure random webhook secret
+	function generateSecureWebhookSecret(): string {
+		const array = new Uint8Array(32);
+		crypto.getRandomValues(array);
+		return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+	}
+
+	// Auto-generate webhook secret when checkbox is checked
+	$: if (generateWebhookSecret) {
+		formData.webhook_secret = generateSecureWebhookSecret();
+	} else if (!generateWebhookSecret) {
+		// Clear the secret if user unchecks auto-generate
+		formData.webhook_secret = '';
+	}
+
 	// Check if all mandatory fields are filled
 	$: isFormValid = formData.name.trim() !== '' && 
 					 formData.owner.trim() !== '' && 
 					 formData.credentials_name !== '' &&
-					 (!installWebhook || generateWebhookSecret || formData.webhook_secret.trim() !== '');
+					 (generateWebhookSecret || formData.webhook_secret.trim() !== '');
 
 	// Load credentials when modal opens
 	onMount(() => {
@@ -94,7 +109,6 @@
 
 			const submitData = {
 				...formData,
-				webhook_secret: generateWebhookSecret ? '' : formData.webhook_secret,
 				install_webhook: installWebhook,
 				auto_generate_secret: generateWebhookSecret
 			};
@@ -116,7 +130,7 @@
 </script>
 
 <Modal on:close={() => dispatch('close')}>
-	<div class="p-6">
+	<div class="w-full p-6" style="min-width: 600px;">
 		<h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Create Repository</h3>
 
 		{#if error}
@@ -234,34 +248,32 @@
 						</label>
 					</div>
 					
-					{#if installWebhook}
-						<div class="space-y-3">
-							<div class="flex items-center">
-								<input
-									id="generate-webhook-secret"
-									type="checkbox"
-									bind:checked={generateWebhookSecret}
-									class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded"
-								/>
-								<label for="generate-webhook-secret" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
-									Auto-generate webhook secret
-								</label>
-							</div>
-							
-							{#if !generateWebhookSecret}
-								<input
-									type="password"
-									bind:value={formData.webhook_secret}
-									class="block w-full px-3 py-2 mt-3 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white sm:text-sm"
-									placeholder="Enter webhook secret"
-								/>
-							{:else}
-								<p class="text-sm text-gray-500 dark:text-gray-400">
-									Webhook secret will be automatically generated
-								</p>
-							{/if}
+					<div class="space-y-3">
+						<div class="flex items-center">
+							<input
+								id="generate-webhook-secret"
+								type="checkbox"
+								bind:checked={generateWebhookSecret}
+								class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded"
+							/>
+							<label for="generate-webhook-secret" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+								Auto-generate webhook secret
+							</label>
 						</div>
-					{/if}
+						
+						{#if !generateWebhookSecret}
+							<input
+								type="password"
+								bind:value={formData.webhook_secret}
+								class="block w-full px-3 py-2 mt-3 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white sm:text-sm"
+								placeholder="Enter webhook secret"
+							/>
+						{:else}
+							<p class="text-sm text-gray-500 dark:text-gray-400">
+								Webhook secret will be automatically generated
+							</p>
+						{/if}
+					</div>
 				</div>
 
 				<!-- Actions -->

@@ -44,7 +44,6 @@
 	}
 
 	function handleEnterpriseEvent(event: WebSocketEvent) {
-		console.log('[Enterprises] Received websocket event:', event);
 		
 		if (event.operation === 'create') {
 			const newEnterprise = event.payload as Enterprise;

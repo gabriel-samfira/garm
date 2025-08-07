@@ -29,7 +29,6 @@
 	};
 
 	function handleEndpointEvent(event: WebSocketEvent) {
-		console.log('[Endpoints] Received websocket event:', event);
 		
 		if (event.operation === 'create') {
 			const newEndpoint = event.payload as Endpoint;

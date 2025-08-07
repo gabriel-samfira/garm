@@ -21,7 +21,7 @@
 	aria-modal="true"
 >
 	<div 
-		class="relative w-full mx-auto" 
+		class="relative mx-auto bg-white dark:bg-gray-800 rounded-lg shadow-lg" 
 		on:click={handleContentClick}
 		role="document"
 	>

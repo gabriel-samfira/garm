@@ -14,7 +14,6 @@
 		setTimeout(() => {
 			const isLoginPage = $page.url.pathname === '/webapp/login';
 			if (!isLoginPage && !$authStore.isAuthenticated && !$authStore.loading) {
-				console.log('Redirecting to login from onMount');
 				goto('/webapp/login');
 			}
 		}, 200);
@@ -22,11 +21,9 @@
 
 	// Reactive redirect logic
 	$: {
-		console.log('Layout reactive - loading:', $authStore.loading, 'isAuthenticated:', $authStore.isAuthenticated, 'pathname:', $page.url.pathname);
 		if (!$authStore.loading) {
 			const isLoginPage = $page.url.pathname === '/webapp/login';
 			if (!isLoginPage && !$authStore.isAuthenticated) {
-				console.log('Redirecting to login from reactive statement');
 				goto('/webapp/login');
 			}
 		}

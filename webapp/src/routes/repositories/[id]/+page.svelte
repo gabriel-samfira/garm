@@ -121,7 +121,6 @@
 	}
 
 	function handleRepositoryEvent(event: WebSocketEvent) {
-		console.log('[Repository Detail] Received websocket event:', event);
 		
 		if (event.operation === 'update') {
 			const updatedRepository = event.payload as Repository;
@@ -152,7 +151,6 @@
 	}
 
 	function handlePoolEvent(event: WebSocketEvent) {
-		console.log('[Repository Detail] Received pool websocket event:', event);
 		
 		if (!repository) return;
 		
@@ -176,7 +174,6 @@
 	}
 
 	function handleInstanceEvent(event: WebSocketEvent) {
-		console.log('[Repository Detail] Received instance websocket event:', event);
 		
 		if (!repository || !pools) return;
 		

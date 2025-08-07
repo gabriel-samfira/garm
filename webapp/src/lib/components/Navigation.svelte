@@ -16,14 +16,41 @@
 	$: $page.url.pathname && (mobileMenuOpen = false);
 
 	onMount(() => {
-		// Initialize dark mode from localStorage
-		darkMode = localStorage.getItem('darkMode') === 'true';
-		updateDarkMode();
+		// Initialize theme preference
+		initializeTheme();
+		
+		// Listen for system theme changes
+		const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+		mediaQuery.addEventListener('change', handleSystemThemeChange);
 	});
+
+	function initializeTheme() {
+		const savedTheme = localStorage.getItem('theme');
+		
+		if (savedTheme === 'dark') {
+			darkMode = true;
+		} else if (savedTheme === 'light') {
+			darkMode = false;
+		} else {
+			// No saved preference or 'system' - use system preference
+			darkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+		}
+		
+		updateDarkMode();
+	}
+
+	function handleSystemThemeChange(e: MediaQueryListEvent) {
+		// Only update if user hasn't set a manual preference
+		if (!localStorage.getItem('theme') || localStorage.getItem('theme') === 'system') {
+			darkMode = e.matches;
+			updateDarkMode();
+		}
+	}
 
 	function toggleDarkMode() {
 		darkMode = !darkMode;
-		localStorage.setItem('darkMode', darkMode.toString());
+		// Save explicit preference
+		localStorage.setItem('theme', darkMode ? 'dark' : 'light');
 		updateDarkMode();
 	}
 
@@ -74,7 +101,7 @@
 		},
 		{ 
 			href: `${base}/instances`, 
-			label: 'Instances', 
+			label: 'Runners', 
 			icon: 'M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z'
 		}
 	];
@@ -101,17 +128,17 @@
 		<!-- Logo and Status Section -->
 		<div class="flex-shrink-0 border-b border-gray-200 dark:border-gray-700">
 			<!-- Logo Area - Generous padding and larger size -->
-			<div class="px-6 py-6 bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-700">
+			<div class="px-6 py-3 bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-700">
 				<a href={`${base}/`} class="flex justify-center">
 					<img 
 						src="/assets/garm-light.svg" 
 						alt="GARM" 
-						class="h-16 w-auto dark:hidden transition-transform hover:scale-105"
+						class="h-24 w-auto dark:hidden transition-transform hover:scale-105"
 					/>
 					<img 
 						src="/assets/garm-dark.svg" 
 						alt="GARM" 
-						class="h-16 w-auto hidden dark:block transition-transform hover:scale-105"
+						class="h-24 w-auto hidden dark:block transition-transform hover:scale-105"
 					/>
 				</a>
 			</div>

@@ -118,7 +118,6 @@
 	}
 
 	function handleEnterpriseEvent(event: WebSocketEvent) {
-		console.log('[Enterprise Detail] Received websocket event:', event);
 		
 		if (event.operation === 'update') {
 			const updatedEnterprise = event.payload as Enterprise;
@@ -149,7 +148,6 @@
 	}
 
 	function handlePoolEvent(event: WebSocketEvent) {
-		console.log('[Enterprise Detail] Received pool websocket event:', event);
 		
 		if (!enterprise) return;
 		
@@ -173,7 +171,6 @@
 	}
 
 	function handleInstanceEvent(event: WebSocketEvent) {
-		console.log('[Enterprise Detail] Received instance websocket event:', event);
 		
 		if (!enterprise || !pools) return;
 		

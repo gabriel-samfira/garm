@@ -121,7 +121,6 @@
 	}
 
 	function handleOrganizationEvent(event: WebSocketEvent) {
-		console.log('[Organization Detail] Received websocket event:', event);
 		
 		if (event.operation === 'update') {
 			const updatedOrganization = event.payload as Organization;
@@ -152,7 +151,6 @@
 	}
 
 	function handlePoolEvent(event: WebSocketEvent) {
-		console.log('[Organization Detail] Received pool websocket event:', event);
 		
 		if (!organization) return;
 		
@@ -176,7 +174,6 @@
 	}
 
 	function handleInstanceEvent(event: WebSocketEvent) {
-		console.log('[Organization Detail] Received instance websocket event:', event);
 		
 		if (!organization || !pools) return;
 		

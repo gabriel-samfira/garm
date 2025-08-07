@@ -36,7 +36,7 @@
 		}
 	});
 
-	const statCards = [
+	$: statCards = [
 		{
 			title: 'Repositories',
 			value: stats.repositories,

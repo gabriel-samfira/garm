@@ -33,7 +33,6 @@
 	};
 
 	function handleCredentialEvent(event: WebSocketEvent) {
-		console.log('[Credentials] Received websocket event:', event);
 		
 		if (event.operation === 'create') {
 			const newCredential = event.payload as ForgeCredentials;

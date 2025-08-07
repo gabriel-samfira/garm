@@ -23,7 +23,6 @@ function setCookie(name: string, value: string, days: number = 7): void {
 	const expires = new Date();
 	expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
 	document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Lax`;
-	console.log('Set cookie:', name, value.substring(0, 20) + '...');
 }
 
 function getCookie(name: string): string | null {
@@ -36,11 +35,9 @@ function getCookie(name: string): string | null {
 		while (c.charAt(0) === ' ') c = c.substring(1, c.length);
 		if (c.indexOf(nameEQ) === 0) {
 			const value = c.substring(nameEQ.length, c.length);
-			console.log('Found cookie:', name, value.substring(0, 20) + '...');
 			return value;
 		}
 	}
-	console.log('Cookie not found:', name, 'Available cookies:', document.cookie);
 	return null;
 }
 
@@ -91,30 +88,24 @@ export const auth = {
 	},
 
 	init(): void {
-		console.log('Auth init called, browser:', browser);
 		if (browser) {
 			const token = getCookie('garm_token');
 			const user = getCookie('garm_user');
-			
-			console.log('Auth init - token:', token ? 'present' : 'missing', 'user:', user || 'missing');
 			
 			if (token && user) {
 				// Set the token in the API client for future requests
 				garmApi.setToken(token);
 				
 				// Optimistically set authenticated state
-				console.log('Setting authenticated state');
 				authStore.set({
 					isAuthenticated: true,
 					user,
 					loading: false
 				});
 			} else {
-				console.log('No token or user, setting unauthenticated');
 				authStore.update(state => ({ ...state, loading: false }));
 			}
 		} else {
-			console.log('Not in browser, setting loading false');
 			authStore.update(state => ({ ...state, loading: false }));
 		}
 	},

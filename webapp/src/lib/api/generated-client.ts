@@ -289,6 +289,9 @@ export class GeneratedGarmApiClient {
   }
 
   // Repositories
+  async installRepositoryWebhook(repoId: string): Promise<void> {
+    await this.repositoriesApi.installRepoWebhook(repoId);
+  }
   async listRepositories(): Promise<Repository[]> {
     const response = await this.repositoriesApi.listRepos();
     return response.data || [];
@@ -333,6 +336,9 @@ export class GeneratedGarmApiClient {
   }
 
   // Organizations
+  async installOrganizationWebhook(orgId: string): Promise<void> {
+    await this.organizationsApi.installOrgWebhook(orgId);
+  }
   async listOrganizations(): Promise<Organization[]> {
     const response = await this.organizationsApi.listOrgs();
     return response.data || [];

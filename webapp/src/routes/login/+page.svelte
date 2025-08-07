@@ -9,6 +9,31 @@
 	let loading = false;
 	let error = '';
 
+	// Initialize theme on mount
+	onMount(() => {
+		initializeTheme();
+	});
+
+	function initializeTheme() {
+		const savedTheme = localStorage.getItem('theme');
+		let isDark = false;
+		
+		if (savedTheme === 'dark') {
+			isDark = true;
+		} else if (savedTheme === 'light') {
+			isDark = false;
+		} else {
+			// No saved preference or 'system' - use system preference
+			isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+		}
+		
+		if (isDark) {
+			document.documentElement.classList.add('dark');
+		} else {
+			document.documentElement.classList.remove('dark');
+		}
+	}
+
 	// Redirect if already authenticated
 	$: if ($authStore.isAuthenticated) {
 		goto(`${base}/`);
@@ -47,16 +72,16 @@
 <div class="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
 	<div class="max-w-md w-full space-y-8">
 		<div>
-			<div class="mx-auto h-16 w-auto flex justify-center">
+			<div class="mx-auto h-48 w-auto flex justify-center">
 				<img 
 					src="/assets/garm-light.svg" 
 					alt="GARM" 
-					class="h-16 w-auto dark:hidden"
+					class="h-48 w-auto dark:hidden"
 				/>
 				<img 
 					src="/assets/garm-dark.svg" 
 					alt="GARM" 
-					class="h-16 w-auto hidden dark:block"
+					class="h-48 w-auto hidden dark:block"
 				/>
 			</div>
 			<h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
