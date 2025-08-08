@@ -52,11 +52,28 @@
 		}
 	}
 
+	function updateEntityFields(currentEntity: any, updatedFields: any): any {
+		// Preserve only fields that are definitely not in the API response
+		const { events: originalEvents } = currentEntity;
+		
+		// Use the API response as the primary source, add back preserved fields
+		const result = {
+			...updatedFields,
+			events: originalEvents // Always preserve events since they're managed by websockets
+		};
+		
+		return result;
+	}
+
 	async function handleUpdate(params: any) {
 		if (!repository) return;
 		try {
+			// Update repository
 			await garmApi.updateRepository(repository.id, params);
+			
+			// Reload fresh data to ensure UI is up to date
 			await loadRepository();
+			
 			toastStore.success(
 				'Repository Updated',
 				`Repository ${repository.owner}/${repository.name} has been updated successfully.`
@@ -130,8 +147,8 @@
 				const oldEventCount = repository.events?.length || 0;
 				const newEventCount = updatedRepository.events?.length || 0;
 				
-				// Update repository
-				repository = updatedRepository;
+				// Update repository using selective field updates
+				repository = updateEntityFields(repository, updatedRepository);
 				
 				// Auto-scroll if new events were added
 				if (newEventCount > oldEventCount) {

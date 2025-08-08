@@ -41,8 +41,10 @@
 	async function handleUpdate(params: UpdatePoolParams) {
 		if (!pool) return;
 		try {
-			await garmApi.updatePool(pool.id, params);
-			await loadPool();
+			// Update pool and get the updated object from API response
+			const updatedPool = await garmApi.updatePool(pool.id, params);
+			// Update the local state directly instead of re-rendering
+			pool = updatedPool;
 			showUpdateModal = false;
 			toastStore.success(
 				'Pool Updated',

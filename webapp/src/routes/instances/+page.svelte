@@ -5,6 +5,7 @@
 	import { base } from '$app/paths';
 	import DeleteModal from '$lib/components/DeleteModal.svelte';
 	import { websocketStore, type WebSocketEvent } from '$lib/stores/websocket.js';
+	import { toastStore } from '$lib/stores/toast.js';
 
 	let instances: Instance[] = [];
 	let loading = true;
@@ -59,6 +60,10 @@
 		try {
 			await garmApi.deleteInstance(instanceToDelete.name);
 			// No need to reload - websocket will handle the update
+			toastStore.success(
+				'Instance Deleted',
+				`Instance ${instanceToDelete.name} has been deleted successfully.`
+			);
 			showDeleteModal = false;
 			instanceToDelete = null;
 		} catch (err) {
@@ -280,7 +285,7 @@
 								<td class="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
 									<button
 										on:click={() => handleDelete(instance)}
-										class="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
+										class="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 cursor-pointer"
 										title="Delete instance"
 									>
 										<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

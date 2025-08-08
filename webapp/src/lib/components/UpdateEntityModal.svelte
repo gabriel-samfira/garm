@@ -195,7 +195,6 @@
 					>
 						<option value="roundrobin">Round Robin</option>
 						<option value="pack">Pack</option>
-						<option value="">None (Default: Round Robin)</option>
 					</select>
 					<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
 						Round Robin distributes jobs evenly across pools, Pack fills pools in order

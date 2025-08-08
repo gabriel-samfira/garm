@@ -1,10 +1,12 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { base } from '$app/paths';
 	import { garmApi } from '$lib/api/client.js';
+	import { websocketStore, type WebSocketEvent } from '$lib/stores/websocket.js';
+	import { eagerCacheManager } from '$lib/stores/eager-cache.js';
 	import type { Repository, Organization, Pool, Instance } from '$lib/api/types.js';
 
-	let loading = true;
+	// Start with zero values for immediate render
 	let stats = {
 		repositories: 0,
 		organizations: 0,
@@ -12,15 +14,51 @@
 		instances: 0
 	};
 	let error = '';
+	let unsubscribeWebsockets: (() => void)[] = [];
+
+	// Animation function for counting up numbers
+	function animateNumber(element: HTMLElement, targetValue: number, duration: number = 1000) {
+		const startValue = parseInt(element.textContent || '0');
+		const increment = (targetValue - startValue) / (duration / 16); // 60fps
+		let currentValue = startValue;
+
+		const animate = () => {
+			currentValue += increment;
+			if ((increment > 0 && currentValue >= targetValue) || (increment < 0 && currentValue <= targetValue)) {
+				element.textContent = targetValue.toString();
+				return;
+			}
+			element.textContent = Math.floor(currentValue).toString();
+			requestAnimationFrame(animate);
+		};
+
+		if (startValue !== targetValue) {
+			requestAnimationFrame(animate);
+		}
+	}
 
 	onMount(async () => {
+		// Fetch initial data and animate to values using eager cache for small datasets
 		try {
 			const [repos, orgs, pools, instances] = await Promise.all([
-				garmApi.listRepositories(),
-				garmApi.listOrganizations(),
-				garmApi.listPools(),
-				garmApi.listInstances()
+				eagerCacheManager.getRepositories(),
+				eagerCacheManager.getOrganizations(),
+				eagerCacheManager.getPools(),
+				garmApi.listInstances() // Instances still loaded directly (large dataset)
 			]);
+
+			// Animate numbers to fetched values
+			setTimeout(() => {
+				const repoElement = document.querySelector('[data-stat="repositories"]');
+				const orgElement = document.querySelector('[data-stat="organizations"]');
+				const poolElement = document.querySelector('[data-stat="pools"]');
+				const instanceElement = document.querySelector('[data-stat="instances"]');
+
+				if (repoElement) animateNumber(repoElement as HTMLElement, repos.length);
+				if (orgElement) animateNumber(orgElement as HTMLElement, orgs.length);
+				if (poolElement) animateNumber(poolElement as HTMLElement, pools.length);
+				if (instanceElement) animateNumber(instanceElement as HTMLElement, instances.length);
+			}, 100);
 
 			stats = {
 				repositories: repos.length,
@@ -31,10 +69,64 @@
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to load dashboard data';
 			console.error('Dashboard error:', err);
-		} finally {
-			loading = false;
 		}
+
+		// Set up websocket subscriptions for real-time updates
+		const repoSubscription = websocketStore.subscribeToEntity('repository', ['create', 'delete'], handleRepositoryEvent);
+		const orgSubscription = websocketStore.subscribeToEntity('organization', ['create', 'delete'], handleOrganizationEvent);
+		const poolSubscription = websocketStore.subscribeToEntity('pool', ['create', 'delete'], handlePoolEvent);
+		const instanceSubscription = websocketStore.subscribeToEntity('instance', ['create', 'delete'], handleInstanceEvent);
+		
+		unsubscribeWebsockets = [repoSubscription, orgSubscription, poolSubscription, instanceSubscription];
 	});
+
+	onDestroy(() => {
+		unsubscribeWebsockets.forEach(unsubscribe => unsubscribe());
+	});
+
+	function handleRepositoryEvent(event: WebSocketEvent) {
+		const element = document.querySelector('[data-stat="repositories"]') as HTMLElement;
+		if (event.operation === 'create') {
+			stats.repositories++;
+			if (element) animateNumber(element, stats.repositories, 500);
+		} else if (event.operation === 'delete') {
+			stats.repositories = Math.max(0, stats.repositories - 1);
+			if (element) animateNumber(element, stats.repositories, 500);
+		}
+	}
+
+	function handleOrganizationEvent(event: WebSocketEvent) {
+		const element = document.querySelector('[data-stat="organizations"]') as HTMLElement;
+		if (event.operation === 'create') {
+			stats.organizations++;
+			if (element) animateNumber(element, stats.organizations, 500);
+		} else if (event.operation === 'delete') {
+			stats.organizations = Math.max(0, stats.organizations - 1);
+			if (element) animateNumber(element, stats.organizations, 500);
+		}
+	}
+
+	function handlePoolEvent(event: WebSocketEvent) {
+		const element = document.querySelector('[data-stat="pools"]') as HTMLElement;
+		if (event.operation === 'create') {
+			stats.pools++;
+			if (element) animateNumber(element, stats.pools, 500);
+		} else if (event.operation === 'delete') {
+			stats.pools = Math.max(0, stats.pools - 1);
+			if (element) animateNumber(element, stats.pools, 500);
+		}
+	}
+
+	function handleInstanceEvent(event: WebSocketEvent) {
+		const element = document.querySelector('[data-stat="instances"]') as HTMLElement;
+		if (event.operation === 'create') {
+			stats.instances++;
+			if (element) animateNumber(element, stats.instances, 500);
+		} else if (event.operation === 'delete') {
+			stats.instances = Math.max(0, stats.instances - 1);
+			if (element) animateNumber(element, stats.instances, 500);
+		}
+	}
 
 	$: statCards = [
 		{
@@ -91,26 +183,7 @@
 		</p>
 	</div>
 
-	{#if loading}
-		<!-- Loading state -->
-		<div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-			{#each Array(4) as _}
-				<div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg animate-pulse">
-					<div class="p-5">
-						<div class="flex items-center">
-							<div class="flex-shrink-0">
-								<div class="w-8 h-8 bg-gray-300 dark:bg-gray-600 rounded"></div>
-							</div>
-							<div class="ml-5 w-0 flex-1">
-								<div class="h-4 bg-gray-300 dark:bg-gray-600 rounded w-24 mb-2"></div>
-								<div class="h-8 bg-gray-300 dark:bg-gray-600 rounded w-16"></div>
-							</div>
-						</div>
-					</div>
-				</div>
-			{/each}
-		</div>
-	{:else if error}
+	{#if error}
 		<!-- Error state -->
 		<div class="rounded-md bg-red-50 dark:bg-red-900 p-4">
 			<div class="flex">
@@ -125,41 +198,42 @@
 				</div>
 			</div>
 		</div>
-	{:else}
-		<!-- Stats cards -->
-		<div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-			{#each statCards as card}
-				<a
-					href={card.href}
-					class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg hover:shadow-md transition-shadow duration-200"
-				>
-					<div class="p-5">
-						<div class="flex items-center">
-							<div class="flex-shrink-0">
-								<div class="w-8 h-8 rounded-md {getColorClasses(card.color)} flex items-center justify-center">
-									<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={card.icon}></path>
-									</svg>
-								</div>
-							</div>
-							<div class="ml-5 w-0 flex-1">
-								<dl>
-									<dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
-										{card.title}
-									</dt>
-									<dd class="text-lg font-medium text-gray-900 dark:text-white">
-										{card.value}
-									</dd>
-								</dl>
+	{/if}
+
+	<!-- Stats cards - always visible, start with zero values -->
+	<div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+		{#each statCards as card}
+			<a
+				href={card.href}
+				class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg hover:shadow-md transition-shadow duration-200"
+			>
+				<div class="p-5">
+					<div class="flex items-center">
+						<div class="flex-shrink-0">
+							<div class="w-8 h-8 rounded-md {getColorClasses(card.color)} flex items-center justify-center">
+								<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={card.icon}></path>
+								</svg>
 							</div>
 						</div>
+						<div class="ml-5 w-0 flex-1">
+							<dl>
+								<dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
+									{card.title}
+								</dt>
+								<dd class="text-lg font-medium text-gray-900 dark:text-white" data-stat={card.title.toLowerCase()}>
+									{card.value}
+								</dd>
+							</dl>
+						</div>
 					</div>
-				</a>
-			{/each}
-		</div>
+				</div>
+			</a>
+		{/each}
+	</div>
 
-		<!-- Quick actions -->
-		<div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+	<!-- Quick actions -->
+	<div class="bg-white dark:bg-gray-800 shadow rounded-lg">
 			<div class="p-6">
 				<h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">Quick Actions</h3>
 				<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
@@ -215,5 +289,4 @@
 				</div>
 			</div>
 		</div>
-	{/if}
 </div>

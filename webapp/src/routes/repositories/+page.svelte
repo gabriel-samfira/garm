@@ -6,7 +6,8 @@
 	import CreateRepositoryModal from '$lib/components/CreateRepositoryModal.svelte';
 	import UpdateEntityModal from '$lib/components/UpdateEntityModal.svelte';
 	import DeleteModal from '$lib/components/DeleteModal.svelte';
-	import { websocketStore, type WebSocketEvent } from '$lib/stores/websocket.js';
+	import { eagerCache, eagerCacheManager } from '$lib/stores/eager-cache.js';
+	import { toastStore } from '$lib/stores/toast.js';
 
 	let repositories: Repository[] = [];
 	let loading = true;
@@ -21,7 +22,11 @@
 	let showDeleteModal = false;
 	let editingRepository: Repository | null = null;
 	let deletingRepository: Repository | null = null;
-	let unsubscribeWebsocket: (() => void) | null = null;
+
+	// Subscribe to eager cache for repositories
+	$: repositories = $eagerCache.repositories;
+	$: loading = $eagerCache.loading.repositories;
+	$: cacheError = $eagerCache.errorMessages.repositories;
 
 
 
@@ -47,57 +52,28 @@
 		currentPage * perPage
 	);
 
-	function handleRepositoryEvent(event: WebSocketEvent) {
-		
-		if (event.operation === 'create') {
-			// Add new repository
-			const newRepository = event.payload as Repository;
-			repositories = [...repositories, newRepository];
-		} else if (event.operation === 'update') {
-			// Update existing repository
-			const updatedRepository = event.payload as Repository;
-			repositories = repositories.map(repo => 
-				repo.id === updatedRepository.id ? updatedRepository : repo
-			);
-		} else if (event.operation === 'delete') {
-			// Remove repository - payload might only contain ID
-			const repositoryId = event.payload.id || event.payload;
-			repositories = repositories.filter(repo => repo.id !== repositoryId);
-		}
-	}
+	// Repository events are now handled by eager cache
 
 	onMount(async () => {
-		// Initial load
-		await loadRepositories();
-		
-		// Subscribe to real-time repository events
-		unsubscribeWebsocket = websocketStore.subscribeToEntity(
-			'repository',
-			['create', 'update', 'delete'],
-			handleRepositoryEvent
-		);
-	});
-
-	onDestroy(() => {
-		// Clean up websocket subscription
-		if (unsubscribeWebsocket) {
-			unsubscribeWebsocket();
-			unsubscribeWebsocket = null;
+		// Load repositories through eager cache (priority load + background load others)
+		try {
+			await eagerCacheManager.getRepositories();
+		} catch (err) {
+			// Cache error is already handled by the eager cache system
+			// We don't need to set error here anymore since it's in the cache state
+			console.error('Failed to load repositories:', err);
 		}
 	});
 
-	async function loadRepositories() {
+	async function retryLoadRepositories() {
 		try {
-			loading = true;
-			error = '';
-			repositories = await garmApi.listRepositories();
+			await eagerCacheManager.retryResource('repositories');
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to load repositories';
-			console.error('Error loading repositories:', err);
-		} finally {
-			loading = false;
+			console.error('Retry failed:', err);
 		}
 	}
+
+	// Repositories are now loaded through eager cache
 
 	function showEditRepositoryModal(repository: Repository) {
 		editingRepository = repository;
@@ -144,6 +120,10 @@
 
 			// No need to reload - websocket will handle the update
 			showCreateModal = false;
+			toastStore.success(
+				'Repository Created',
+				`Repository ${createdRepo.owner}/${createdRepo.name} has been created successfully.`
+			);
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to create repository';
 			throw err; // Let the modal handle the error display
@@ -156,6 +136,10 @@
 		try {
 			await garmApi.updateRepository(editingRepository.id, params);
 			// No need to reload - websocket will handle the update
+			toastStore.success(
+				'Repository Updated',
+				`Repository ${editingRepository.owner}/${editingRepository.name} has been updated successfully.`
+			);
 			closeModals();
 		} catch (err) {
 			throw err; // Let the modal handle the error
@@ -169,6 +153,10 @@
 			error = '';
 			await garmApi.deleteRepository(deletingRepository.id);
 			// No need to reload - websocket will handle the update
+			toastStore.success(
+				'Repository Deleted',
+				`Repository ${deletingRepository.owner}/${deletingRepository.name} has been deleted successfully.`
+			);
 			closeModals();
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to delete repository';
@@ -294,7 +282,7 @@
 				<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
 				<p class="mt-2 text-sm text-gray-600 dark:text-gray-400">Loading repositories...</p>
 			</div>
-		{:else if error}
+		{:else if error || cacheError}
 			<div class="p-6">
 				<div class="rounded-md bg-red-50 dark:bg-red-900 p-4">
 					<div class="flex">
@@ -303,9 +291,22 @@
 								<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
 							</svg>
 						</div>
-						<div class="ml-3">
+						<div class="ml-3 flex-1">
 							<h3 class="text-sm font-medium text-red-800 dark:text-red-200">Error loading repositories</h3>
-							<p class="mt-2 text-sm text-red-700 dark:text-red-300">{error}</p>
+							<p class="mt-2 text-sm text-red-700 dark:text-red-300">{cacheError || error}</p>
+							{#if cacheError}
+								<div class="mt-3">
+									<button
+										on:click={retryLoadRepositories}
+										class="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-5 font-medium rounded text-red-700 dark:text-red-200 bg-red-100 dark:bg-red-800 hover:bg-red-200 dark:hover:bg-red-700 focus:outline-none focus:bg-red-200 dark:focus:bg-red-700 transition duration-150 ease-in-out"
+									>
+										<svg class="-ml-1 mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+										</svg>
+										Retry
+									</button>
+								</div>
+							{/if}
 						</div>
 					</div>
 				</div>
@@ -376,7 +377,7 @@
 									<div class="flex justify-end space-x-2">
 										<button
 											on:click={() => showEditRepositoryModal(repo)}
-											class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300"
+											class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 cursor-pointer"
 											title="Edit repository"
 										>
 											<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -385,7 +386,7 @@
 										</button>
 										<button
 											on:click={() => showDeleteRepositoryModal(repo)}
-											class="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
+											class="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 cursor-pointer"
 											title="Delete repository"
 										>
 											<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

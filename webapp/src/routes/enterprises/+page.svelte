@@ -6,11 +6,17 @@
 	import CreateEnterpriseModal from '$lib/components/CreateEnterpriseModal.svelte';
 	import UpdateEntityModal from '$lib/components/UpdateEntityModal.svelte';
 	import DeleteModal from '$lib/components/DeleteModal.svelte';
-	import { websocketStore, type WebSocketEvent } from '$lib/stores/websocket.js';
+	import { eagerCache, eagerCacheManager } from '$lib/stores/eager-cache.js';
+	import { toastStore } from '$lib/stores/toast.js';
 
 	let enterprises: Enterprise[] = [];
 	let loading = true;
 	let error = '';
+
+	// Subscribe to eager cache for enterprises
+	$: enterprises = $eagerCache.enterprises;
+	$: loading = $eagerCache.loading.enterprises;
+	$: cacheError = $eagerCache.errorMessages.enterprises;
 	let searchTerm = '';
 	let currentPage = 1;
 	let itemsPerPage = 25;
@@ -18,9 +24,6 @@
 	let showUpdateModal = false;
 	let showDeleteModal = false;
 	let selectedEnterprise: Enterprise | null = null;
-	let unsubscribeWebsocket: (() => void) | null = null;
-
-
 	// Filtered and paginated data
 	$: filteredEnterprises = enterprises.filter((ent) =>
 		ent.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -31,40 +34,20 @@
 		currentPage * itemsPerPage
 	);
 
-	async function loadEnterprises() {
-		try {
-			loading = true;
-			error = '';
-			enterprises = await garmApi.listEnterprises();
-		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to load enterprises';
-		} finally {
-			loading = false;
-		}
-	}
 
-	function handleEnterpriseEvent(event: WebSocketEvent) {
-		
-		if (event.operation === 'create') {
-			const newEnterprise = event.payload as Enterprise;
-			enterprises = [...enterprises, newEnterprise];
-		} else if (event.operation === 'update') {
-			const updatedEnterprise = event.payload as Enterprise;
-			enterprises = enterprises.map(enterprise => 
-				enterprise.id === updatedEnterprise.id ? updatedEnterprise : enterprise
-			);
-		} else if (event.operation === 'delete') {
-			const enterpriseId = event.payload.id || event.payload;
-			enterprises = enterprises.filter(enterprise => enterprise.id !== enterpriseId);
-		}
-	}
 
 	async function handleCreateEnterprise(params: CreateEnterpriseParams) {
 		try {
+			error = '';
 			await garmApi.createEnterprise(params);
-			// No need to reload - websocket will handle the update
+			// No need to reload - eager cache websocket will handle the update
+			toastStore.success(
+				'Enterprise Created',
+				`Enterprise ${params.name} has been created successfully.`
+			);
 			showCreateModal = false;
 		} catch (err) {
+			error = err instanceof Error ? err.message : 'Failed to create enterprise';
 			throw err; // Let the modal handle the error
 		}
 	}
@@ -73,7 +56,11 @@
 		if (!selectedEnterprise) return;
 		try {
 			await garmApi.updateEnterprise(selectedEnterprise.id, params);
-			// No need to reload - websocket will handle the update
+			// No need to reload - eager cache websocket will handle the update
+			toastStore.success(
+				'Enterprise Updated',
+				`Enterprise ${selectedEnterprise.name} has been updated successfully.`
+			);
 			showUpdateModal = false;
 			selectedEnterprise = null;
 		} catch (err) {
@@ -84,8 +71,13 @@
 	async function handleDeleteEnterprise() {
 		if (!selectedEnterprise) return;
 		try {
+			error = '';
 			await garmApi.deleteEnterprise(selectedEnterprise.id);
-			// No need to reload - websocket will handle the update
+			// No need to reload - eager cache websocket will handle the update
+			toastStore.success(
+				'Enterprise Deleted',
+				`Enterprise ${selectedEnterprise.name} has been deleted successfully.`
+			);
 			showDeleteModal = false;
 			selectedEnterprise = null;
 		} catch (err) {
@@ -112,23 +104,26 @@
 		return `<div class="inline-flex w-4 h-4"><svg class="w-4 h-4 dark:hidden" width="98" height="96" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 98 96"><path fill-rule="evenodd" clip-rule="evenodd" d="M48.854 0C21.839 0 0 22 0 49.217c0 21.756 13.993 40.172 33.405 46.69 2.427.49 3.316-1.059 3.316-2.362 0-1.141-.08-5.052-.08-9.127-13.59 2.934-16.42-5.867-16.42-5.867-2.184-5.704-5.42-7.17-5.42-7.17-4.448-3.015.324-3.015.324-3.015 4.934.326 7.523 5.052 7.523 5.052 4.367 7.496 11.404 5.378 14.235 4.074.404-3.178 1.699-5.378 3.074-6.6-10.839-1.141-22.243-5.378-22.243-24.283 0-5.378 1.94-9.778 5.014-13.2-.485-1.222-2.184-6.275.486-13.038 0 0 4.125-1.304 13.426 5.052a46.97 46.97 0 0 1 12.214-1.63c4.125 0 8.33.571 12.213 1.63 9.302-6.356 13.427-5.052 13.427-5.052 2.67 6.763.97 11.816.485 13.038 3.155 3.422 5.015 7.822 5.015 13.2 0 18.905-11.404 23.06-22.324 24.283 1.78 1.548 3.316 4.481 3.316 9.126 0 6.6-.08 11.897-.08 13.526 0 1.304.89 2.853 3.316 2.364 19.412-6.52 33.405-24.935 33.405-46.691C97.707 22 75.788 0 48.854 0z" fill="#24292f"/></svg><svg class="w-4 h-4 hidden dark:block" width="98" height="96" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 98 96"><path fill-rule="evenodd" clip-rule="evenodd" d="M48.854 0C21.839 0 0 22 0 49.217c0 21.756 13.993 40.172 33.405 46.69 2.427.49 3.316-1.059 3.316-2.362 0-1.141-.08-5.052-.08-9.127-13.59 2.934-16.42-5.867-16.42-5.867-2.184-5.704-5.42-7.17-5.42-7.17-4.448-3.015.324-3.015.324-3.015 4.934.326 7.523 5.052 7.523 5.052 4.367 7.496 11.404 5.378 14.235 4.074.404-3.178 1.699-5.378 3.074-6.6-10.839-1.141-22.243-5.378-22.243-24.283 0-5.378 1.94-9.778 5.014-13.2-.485-1.222-2.184-6.275.486-13.038 0 0 4.125-1.304 13.426 5.052a46.97 46.97 0 0 1 12.214-1.63c4.125 0 8.33.571 12.213 1.63 9.302-6.356 13.427-5.052 13.427-5.052 2.67 6.763.97 11.816.485 13.038 3.155 3.422 5.015 7.822 5.015 13.2 0 18.905-11.404 23.06-22.324 24.283 1.78 1.548 3.316 4.481 3.316 9.126 0 6.6-.08 11.897-.08 13.526 0 1.304.89 2.853 3.316 2.364 19.412-6.52 33.405-24.935 33.405-46.691C97.707 22 75.788 0 48.854 0z" fill="#fff"/></svg></div>`;
 	}
 
-	onMount(() => {
-		loadEnterprises();
-		
-		// Subscribe to real-time enterprise events
-		unsubscribeWebsocket = websocketStore.subscribeToEntity(
-			'enterprise',
-			['create', 'update', 'delete'],
-			handleEnterpriseEvent
-		);
-	});
-
-	onDestroy(() => {
-		if (unsubscribeWebsocket) {
-			unsubscribeWebsocket();
-			unsubscribeWebsocket = null;
+	onMount(async () => {
+		// Load enterprises through eager cache (priority load + background load others)
+		try {
+			await eagerCacheManager.getEnterprises();
+		} catch (err) {
+			// Cache error is already handled by the eager cache system
+			// We don't need to set error here anymore since it's in the cache state
+			console.error('Failed to load enterprises:', err);
 		}
 	});
+
+	async function retryLoadEnterprises() {
+		try {
+			await eagerCacheManager.retryResource('enterprises');
+		} catch (err) {
+			console.error('Retry failed:', err);
+		}
+	}
+
+	// Enterprises are now handled by eager cache with websocket subscriptions
 </script>
 
 <svelte:head>
@@ -203,10 +198,33 @@
 				<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
 				<p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Loading enterprises...</p>
 			</div>
-		{:else if error}
-			<div class="p-6 text-center">
+		{:else if error || cacheError}
+			<div class="p-6">
 				<div class="rounded-md bg-red-50 dark:bg-red-900 p-4">
-					<p class="text-sm font-medium text-red-800 dark:text-red-200">{error}</p>
+					<div class="flex">
+						<div class="flex-shrink-0">
+							<svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+								<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+							</svg>
+						</div>
+						<div class="ml-3 flex-1">
+							<h3 class="text-sm font-medium text-red-800 dark:text-red-200">Error loading enterprises</h3>
+							<p class="mt-2 text-sm text-red-700 dark:text-red-300">{cacheError || error}</p>
+							{#if cacheError}
+								<div class="mt-3">
+									<button
+										on:click={retryLoadEnterprises}
+										class="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-5 font-medium rounded text-red-700 dark:text-red-200 bg-red-100 dark:bg-red-800 hover:bg-red-200 dark:hover:bg-red-700 focus:outline-none focus:bg-red-200 dark:focus:bg-red-700 transition duration-150 ease-in-out"
+									>
+										<svg class="-ml-1 mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+										</svg>
+										Retry
+									</button>
+								</div>
+							{/if}
+						</div>
+					</div>
 				</div>
 			</div>
 		{:else if paginatedEnterprises.length === 0}
@@ -269,7 +287,7 @@
 									<div class="flex justify-end space-x-2">
 										<button
 											on:click={() => openUpdateModal(enterprise)}
-											class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300"
+											class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 cursor-pointer"
 											title="Edit enterprise"
 										>
 											<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -278,7 +296,7 @@
 										</button>
 										<button
 											on:click={() => openDeleteModal(enterprise)}
-											class="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
+											class="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 cursor-pointer"
 											title="Delete enterprise"
 										>
 											<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

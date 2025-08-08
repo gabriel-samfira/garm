@@ -3,20 +3,23 @@
 	import { garmApi } from '$lib/api/client.js';
 	import type { Endpoint } from '$lib/api/types.js';
 	import ForgeTypeSelector from '$lib/components/ForgeTypeSelector.svelte';
-	import { websocketStore, type WebSocketEvent } from '$lib/stores/websocket.js';
+	import { eagerCache, eagerCacheManager } from '$lib/stores/eager-cache.js';
+	import { toastStore } from '$lib/stores/toast.js';
 
 	let loading = true;
 	let endpoints: Endpoint[] = [];
 	let error = '';
+
+	// Subscribe to eager cache for endpoints
+	$: endpoints = $eagerCache.endpoints;
+	$: loading = $eagerCache.loading.endpoints;
+	$: cacheError = $eagerCache.errorMessages.endpoints;
 	let showCreateModal = false;
 	let showEditModal = false;
 	let showDeleteModal = false;
 	let selectedForgeType: 'github' | 'gitea' | '' = 'github';
 	let editingEndpoint: Endpoint | null = null;
 	let deletingEndpoint: Endpoint | null = null;
-	let unsubscribeWebsocket: (() => void) | null = null;
-
-
 	// Form state
 	let formData = {
 		name: '',
@@ -27,53 +30,31 @@
 		upload_base_url: '',
 		ca_cert_bundle: ''
 	};
+	// Track original values for comparison during updates
+	let originalFormData: typeof formData = { ...formData };
 
-	function handleEndpointEvent(event: WebSocketEvent) {
-		
-		if (event.operation === 'create') {
-			const newEndpoint = event.payload as Endpoint;
-			endpoints = [...endpoints, newEndpoint];
-		} else if (event.operation === 'update') {
-			const updatedEndpoint = event.payload as Endpoint;
-			endpoints = endpoints.map(endpoint => 
-				endpoint.name === updatedEndpoint.name ? updatedEndpoint : endpoint
-			);
-		} else if (event.operation === 'delete') {
-			const endpointName = event.payload.name || event.payload;
-			endpoints = endpoints.filter(endpoint => endpoint.name !== endpointName);
-		}
-	}
 
 	onMount(async () => {
-		await loadEndpoints();
-		
-		// Subscribe to real-time endpoint events
-		unsubscribeWebsocket = websocketStore.subscribeToEntity(
-			'github_endpoint',
-			['create', 'update', 'delete'],
-			handleEndpointEvent
-		);
-	});
-
-	onDestroy(() => {
-		if (unsubscribeWebsocket) {
-			unsubscribeWebsocket();
-			unsubscribeWebsocket = null;
+		// Load endpoints through eager cache (priority load + background load others)
+		try {
+			await eagerCacheManager.getEndpoints();
+		} catch (err) {
+			// Cache error is already handled by the eager cache system
+			// We don't need to set error here anymore since it's in the cache state
+			console.error('Failed to load endpoints:', err);
 		}
 	});
 
-	async function loadEndpoints() {
+	async function retryLoadEndpoints() {
 		try {
-			loading = true;
-			error = '';
-			endpoints = await garmApi.listAllEndpoints();
+			await eagerCacheManager.retryResource('endpoints');
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to load endpoints';
-			console.error('Endpoints error:', err);
-		} finally {
-			loading = false;
+			console.error('Retry failed:', err);
 		}
 	}
+
+	// Endpoints are now handled by eager cache with websocket subscriptions
+
 
 	function getForgeIcon(forgeType: string) {
 		if (forgeType === 'gitea') {
@@ -118,6 +99,8 @@
 			upload_base_url: endpoint.upload_base_url || '',
 			ca_cert_bundle: endpoint.ca_cert_bundle || ''
 		};
+		// Store original values for comparison
+		originalFormData = { ...formData };
 		showEditModal = true;
 	}
 
@@ -136,6 +119,7 @@
 			upload_base_url: '',
 			ca_cert_bundle: ''
 		};
+		originalFormData = { ...formData };
 	}
 
 	function closeModals() {
@@ -148,6 +132,60 @@
 		resetForm();
 	}
 
+	function buildUpdateParams() {
+		const updateParams: any = {};
+		
+		// Only include fields that have changed from original values
+		if (formData.description !== originalFormData.description) {
+			// Only set if not empty or if it was intentionally cleared
+			if (formData.description.trim() !== '' || originalFormData.description !== '') {
+				updateParams.description = formData.description.trim();
+			}
+		}
+		
+		if (formData.base_url !== originalFormData.base_url) {
+			if (formData.base_url.trim() !== '') {
+				updateParams.base_url = formData.base_url.trim();
+			}
+		}
+		
+		if (formData.api_base_url !== originalFormData.api_base_url) {
+			// For Gitea, api_base_url is optional, so allow empty
+			// For GitHub, it's required so only set if not empty
+			if (formData.api_base_url.trim() !== '' || originalFormData.api_base_url !== '') {
+				updateParams.api_base_url = formData.api_base_url.trim();
+			}
+		}
+		
+		// GitHub-only field
+		if (editingEndpoint?.endpoint_type === 'github' && formData.upload_base_url !== originalFormData.upload_base_url) {
+			if (formData.upload_base_url.trim() !== '' || originalFormData.upload_base_url !== '') {
+				updateParams.upload_base_url = formData.upload_base_url.trim();
+			}
+		}
+		
+		if (formData.ca_cert_bundle !== originalFormData.ca_cert_bundle) {
+			// CA cert can be cleared by setting to empty
+			if (formData.ca_cert_bundle !== '') {
+				// Convert base64 string to byte array for API
+				try {
+					const bytes = atob(formData.ca_cert_bundle);
+					updateParams.ca_cert_bundle = Array.from(bytes, char => char.charCodeAt(0));
+				} catch (e) {
+					// If not valid base64, treat as empty
+					if (originalFormData.ca_cert_bundle !== '') {
+						updateParams.ca_cert_bundle = [];
+					}
+				}
+			} else if (originalFormData.ca_cert_bundle !== '') {
+				// User intentionally cleared the CA cert
+				updateParams.ca_cert_bundle = [];
+			}
+		}
+		
+		return updateParams;
+	}
+
 	async function handleCreateEndpoint() {
 		try {
 			if (formData.endpoint_type === 'github') {
@@ -156,6 +194,10 @@
 				await garmApi.createGiteaEndpoint(formData);
 			}
 			// No need to reload - websocket will handle the update
+			toastStore.success(
+				'Endpoint Created',
+				`Endpoint ${formData.name} has been created successfully.`
+			);
 			closeModals();
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to create endpoint';
@@ -166,12 +208,28 @@
 		if (!editingEndpoint) return;
 		
 		try {
+			const updateParams = buildUpdateParams();
+			
+			// Only proceed if there are changes to apply
+			if (Object.keys(updateParams).length === 0) {
+				toastStore.info(
+					'No Changes',
+					'No fields were modified.'
+				);
+				closeModals();
+				return;
+			}
+			
 			if (editingEndpoint.endpoint_type === 'github') {
-				await garmApi.updateGithubEndpoint(editingEndpoint.name, formData);
+				await garmApi.updateGithubEndpoint(editingEndpoint.name, updateParams);
 			} else {
-				await garmApi.updateGiteaEndpoint(editingEndpoint.name, formData);
+				await garmApi.updateGiteaEndpoint(editingEndpoint.name, updateParams);
 			}
 			// No need to reload - websocket will handle the update
+			toastStore.success(
+				'Endpoint Updated',
+				`Endpoint ${editingEndpoint.name} has been updated successfully.`
+			);
 			closeModals();
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to update endpoint';
@@ -188,6 +246,10 @@
 				await garmApi.deleteGiteaEndpoint(deletingEndpoint.name);
 			}
 			// No need to reload - websocket will handle the update
+			toastStore.success(
+				'Endpoint Deleted',
+				`Endpoint ${deletingEndpoint.name} has been deleted successfully.`
+			);
 			closeModals();
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to delete endpoint';
@@ -245,7 +307,7 @@
 		</div>
 	</div>
 
-	{#if error}
+	{#if error || cacheError}
 		<!-- Error state -->
 		<div class="rounded-md bg-red-50 dark:bg-red-900/20 p-4">
 			<div class="flex">
@@ -254,9 +316,22 @@
 						<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
 					</svg>
 				</div>
-				<div class="ml-3">
-					<h3 class="text-sm font-medium text-red-800 dark:text-red-200">Error</h3>
-					<p class="mt-2 text-sm text-red-700 dark:text-red-300">{error}</p>
+				<div class="ml-3 flex-1">
+					<h3 class="text-sm font-medium text-red-800 dark:text-red-200">Error loading endpoints</h3>
+					<p class="mt-2 text-sm text-red-700 dark:text-red-300">{cacheError || error}</p>
+					{#if cacheError}
+						<div class="mt-3">
+							<button
+								on:click={retryLoadEndpoints}
+								class="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-5 font-medium rounded text-red-700 dark:text-red-200 bg-red-100 dark:bg-red-800 hover:bg-red-200 dark:hover:bg-red-700 focus:outline-none focus:bg-red-200 dark:focus:bg-red-700 transition duration-150 ease-in-out"
+							>
+								<svg class="-ml-1 mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+								</svg>
+								Retry
+							</button>
+						</div>
+					{/if}
 				</div>
 			</div>
 		</div>
@@ -311,7 +386,7 @@
 									<div class="flex justify-end space-x-2">
 										<button
 											on:click={() => showEditEndpointModal(endpoint)}
-											class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300"
+											class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 cursor-pointer"
 											title="Edit endpoint"
 										>
 											<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -320,7 +395,7 @@
 										</button>
 										<button
 											on:click={() => showDeleteEndpointModal(endpoint)}
-											class="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
+											class="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 cursor-pointer"
 											title="Delete endpoint"
 										>
 											<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

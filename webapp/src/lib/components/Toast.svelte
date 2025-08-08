@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { toastStore, type Toast } from '$lib/stores/toast.js';
 
-	// Use Svelte 5 runes for cleaner reactivity
-	let toasts = $state($toastStore);
+	// Subscribe to toast store
+	$: toasts = $toastStore;
 
 	function getToastIcon(type: Toast['type']) {
 		switch (type) {

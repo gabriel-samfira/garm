@@ -6,12 +6,17 @@
 	import CreatePoolModal from '$lib/components/CreatePoolModal.svelte';
 	import UpdatePoolModal from '$lib/components/UpdatePoolModal.svelte';
 	import DeleteModal from '$lib/components/DeleteModal.svelte';
-	import { websocketStore, type WebSocketEvent } from '$lib/stores/websocket.js';
+	import { eagerCache, eagerCacheManager } from '$lib/stores/eager-cache.js';
 	import { toastStore } from '$lib/stores/toast.js';
 
 	let pools: Pool[] = [];
 	let loading = true;
 	let error = '';
+
+	// Subscribe to eager cache for pools
+	$: pools = $eagerCache.pools;
+	$: loading = $eagerCache.loading.pools;
+	$: cacheError = $eagerCache.errorMessages.pools;
 	let searchTerm = '';
 	let currentPage = 1;
 	let itemsPerPage = 25;
@@ -19,9 +24,6 @@
 	let showUpdateModal = false;
 	let showDeleteModal = false;
 	let selectedPool: Pool | null = null;
-	let unsubscribeWebsocket: (() => void) | null = null;
-
-
 	// Filtered and paginated data
 	// Search by entity name since pools don't have names
 	$: filteredPools = pools.filter((pool) => {
@@ -55,40 +57,16 @@
 		return '#';
 	}
 
-	async function loadPools() {
-		try {
-			loading = true;
-			error = '';
-			pools = await garmApi.listAllPools();
-		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to load pools';
-		} finally {
-			loading = false;
-		}
-	}
 
-	function handlePoolEvent(event: WebSocketEvent) {
-		
-		if (event.operation === 'create') {
-			const newPool = event.payload as Pool;
-			pools = [...pools, newPool];
-		} else if (event.operation === 'update') {
-			const updatedPool = event.payload as Pool;
-			pools = pools.map(pool => 
-				pool.id === updatedPool.id ? updatedPool : pool
-			);
-		} else if (event.operation === 'delete') {
-			const poolId = event.payload.id || event.payload;
-			pools = pools.filter(pool => pool.id !== poolId);
-		}
-	}
 
 	async function handleCreatePool(params: CreatePoolParams) {
 		try {
+			error = '';
 			// The actual creation will be handled by the modal based on entity type
-			// No need to reload - websocket will handle the update
+			// No need to reload - eager cache websocket will handle the update
 			showCreateModal = false;
 		} catch (err) {
+			error = err instanceof Error ? err.message : 'Failed to create pool';
 			throw err; // Let the modal handle the error
 		}
 	}
@@ -97,7 +75,7 @@
 		if (!selectedPool) return;
 		try {
 			await garmApi.updatePool(selectedPool.id, params);
-			// No need to reload - websocket will handle the update
+			// No need to reload - eager cache websocket will handle the update
 			showUpdateModal = false;
 			toastStore.add({
 				type: 'success',
@@ -121,7 +99,7 @@
 		const poolName = `Pool ${selectedPool.id.slice(0, 8)}...`;
 		try {
 			await garmApi.deletePool(selectedPool.id);
-			// No need to reload - websocket will handle the update
+			// No need to reload - eager cache websocket will handle the update
 			showDeleteModal = false;
 			toastStore.add({
 				type: 'success',
@@ -171,23 +149,26 @@
 		}
 	}
 
-	onMount(() => {
-		loadPools();
-		
-		// Subscribe to real-time pool events
-		unsubscribeWebsocket = websocketStore.subscribeToEntity(
-			'pool',
-			['create', 'update', 'delete'],
-			handlePoolEvent
-		);
-	});
-
-	onDestroy(() => {
-		if (unsubscribeWebsocket) {
-			unsubscribeWebsocket();
-			unsubscribeWebsocket = null;
+	onMount(async () => {
+		// Load pools through eager cache (priority load + background load others)
+		try {
+			await eagerCacheManager.getPools();
+		} catch (err) {
+			// Cache error is already handled by the eager cache system
+			// We don't need to set error here anymore since it's in the cache state
+			console.error('Failed to load pools:', err);
 		}
 	});
+
+	async function retryLoadPools() {
+		try {
+			await eagerCacheManager.retryResource('pools');
+		} catch (err) {
+			console.error('Retry failed:', err);
+		}
+	}
+
+	// Pools are now handled by eager cache with websocket subscriptions
 </script>
 
 <svelte:head>
@@ -262,10 +243,33 @@
 				<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
 				<p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Loading pools...</p>
 			</div>
-		{:else if error}
-			<div class="p-6 text-center">
+		{:else if error || cacheError}
+			<div class="p-6">
 				<div class="rounded-md bg-red-50 dark:bg-red-900 p-4">
-					<p class="text-sm font-medium text-red-800 dark:text-red-200">{error}</p>
+					<div class="flex">
+						<div class="flex-shrink-0">
+							<svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+								<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+							</svg>
+						</div>
+						<div class="ml-3 flex-1">
+							<h3 class="text-sm font-medium text-red-800 dark:text-red-200">Error loading pools</h3>
+							<p class="mt-2 text-sm text-red-700 dark:text-red-300">{cacheError || error}</p>
+							{#if cacheError}
+								<div class="mt-3">
+									<button
+										on:click={retryLoadPools}
+										class="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-5 font-medium rounded text-red-700 dark:text-red-200 bg-red-100 dark:bg-red-800 hover:bg-red-200 dark:hover:bg-red-700 focus:outline-none focus:bg-red-200 dark:focus:bg-red-700 transition duration-150 ease-in-out"
+									>
+										<svg class="-ml-1 mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+										</svg>
+										Retry
+									</button>
+								</div>
+							{/if}
+						</div>
+					</div>
 				</div>
 			</div>
 		{:else if paginatedPools.length === 0}
@@ -348,7 +352,7 @@
 									<div class="flex justify-end space-x-2">
 										<button
 											on:click={() => openUpdateModal(pool)}
-											class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300"
+											class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 cursor-pointer"
 											title="Edit pool"
 										>
 											<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -357,7 +361,7 @@
 										</button>
 										<button
 											on:click={() => openDeleteModal(pool)}
-											class="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
+											class="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 cursor-pointer"
 											title="Delete pool"
 										>
 											<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -4,22 +4,25 @@
 	import type { ForgeCredentials, Endpoint } from '$lib/api/types.js';
 	import { AuthType } from '$lib/api/types.js';
 	import ForgeTypeSelector from '$lib/components/ForgeTypeSelector.svelte';
-	import { websocketStore, type WebSocketEvent } from '$lib/stores/websocket.js';
+	import { eagerCache, eagerCacheManager } from '$lib/stores/eager-cache.js';
+	import { toastStore } from '$lib/stores/toast.js';
 
 	let loading = true;
 	let credentials: ForgeCredentials[] = [];
 	let endpoints: Endpoint[] = []; // Only used for modal dropdowns
 	let error = '';
+
+	// Subscribe to eager cache for credentials and endpoints
+	$: credentials = $eagerCache.credentials;
+	$: loading = $eagerCache.loading.credentials;
+	$: cacheError = $eagerCache.errorMessages.credentials;
+	$: endpoints = $eagerCache.endpoints;
 	let showCreateModal = false;
 	let showEditModal = false;
 	let showDeleteModal = false;
 	let selectedAuthType = AuthType.PAT;
 	let editingCredential: ForgeCredentials | null = null;
 	let deletingCredential: ForgeCredentials | null = null;
-	let unsubscribeGithubWebsocket: (() => void) | null = null;
-	let unsubscribeGiteaWebsocket: (() => void) | null = null;
-
-
 	// Form state
 	let formData = {
 		name: '',
@@ -31,77 +34,40 @@
 		app_installation_id: '',
 		private_key_bytes: ''
 	};
+	// Track original values for comparison during updates
+	let originalFormData: typeof formData = { ...formData };
+	// Checkbox to control whether to update credentials
+	let wantToChangeCredentials = false;
 
-	function handleCredentialEvent(event: WebSocketEvent) {
-		
-		if (event.operation === 'create') {
-			const newCredential = event.payload as ForgeCredentials;
-			credentials = [...credentials, newCredential];
-		} else if (event.operation === 'update') {
-			const updatedCredential = event.payload as ForgeCredentials;
-			credentials = credentials.map(credential => 
-				credential.name === updatedCredential.name ? updatedCredential : credential
-			);
-		} else if (event.operation === 'delete') {
-			const credentialName = event.payload.name || event.payload;
-			credentials = credentials.filter(credential => credential.name !== credentialName);
-		}
-	}
 
 	onMount(async () => {
-		// Only load credentials - they contain endpoint information
-		await loadCredentials();
-		
-		// Subscribe to both GitHub and Gitea credential events
-		unsubscribeGithubWebsocket = websocketStore.subscribeToEntity(
-			'github_credentials',
-			['create', 'update', 'delete'],
-			handleCredentialEvent
-		);
-		
-		unsubscribeGiteaWebsocket = websocketStore.subscribeToEntity(
-			'gitea_credentials',
-			['create', 'update', 'delete'],
-			handleCredentialEvent
-		);
-	});
-
-	onDestroy(() => {
-		if (unsubscribeGithubWebsocket) {
-			unsubscribeGithubWebsocket();
-			unsubscribeGithubWebsocket = null;
-		}
-		if (unsubscribeGiteaWebsocket) {
-			unsubscribeGiteaWebsocket();
-			unsubscribeGiteaWebsocket = null;
+		// Load credentials and endpoints through eager cache (priority load + background load others)
+		try {
+			await eagerCacheManager.getCredentials();
+			await eagerCacheManager.getEndpoints();
+		} catch (err) {
+			// Cache error is already handled by the eager cache system
+			// We don't need to set error here anymore since it's in the cache state
+			console.error('Failed to load credentials:', err);
 		}
 	});
 
-	async function loadCredentials() {
+	async function retryLoadCredentials() {
 		try {
-			loading = true;
-			error = '';
-			credentials = await garmApi.listAllCredentials();
+			await eagerCacheManager.retryResource('credentials');
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to load credentials';
-			console.error('Credentials error:', err);
-		} finally {
-			loading = false;
+			console.error('Retry failed:', err);
 		}
 	}
 
-	async function loadEndpoints() {
-		try {
-			endpoints = await garmApi.listAllEndpoints();
-		} catch (err) {
-			console.error('Failed to load endpoints:', err);
-			endpoints = [];
-		}
-	}
+	// Credentials are now handled by eager cache with websocket subscriptions
+
+
+	// Endpoints are now loaded through eager cache
 
 	async function showCreateCredentialsModal() {
 		resetForm();
-		await loadEndpoints();
+		// Endpoints are already loaded through eager cache
 		showCreateModal = true;
 		selectedForgeType = 'github'; // Default to github
 	}
@@ -129,7 +95,11 @@
 			private_key_bytes: ''
 		};
 		selectedAuthType = credential['auth-type'] || AuthType.PAT;
-		await loadEndpoints();
+		// Store original values for comparison
+		originalFormData = { ...formData };
+		// Reset checkbox state
+		wantToChangeCredentials = false;
+		// Endpoints are already loaded through eager cache
 		showEditModal = true;
 	}
 
@@ -149,7 +119,9 @@
 			app_installation_id: '',
 			private_key_bytes: ''
 		};
+		originalFormData = { ...formData };
 		selectedAuthType = AuthType.PAT;
+		wantToChangeCredentials = false;
 	}
 
 	function closeModals() {
@@ -167,6 +139,66 @@
 		formData.auth_type = authType;
 	}
 
+	function buildUpdateParams() {
+		const updateParams: any = {};
+		
+		// Only include name and description if they have changed from original values
+		if (formData.name !== originalFormData.name) {
+			if (formData.name.trim() !== '') {
+				updateParams.name = formData.name.trim();
+			}
+		}
+		
+		if (formData.description !== originalFormData.description) {
+			if (formData.description.trim() !== '') {
+				updateParams.description = formData.description.trim();
+			}
+		}
+		
+		// Only include credential fields if the checkbox is checked and fields have values
+		if (wantToChangeCredentials && editingCredential) {
+			if (editingCredential['auth-type'] === AuthType.PAT) {
+				// PAT credentials
+				if (formData.pat_token.trim() !== '') {
+					updateParams.pat = {
+						oauth2_token: formData.pat_token.trim()
+					};
+				}
+			} else {
+				// App credentials
+				const appUpdate: any = {};
+				let hasAppChanges = false;
+				
+				if (formData.app_id.trim() !== '') {
+					appUpdate.app_id = parseInt(formData.app_id.trim());
+					hasAppChanges = true;
+				}
+				
+				if (formData.app_installation_id.trim() !== '') {
+					appUpdate.installation_id = parseInt(formData.app_installation_id.trim());
+					hasAppChanges = true;
+				}
+				
+				if (formData.private_key_bytes !== '') {
+					// Convert base64 string to byte array for API
+					try {
+						const bytes = atob(formData.private_key_bytes);
+						appUpdate.private_key_bytes = Array.from(bytes, char => char.charCodeAt(0));
+						hasAppChanges = true;
+					} catch (e) {
+						// Invalid base64, ignore
+					}
+				}
+				
+				if (hasAppChanges) {
+					updateParams.app = appUpdate;
+				}
+			}
+		}
+		
+		return updateParams;
+	}
+
 	async function handleCreateCredentials() {
 		try {
 			// Use selected forge type to determine which API to call
@@ -178,6 +210,10 @@
 				throw new Error('Please select a forge type');
 			}
 			// No need to reload - websocket will handle the update
+			toastStore.success(
+				'Credentials Created',
+				`Credentials ${formData.name} have been created successfully.`
+			);
 			closeModals();
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to create credentials';
@@ -185,16 +221,32 @@
 	}
 
 	async function handleUpdateCredentials() {
-		if (!editingCredential) return;
+		if (!editingCredential || !editingCredential.id) return;
 		
 		try {
+			const updateParams = buildUpdateParams();
+			
+			// Only proceed if there are changes to apply
+			if (Object.keys(updateParams).length === 0) {
+				toastStore.info(
+					'No Changes',
+					'No fields were modified.'
+				);
+				closeModals();
+				return;
+			}
+			
 			const endpointType = editingCredential.forge_type;
 			if (endpointType === 'github') {
-				await garmApi.updateGithubCredentials(editingCredential.name, formData);
+				await garmApi.updateGithubCredentials(editingCredential.id, updateParams);
 			} else {
-				await garmApi.updateGiteaCredentials(editingCredential.name, formData);
+				await garmApi.updateGiteaCredentials(editingCredential.id, updateParams);
 			}
 			// No need to reload - websocket will handle the update
+			toastStore.success(
+				'Credentials Updated',
+				`Credentials ${editingCredential.name} have been updated successfully.`
+			);
 			closeModals();
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to update credentials';
@@ -202,16 +254,20 @@
 	}
 
 	async function handleDeleteCredentials() {
-		if (!deletingCredential) return;
+		if (!deletingCredential || !deletingCredential.id) return;
 		
 		try {
 			const endpointType = deletingCredential.forge_type;
 			if (endpointType === 'github') {
-				await garmApi.deleteGithubCredentials(deletingCredential.name);
+				await garmApi.deleteGithubCredentials(deletingCredential.id);
 			} else {
-				await garmApi.deleteGiteaCredentials(deletingCredential.name);
+				await garmApi.deleteGiteaCredentials(deletingCredential.id);
 			}
 			// No need to reload - websocket will handle the update
+			toastStore.success(
+				'Credentials Deleted',
+				`Credentials ${deletingCredential.name} have been deleted successfully.`
+			);
 			closeModals();
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to delete credentials';
@@ -243,6 +299,23 @@
 		} else {
 			return !!formData.app_id && !!formData.app_installation_id && !!formData.private_key_bytes;
 		}
+	}
+	
+	function isEditFormValid() {
+		// For updates, basic fields are required
+		if (!formData.name.trim() || !formData.description.trim()) return false;
+		
+		// If checkbox is checked, validate credential fields
+		if (wantToChangeCredentials && editingCredential) {
+			if (editingCredential['auth-type'] === AuthType.PAT) {
+				return !!formData.pat_token.trim();
+			} else {
+				return !!formData.app_id.trim() && !!formData.app_installation_id.trim() && !!formData.private_key_bytes;
+			}
+		}
+		
+		// If checkbox is not checked, just need basic fields
+		return true;
 	}
 
 	function getEndpointForgeType(endpointName: string): string {
@@ -313,7 +386,7 @@
 		</div>
 	</div>
 
-	{#if error}
+	{#if error || cacheError}
 		<!-- Error state -->
 		<div class="rounded-md bg-red-50 dark:bg-red-900/20 p-4">
 			<div class="flex">
@@ -322,9 +395,22 @@
 						<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
 					</svg>
 				</div>
-				<div class="ml-3">
-					<h3 class="text-sm font-medium text-red-800 dark:text-red-200">Error</h3>
-					<p class="mt-2 text-sm text-red-700 dark:text-red-300">{error}</p>
+				<div class="ml-3 flex-1">
+					<h3 class="text-sm font-medium text-red-800 dark:text-red-200">Error loading credentials</h3>
+					<p class="mt-2 text-sm text-red-700 dark:text-red-300">{cacheError || error}</p>
+					{#if cacheError}
+						<div class="mt-3">
+							<button
+								on:click={retryLoadCredentials}
+								class="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-5 font-medium rounded text-red-700 dark:text-red-200 bg-red-100 dark:bg-red-800 hover:bg-red-200 dark:hover:bg-red-700 focus:outline-none focus:bg-red-200 dark:focus:bg-red-700 transition duration-150 ease-in-out"
+							>
+								<svg class="-ml-1 mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+								</svg>
+								Retry
+							</button>
+						</div>
+					{/if}
 				</div>
 			</div>
 		</div>
@@ -382,7 +468,7 @@
 									<div class="flex justify-end space-x-2">
 										<button
 											on:click={() => showEditCredentialsModal(credential)}
-											class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300"
+											class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 cursor-pointer"
 											title="Edit credentials"
 										>
 											<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -391,7 +477,7 @@
 										</button>
 										<button
 											on:click={() => showDeleteCredentialsModal(credential)}
-											class="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
+											class="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 cursor-pointer"
 											title="Delete credentials"
 										>
 											<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -693,77 +779,98 @@
 					<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Authentication type cannot be changed after creation</p>
 				</div>
 
-				<!-- PAT Fields -->
-				{#if editingCredential['auth-type'] === AuthType.PAT}
-					<div>
-						<label for="edit_pat_token" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-							Personal Access Token <span class="text-red-500">*</span>
-						</label>
+				<!-- Credentials Update Checkbox -->
+				<div class="border-t border-gray-200 dark:border-gray-700 pt-4">
+					<div class="flex items-center">
 						<input
-							type="password"
-							id="edit_pat_token"
-							bind:value={formData.pat_token}
-							required
-							class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-							placeholder="Enter new token or leave empty to keep current"
+							id="change_credentials_checkbox"
+							type="checkbox"
+							bind:checked={wantToChangeCredentials}
+							class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded"
 						/>
-					</div>
-				{/if}
-
-				<!-- App Fields -->
-				{#if editingCredential['auth-type'] === AuthType.APP}
-					<div>
-						<label for="edit_app_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-							App ID <span class="text-red-500">*</span>
+						<label for="change_credentials_checkbox" class="ml-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+							I want to change credentials
 						</label>
-						<input
-							type="text"
-							id="edit_app_id"
-							bind:value={formData.app_id}
-							required
-							class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-						/>
 					</div>
+					<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Check this box to update authentication credentials</p>
+				</div>
 
-					<div>
-						<label for="edit_app_installation_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-							App Installation ID <span class="text-red-500">*</span>
-						</label>
-						<input
-							type="text"
-							id="edit_app_installation_id"
-							bind:value={formData.app_installation_id}
-							required
-							class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-						/>
-					</div>
-
-					<div>
-						<label for="edit_private_key" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-							Private Key
-						</label>
-						<div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center hover:border-blue-400 dark:hover:border-blue-400 transition-colors">
+				<!-- Conditional Credential Fields -->
+				{#if wantToChangeCredentials}
+					<!-- PAT Fields -->
+					{#if editingCredential['auth-type'] === AuthType.PAT}
+						<div>
+							<label for="edit_pat_token" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+								New Personal Access Token <span class="text-red-500">*</span>
+							</label>
 							<input
-								type="file"
-								id="edit_private_key"
-								accept=".pem,.key"
-								on:change={handlePrivateKeyUpload}
-								class="hidden"
+								type="password"
+								id="edit_pat_token"
+								bind:value={formData.pat_token}
+								required
+								class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+								placeholder="Enter new token"
 							/>
-							<div class="space-y-2">
-								<svg class="mx-auto h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-								</svg>
-								<p class="text-sm text-gray-600 dark:text-gray-400">
-									<button type="button" on:click={() => document.getElementById('edit_private_key')?.click()} class="text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-300 hover:underline">
-										Choose a file
-									</button>
-									or drag and drop
-								</p>
-								<p class="text-xs text-gray-500 dark:text-gray-400">PEM, KEY files only. Leave empty to keep current key.</p>
+						</div>
+					{/if}
+
+					<!-- App Fields -->
+					{#if editingCredential['auth-type'] === AuthType.APP}
+						<div>
+							<label for="edit_app_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+								App ID <span class="text-red-500">*</span>
+							</label>
+							<input
+								type="text"
+								id="edit_app_id"
+								bind:value={formData.app_id}
+								required
+								class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+								placeholder="Enter new App ID"
+							/>
+						</div>
+
+						<div>
+							<label for="edit_app_installation_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+								App Installation ID <span class="text-red-500">*</span>
+							</label>
+							<input
+								type="text"
+								id="edit_app_installation_id"
+								bind:value={formData.app_installation_id}
+								required
+								class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+								placeholder="Enter new Installation ID"
+							/>
+						</div>
+
+						<div>
+							<label for="edit_private_key" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+								Private Key <span class="text-red-500">*</span>
+							</label>
+							<div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center hover:border-blue-400 dark:hover:border-blue-400 transition-colors">
+								<input
+									type="file"
+									id="edit_private_key"
+									accept=".pem,.key"
+									on:change={handlePrivateKeyUpload}
+									class="hidden"
+								/>
+								<div class="space-y-2">
+									<svg class="mx-auto h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+									</svg>
+									<p class="text-sm text-gray-600 dark:text-gray-400">
+										<button type="button" on:click={() => document.getElementById('edit_private_key')?.click()} class="text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-300 hover:underline">
+											Choose a new file
+										</button>
+										or drag and drop
+									</p>
+									<p class="text-xs text-gray-500 dark:text-gray-400">PEM, KEY files only. Upload new private key.</p>
+								</div>
 							</div>
 						</div>
-					</div>
+					{/if}
 				{/if}
 
 				<div class="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
@@ -776,7 +883,9 @@
 					</button>
 					<button
 						type="submit"
-						class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+						disabled={!isEditFormValid()}
+						class="px-4 py-2 text-sm font-medium text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors
+							{isEditFormValid() ? 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500' : 'bg-gray-400 cursor-not-allowed'}"
 					>
 						Update Credentials
 					</button>
