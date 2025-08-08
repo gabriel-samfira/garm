@@ -300,7 +300,7 @@
 	<!-- Mobile menu overlay -->
 	{#if mobileMenuOpen}
 		<div class="fixed inset-0 flex z-40 lg:hidden">
-			<div class="fixed inset-0 bg-black bg-opacity-50" on:click={() => mobileMenuOpen = false}></div>
+			<div class="fixed inset-0 bg-black/30" on:click={() => mobileMenuOpen = false}></div>
 			<div class="relative flex-1 flex flex-col max-w-xs w-full bg-white dark:bg-gray-800">
 				<div class="absolute top-0 right-0 -mr-12 pt-2">
 					<button

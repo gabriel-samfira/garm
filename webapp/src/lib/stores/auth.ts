@@ -14,6 +14,8 @@ const initialState: AuthState = {
 	loading: true
 };
 
+// Keep using writable store for compatibility with existing API calls
+// but enhance with Svelte 5 features where possible
 export const authStore = writable<AuthState>(initialState);
 
 // Cookie utilities

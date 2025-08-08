@@ -9,6 +9,31 @@
 	function formatDate(dateString: string): string {
 		return new Date(dateString).toLocaleString();
 	}
+
+	function getStatusBadgeClass(status: string): string {
+		switch (status) {
+			case 'running':
+				return 'bg-green-50 text-green-700 ring-green-600/20 dark:bg-green-500/10 dark:text-green-400 dark:ring-green-500/20';
+			case 'idle':
+				return 'bg-blue-50 text-blue-700 ring-blue-600/20 dark:bg-blue-500/10 dark:text-blue-400 dark:ring-blue-500/20';
+			case 'active':
+				return 'bg-yellow-50 text-yellow-700 ring-yellow-600/20 dark:bg-yellow-500/10 dark:text-yellow-400 dark:ring-yellow-500/20';
+			case 'pending':
+			case 'pending_create':
+			case 'creating':
+			case 'installing':
+				return 'bg-gray-50 text-gray-700 ring-gray-600/20 dark:bg-gray-500/10 dark:text-gray-400 dark:ring-gray-500/20 animate-pulse';
+			case 'pending_delete':
+			case 'deleting':
+			case 'terminating':
+				return 'bg-orange-50 text-orange-700 ring-orange-600/20 dark:bg-orange-500/10 dark:text-orange-400 dark:ring-orange-500/20 animate-pulse';
+			case 'failed':
+			case 'terminated':
+				return 'bg-red-50 text-red-700 ring-red-600/20 dark:bg-red-500/10 dark:text-red-400 dark:ring-red-500/20';
+			default:
+				return 'bg-gray-50 text-gray-700 ring-gray-600/20 dark:bg-gray-500/10 dark:text-gray-400 dark:ring-gray-500/20';
+		}
+	}
 </script>
 
 <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
@@ -26,6 +51,7 @@
 						<tr>
 							<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Name</th>
 							<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+							<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Runner Status</th>
 							<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Created</th>
 							<th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
 						</tr>
@@ -39,8 +65,13 @@
 									</a>
 								</td>
 								<td class="px-6 py-4 whitespace-nowrap">
-									<span class="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
+									<span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset {getStatusBadgeClass(instance.status)}">
 										{instance.status}
+									</span>
+								</td>
+								<td class="px-6 py-4 whitespace-nowrap">
+									<span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset {getStatusBadgeClass(instance.runner_status)}">
+										{instance.runner_status}
 									</span>
 								</td>
 								<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">

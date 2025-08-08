@@ -210,21 +210,18 @@
 			['update', 'delete'],
 			handleEnterpriseEvent
 		);
-
 		// Subscribe to pool events
 		const unsubscribePool = websocketStore.subscribeToEntity(
 			'pool',
 			['create', 'update', 'delete'],
 			handlePoolEvent
 		);
-
 		// Subscribe to instance events
 		const unsubscribeInstance = websocketStore.subscribeToEntity(
 			'instance',
 			['create', 'update', 'delete'],
 			handleInstanceEvent
 		);
-
 		// Combine unsubscribe functions
 		unsubscribeWebsocket = () => {
 			unsubscribeEnt();

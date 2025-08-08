@@ -1,16 +1,8 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { toastStore, type Toast } from '$lib/stores/toast.js';
 
-	let toasts: Toast[] = [];
-
-	onMount(() => {
-		const unsubscribe = toastStore.subscribe(value => {
-			toasts = value;
-		});
-
-		return unsubscribe;
-	});
+	// Use Svelte 5 runes for cleaner reactivity
+	let toasts = $state($toastStore);
 
 	function getToastIcon(type: Toast['type']) {
 		switch (type) {

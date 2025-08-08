@@ -15,7 +15,7 @@
 </script>
 
 <div 
-	class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4" 
+	class="fixed inset-0 bg-black/30 dark:bg-black/50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4" 
 	on:click={handleBackdropClick}
 	role="dialog"
 	aria-modal="true"

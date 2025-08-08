@@ -411,7 +411,7 @@
 
 <!-- Create Modal -->
 {#if showCreateModal}
-	<div class="fixed inset-0 bg-black bg-opacity-50 dark:bg-gray-900 dark:bg-opacity-75 flex items-center justify-center z-50" on:click={closeModals}>
+	<div class="fixed inset-0 bg-black/30 dark:bg-black/50 flex items-center justify-center z-50" on:click={closeModals}>
 		<div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-screen overflow-y-auto" on:click|stopPropagation>
 			<div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
 				<div>
@@ -622,7 +622,7 @@
 
 <!-- Edit Modal -->
 {#if showEditModal && editingCredential}
-	<div class="fixed inset-0 bg-black bg-opacity-50 dark:bg-gray-900 dark:bg-opacity-75 flex items-center justify-center z-50" on:click={closeModals}>
+	<div class="fixed inset-0 bg-black/30 dark:bg-black/50 flex items-center justify-center z-50" on:click={closeModals}>
 		<div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-screen overflow-y-auto" on:click|stopPropagation>
 			<div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
 				<div>
@@ -788,7 +788,7 @@
 
 <!-- Delete Modal -->
 {#if showDeleteModal && deletingCredential}
-	<div class="fixed inset-0 bg-black bg-opacity-50 dark:bg-gray-900 dark:bg-opacity-75 flex items-center justify-center z-50" on:click={closeModals}>
+	<div class="fixed inset-0 bg-black/30 dark:bg-black/50 flex items-center justify-center z-50" on:click={closeModals}>
 		<div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4" on:click|stopPropagation>
 			<div class="px-6 py-4">
 				<div class="flex items-center">

@@ -230,12 +230,12 @@
 				<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
 					<thead class="bg-gray-50 dark:bg-gray-700">
 						<tr>
-							<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Name</th>
-							<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Pool/Scale Set</th>
-							<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-28">Created</th>
-							<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-24">Status</th>
-							<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-32">Runner Status</th>
-							<th class="px-3 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+							<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-1/4">Name</th>
+							<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Pool/Scale Set</th>
+							<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-32">Created</th>
+							<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-24">Status</th>
+							<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-28">Runner Status</th>
+							<th class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-20">Actions</th>
 						</tr>
 					</thead>
 					<tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -251,33 +251,33 @@
 										{instance.provider_id}
 									</div>
 								</td>
-								<td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+								<td class="px-4 py-4 text-sm text-gray-900 dark:text-white">
 									{#if instance.pool_id}
-										<a href="{base}/pools/{instance.pool_id}" class="text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300">
-											Pool: {instance.pool_id.slice(0, 8)}...
+										<a href="{base}/pools/{instance.pool_id}" class="text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 break-all">
+											Pool: {instance.pool_id}
 										</a>
 									{:else if instance.scale_set_id}
-										<a href="{base}/scalesets/{instance.scale_set_id}" class="text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300">
+										<a href="{base}/scalesets/{instance.scale_set_id}" class="text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 break-all">
 											Scale Set: {instance.scale_set_id}
 										</a>
 									{:else}
 										<span class="text-gray-400 dark:text-gray-500">-</span>
 									{/if}
 								</td>
-								<td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+								<td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
 									{formatDate(instance.created_at)}
 								</td>
-								<td class="px-3 py-4 whitespace-nowrap">
+								<td class="px-4 py-4 whitespace-nowrap">
 									<span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset {getStatusBadgeClass(instance.status)}">
 										{instance.status}
 									</span>
 								</td>
-								<td class="px-3 py-4 whitespace-nowrap">
+								<td class="px-4 py-4 whitespace-nowrap">
 									<span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset {getStatusBadgeClass(instance.runner_status)}">
 										{instance.runner_status}
 									</span>
 								</td>
-								<td class="px-3 py-4 whitespace-nowrap text-right text-sm font-medium">
+								<td class="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
 									<button
 										on:click={() => handleDelete(instance)}
 										class="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
