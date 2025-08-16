@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { garmApi } from '$lib/api/client.js';
 	import type { ScaleSet, CreateScaleSetParams } from '$lib/api/generated/api.js';
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import UpdateScaleSetModal from '$lib/components/UpdateScaleSetModal.svelte';
 	import DeleteModal from '$lib/components/DeleteModal.svelte';
 	import InstancesSection from '$lib/components/InstancesSection.svelte';
@@ -23,7 +23,7 @@
 	let selectedInstance: Instance | null = null;
 	let unsubscribeWebsocket: (() => void) | null = null;
 
-	$: scaleSetId = parseInt($page.params.id || '0');
+	$: scaleSetId = parseInt(page.params.id || '0');
 
 	async function loadScaleSet() {
 		if (!scaleSetId || isNaN(scaleSetId)) return;
@@ -58,7 +58,7 @@
 		if (!scaleSet) return;
 		try {
 			await garmApi.deleteScaleSet(scaleSet.id!);
-			goto(`${base}/scalesets`);
+			goto(resolve('/scalesets'));
 		} catch (err) {
 			const errorMessage = err instanceof Error ? err.message : 'Failed to delete scale set';
 			toastStore.error(
@@ -122,7 +122,7 @@
 			const deletedScaleSetId = event.payload.id || event.payload;
 			// If this scale set was deleted, redirect to scale sets list
 			if (scaleSet && scaleSet.id === deletedScaleSetId) {
-				goto(`${base}/scalesets`);
+				goto(resolve('/scalesets'));
 			}
 		}
 	}
@@ -195,7 +195,7 @@
 	<nav class="flex" aria-label="Breadcrumb">
 		<ol class="inline-flex items-center space-x-1 md:space-x-3">
 			<li class="inline-flex items-center">
-				<a href={`${base}/scalesets`} class="inline-flex items-center text-sm font-medium text-gray-700 hover:text-blue-600 dark:text-gray-400 dark:hover:text-white">
+				<a href={resolve('/scalesets')} class="inline-flex items-center text-sm font-medium text-gray-700 hover:text-blue-600 dark:text-gray-400 dark:hover:text-white">
 					<svg class="w-3 h-3 mr-2.5" fill="currentColor" viewBox="0 0 20 20">
 						<path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/>
 					</svg>

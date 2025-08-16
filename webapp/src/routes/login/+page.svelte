@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { base } from '$app/paths';
+	import { resolve, base } from '$app/paths';
 	import { auth, authStore } from '$lib/stores/auth.js';
 	import Button from '$lib/components/Button.svelte';
 
@@ -37,7 +37,7 @@
 
 	// Redirect if already authenticated
 	$: if ($authStore.isAuthenticated) {
-		goto(`${base}/`);
+		goto(resolve('/'));
 	}
 
 	async function handleLogin() {
@@ -51,7 +51,7 @@
 
 		try {
 			await auth.login(username, password);
-			goto(`${base}/`);
+			goto(resolve('/'));
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Login failed';
 		} finally {

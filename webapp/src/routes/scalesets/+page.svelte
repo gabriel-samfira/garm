@@ -2,7 +2,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { garmApi } from '$lib/api/client.js';
 	import type { ScaleSet, CreateScaleSetParams } from '$lib/api/generated/api.js';
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import CreateScaleSetModal from '$lib/components/CreateScaleSetModal.svelte';
 	import UpdateScaleSetModal from '$lib/components/UpdateScaleSetModal.svelte';

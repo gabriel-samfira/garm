@@ -264,6 +264,9 @@ func (t *toolsUpdater) loop() {
 }
 
 func (t *toolsUpdater) addStatusEvent(msg string, level params.EventLevel) {
+	if t.store == nil {
+		return
+	}
 	if err := t.store.AddEntityEvent(t.ctx, t.entity, params.StatusEvent, level, msg, 30); err != nil {
 		slog.With(slog.Any("error", err)).Error("failed to add entity event")
 	}

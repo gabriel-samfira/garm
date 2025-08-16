@@ -147,7 +147,6 @@ class EagerCacheManager {
 				errorMessages: { ...state.errorMessages, [resourceType]: errorMessage }
 			}));
 			console.error(`Failed to load ${resourceType}:`, error);
-			throw error;
 		} finally {
 			this.loadingPromises.delete(resourceType);
 		}

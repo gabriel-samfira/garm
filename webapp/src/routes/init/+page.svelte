@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { base } from '$app/paths';
+	import { resolve, base } from '$app/paths';
 	import { auth, authStore } from '$lib/stores/auth.js';
 	import { toastStore } from '$lib/stores/toast.js';
 	import Button from '$lib/components/Button.svelte';
@@ -66,7 +66,7 @@
 			);
 			
 			// Redirect to dashboard
-			goto(`${base}/`);
+			goto(resolve('/'));
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to initialize GARM';
 		} finally {
@@ -78,22 +78,22 @@
 	onMount(() => {
 		// If already authenticated, redirect to dashboard
 		if ($authStore.isAuthenticated) {
-			goto(`${base}/`);
+			goto(resolve('/'));
 			return;
 		}
 		
 		// If doesn't need initialization, redirect to login
 		if (!$authStore.needsInitialization && !$authStore.loading) {
-			goto(`${base}/login`);
+			goto(resolve('/login'));
 		}
 	});
 
 	// Redirect if auth state changes
 	$: {
 		if ($authStore.isAuthenticated) {
-			goto(`${base}/`);
+			goto(resolve('/'));
 		} else if (!$authStore.needsInitialization && !$authStore.loading) {
-			goto(`${base}/login`);
+			goto(resolve('/login'));
 		}
 	}
 </script>

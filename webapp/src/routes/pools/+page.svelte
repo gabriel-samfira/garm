@@ -2,7 +2,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { garmApi } from '$lib/api/client.js';
 	import type { Pool, CreatePoolParams, UpdatePoolParams, Provider } from '$lib/api/generated/api.js';
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import CreatePoolModal from '$lib/components/CreatePoolModal.svelte';
 	import UpdatePoolModal from '$lib/components/UpdatePoolModal.svelte';
