@@ -264,6 +264,9 @@ type Instance struct {
 	// Job is the current job that is being serviced by this runner.
 	Job *Job `json:"job,omitempty"`
 
+	// Heartbeat is the last recorded heartbeat from the runner
+	Heartbeat time.Time `json:"heartbeat"`
+
 	// Do not serialize sensitive info.
 	CallbackURL      string            `json:"-"`
 	MetadataURL      string            `json:"-"`

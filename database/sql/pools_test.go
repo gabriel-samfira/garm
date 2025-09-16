@@ -260,7 +260,7 @@ func (s *PoolsTestSuite) TestEntityPoolOperations() {
 	s.Require().Equal(*updatePoolParams.Enabled, pool.Enabled)
 	s.Require().Equal(updatePoolParams.Flavor, pool.Flavor)
 	s.Require().Equal(updatePoolParams.Image, pool.Image)
-	s.Require().Equal(updatePoolParams.RunnerPrefix.Prefix, pool.RunnerPrefix.Prefix)
+	s.Require().Equal(updatePoolParams.Prefix, pool.Prefix)
 	s.Require().Equal(*updatePoolParams.MaxRunners, pool.MaxRunners)
 	s.Require().Equal(*updatePoolParams.MinIdleRunners, pool.MinIdleRunners)
 	s.Require().Equal(updatePoolParams.OSType, pool.OSType)

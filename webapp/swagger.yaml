@@ -693,6 +693,11 @@ definitions:
                     The runner group must be created by someone with access to the enterprise.
                 type: string
                 x-go-name: GitHubRunnerGroup
+            heartbeat:
+                description: Heartbeat is the last recorded heartbeat from the runner
+                format: date-time
+                type: string
+                x-go-name: Heartbeat
             id:
                 description: ID is the database ID of this instance.
                 type: string
@@ -1666,6 +1671,27 @@ info:
     title: Garm API.
     version: 1.0.0
 paths:
+    /agent/{agentName}/token:
+        get:
+            operationId: GetAgentJWTToken
+            parameters:
+                - description: Runner Name.
+                  in: path
+                  name: agentName
+                  required: true
+                  type: string
+            responses:
+                "200":
+                    description: JWTResponse
+                    schema:
+                        $ref: '#/definitions/JWTResponse'
+                "401":
+                    description: APIErrorResponse
+                    schema:
+                        $ref: '#/definitions/APIErrorResponse'
+            summary: Returns a JWT token that can be used by an agent to access the websocket handler.
+            tags:
+                - metrics-token
     /auth/login:
         post:
             operationId: Login

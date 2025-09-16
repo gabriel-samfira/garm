@@ -6,6 +6,7 @@ require (
 	github.com/BurntSushi/toml v1.5.0
 	github.com/bradleyfalzon/ghinstallation/v2 v2.16.0
 	github.com/cloudbase/garm-provider-common v0.1.7
+	github.com/creack/pty v1.1.24
 	github.com/felixge/httpsnoop v1.0.4
 	github.com/gdamore/tcell/v2 v2.9.0
 	github.com/go-openapi/errors v0.22.3
@@ -29,6 +30,7 @@ require (
 	golang.org/x/mod v0.28.0
 	golang.org/x/oauth2 v0.31.0
 	golang.org/x/sync v0.17.0
+	golang.org/x/term v0.35.0
 	gopkg.in/DATA-DOG/go-sqlmock.v1 v1.3.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gorm.io/datatypes v1.2.7
@@ -96,7 +98,6 @@ require (
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/net v0.44.0 // indirect
 	golang.org/x/sys v0.36.0 // indirect
-	golang.org/x/term v0.35.0 // indirect
 	golang.org/x/text v0.29.0 // indirect
 	google.golang.org/protobuf v1.36.9 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

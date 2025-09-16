@@ -44,9 +44,13 @@ type EnterprisePoolManager interface {
 }
 
 //go:generate go run github.com/vektra/mockery/v2@latest
-
 type PoolManagerController interface {
 	RepoPoolManager
 	OrgPoolManager
 	EnterprisePoolManager
+}
+
+type AgentStoreOps interface {
+	RecordAgentHeartbeat(ctx context.Context) error
+	AddInstanceStatusMessage(ctx context.Context, param params.InstanceUpdateMessage) error
 }
