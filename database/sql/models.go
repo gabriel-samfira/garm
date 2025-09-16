@@ -284,6 +284,7 @@ type Instance struct {
 	Addresses         []Address `gorm:"foreignKey:InstanceID;constraint:OnDelete:CASCADE,OnUpdate:CASCADE;"`
 	Status            commonParams.InstanceStatus
 	RunnerStatus      params.RunnerStatus
+	Heartbeat         time.Time
 	CallbackURL       string
 	MetadataURL       string
 	ProviderFault     []byte `gorm:"type:longblob"`

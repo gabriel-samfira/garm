@@ -75,6 +75,17 @@ func WithMetricsRouter(parentRouter *mux.Router, disableAuth bool, metricsMiddle
 	return parentRouter
 }
 
+func WithAgentRouter(parentRouter *mux.Router, han *controllers.APIController, middleware auth.Middleware) *mux.Router {
+	if parentRouter == nil {
+		return nil
+	}
+
+	agentRouter := parentRouter.PathPrefix("/agent").Subrouter()
+	agentRouter.Use(middleware.Middleware)
+	agentRouter.Handle("/", http.HandlerFunc(han.AgentHandler)).Methods("GET")
+	return parentRouter
+}
+
 func WithDebugServer(parentRouter *mux.Router) *mux.Router {
 	if parentRouter == nil {
 		return nil
@@ -213,6 +224,10 @@ func NewAPIRouter(han *controllers.APIController, authMiddleware, initMiddleware
 	// Metrics Token
 	apiRouter.Handle("/metrics-token/", http.HandlerFunc(han.MetricsTokenHandler)).Methods("GET", "OPTIONS")
 	apiRouter.Handle("/metrics-token", http.HandlerFunc(han.MetricsTokenHandler)).Methods("GET", "OPTIONS")
+
+	// Agent token
+	apiRouter.Handle("/agent/{agentName}/token/", http.HandlerFunc(han.AgentTokenHandler)).Methods("GET", "OPTIONS")
+	apiRouter.Handle("/agent/{agentName}/token", http.HandlerFunc(han.AgentTokenHandler)).Methods("GET", "OPTIONS")
 
 	//////////
 	// Jobs //
@@ -530,6 +545,7 @@ func NewAPIRouter(han *controllers.APIController, authMiddleware, initMiddleware
 	// DB watcher websocket endpoint
 	apiRouter.Handle("/ws/events/", http.HandlerFunc(han.EventsHandler)).Methods("GET")
 	apiRouter.Handle("/ws/events", http.HandlerFunc(han.EventsHandler)).Methods("GET")
+	apiRouter.Handle("/ws/agent/{agentName}/shell", http.HandlerFunc(han.AgentShellHandler)).Methods("GET")
 
 	// NotFound handler - this should be last
 	apiRouter.PathPrefix("/").HandlerFunc(han.NotFoundHandler).Methods("GET", "POST", "PUT", "DELETE", "OPTIONS")

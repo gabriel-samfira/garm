@@ -1,0 +1,68 @@
+package runner
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"time"
+
+	runnerErrors "github.com/cloudbase/garm-provider-common/errors"
+	"github.com/cloudbase/garm/auth"
+	"github.com/cloudbase/garm/params"
+)
+
+func (r *Runner) RecordAgentHeartbeat(ctx context.Context) error {
+	instance, err := auth.InstanceParams(ctx)
+	if err != nil {
+		slog.With(slog.Any("error", err)).ErrorContext(
+			ctx, "failed to get instance params")
+		return runnerErrors.ErrUnauthorized
+	}
+	now := time.Now().UTC()
+	updateParams := params.UpdateInstanceParams{
+		Heartbeat: &now,
+	}
+
+	if _, err := r.store.UpdateInstance(ctx, instance.Name, updateParams); err != nil {
+		return fmt.Errorf("failed to record heartbeat: %w", err)
+	}
+	return nil
+}
+
+func (r *Runner) GetAgentJWTToken(ctx context.Context, runnerName string) (string, error) {
+	if !auth.IsAdmin(ctx) {
+		return "", runnerErrors.ErrUnauthorized
+	}
+
+	instance, err := r.GetInstance(ctx, runnerName)
+	if err != nil {
+		return "", fmt.Errorf("failed to get runner: %w", err)
+	}
+
+	var entityGetter params.EntityGetter
+	switch {
+	case instance.PoolID != "":
+		entityGetter, err = r.GetPoolByID(ctx, instance.PoolID)
+	case instance.ScaleSetID != 0:
+		entityGetter, err = r.GetScaleSetByID(ctx, instance.ScaleSetID)
+	}
+	if err != nil {
+		return "", fmt.Errorf("failed to get entity: %w", err)
+	}
+
+	entity, err := entityGetter.GetEntity()
+	if err != nil {
+		return "", fmt.Errorf("failed to get entity: %w", err)
+	}
+
+	dbEntity, err := r.store.GetForgeEntity(ctx, entity.EntityType, entity.ID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get entity from DB: %w", err)
+	}
+
+	agentToken, err := r.tokenGetter.NewAgentJWTToken(instance, dbEntity)
+	if err != nil {
+		return "", fmt.Errorf("failed to get agent token: %w", err)
+	}
+	return agentToken, nil
+}

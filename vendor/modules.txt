@@ -30,6 +30,9 @@ github.com/cloudbase/garm-provider-common/params
 github.com/cloudbase/garm-provider-common/util
 github.com/cloudbase/garm-provider-common/util/exec
 github.com/cloudbase/garm-provider-common/util/websocket
+# github.com/creack/pty v1.1.24
+## explicit; go 1.18
+github.com/creack/pty
 # github.com/davecgh/go-spew v1.1.1
 ## explicit
 github.com/davecgh/go-spew/spew
@@ -323,8 +326,12 @@ golang.org/x/sync/errgroup
 # golang.org/x/sys v0.36.0
 ## explicit; go 1.24.0
 golang.org/x/sys/cpu
+golang.org/x/sys/plan9
 golang.org/x/sys/unix
 golang.org/x/sys/windows
+# golang.org/x/term v0.35.0
+## explicit; go 1.24.0
+golang.org/x/term
 # golang.org/x/text v0.29.0
 ## explicit; go 1.24.0
 golang.org/x/text/cases

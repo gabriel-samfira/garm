@@ -20,6 +20,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"net/url"
+	"time"
 
 	runnerErrors "github.com/cloudbase/garm-provider-common/errors"
 	commonParams "github.com/cloudbase/garm-provider-common/params"
@@ -255,6 +256,7 @@ type UpdateInstanceParams struct {
 	Status           commonParams.InstanceStatus `json:"status,omitempty"`
 	RunnerStatus     RunnerStatus                `json:"runner_status,omitempty"`
 	ProviderFault    []byte                      `json:"provider_fault,omitempty"`
+	Heartbeat        *time.Time                  `json:"heartbeat,omitempty"`
 	AgentID          int64                       `json:"-"`
 	CreateAttempt    int                         `json:"-"`
 	TokenFetched     *bool                       `json:"-"`

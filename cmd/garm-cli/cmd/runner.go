@@ -59,7 +59,7 @@ var runnerListCmd = &cobra.Command{
 	Aliases: []string{"ls"},
 	Short:   "List runners",
 	Long: `List runners of pools, repositories, orgs or all of the above.
-	
+
 This command expects to get either a pool ID as a positional parameter, or it expects
 that one of the supported switches be used to fetch runners of --repo, --org or --all
 
@@ -229,6 +229,7 @@ func init() {
 		runnerListCmd,
 		runnerShowCmd,
 		runnerDeleteCmd,
+		agentShellCmd,
 	)
 
 	rootCmd.AddCommand(runnerCmd)

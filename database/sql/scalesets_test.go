@@ -131,8 +131,8 @@ func (s *ScaleSetsTestSuite) callback(old, newSet params.ScaleSet) error {
 	s.Require().Equal(newSet.Flavor, "new-test-flavor")
 	s.Require().Equal(old.GitHubRunnerGroup, "test-group")
 	s.Require().Equal(newSet.GitHubRunnerGroup, "new-test-group")
-	s.Require().Equal(old.RunnerPrefix.Prefix, "garm")
-	s.Require().Equal(newSet.RunnerPrefix.Prefix, "test-prefix2")
+	s.Require().Equal(old.Prefix, "garm")
+	s.Require().Equal(newSet.Prefix, "test-prefix2")
 	s.Require().Equal(old.Enabled, false)
 	s.Require().Equal(newSet.Enabled, true)
 	return nil

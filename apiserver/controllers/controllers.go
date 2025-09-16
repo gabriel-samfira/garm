@@ -38,10 +38,11 @@ import (
 	"github.com/cloudbase/garm/runner" //nolint:typecheck
 	garmUtil "github.com/cloudbase/garm/util"
 	wsWriter "github.com/cloudbase/garm/websocket"
+	"github.com/cloudbase/garm/workers/websocket/agent"
 	"github.com/cloudbase/garm/workers/websocket/events"
 )
 
-func NewAPIController(r *runner.Runner, authenticator *auth.Authenticator, hub *wsWriter.Hub, apiCfg config.APIServer) (*APIController, error) {
+func NewAPIController(r *runner.Runner, authenticator *auth.Authenticator, hub *wsWriter.Hub, agentHub *agent.AgentHub, apiCfg config.APIServer) (*APIController, error) {
 	controllerInfo, err := r.GetControllerInfo(auth.GetAdminContext(context.Background()))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get controller info: %w", err)
@@ -70,9 +71,10 @@ func NewAPIController(r *runner.Runner, authenticator *auth.Authenticator, hub *
 		}
 	}
 	return &APIController{
-		r:    r,
-		auth: authenticator,
-		hub:  hub,
+		r:        r,
+		auth:     authenticator,
+		hub:      hub,
+		agentHub: agentHub,
 		upgrader: websocket.Upgrader{
 			ReadBufferSize:  1024,
 			WriteBufferSize: 16384,
@@ -86,6 +88,7 @@ type APIController struct {
 	r            *runner.Runner
 	auth         *auth.Authenticator
 	hub          *wsWriter.Hub
+	agentHub     *agent.AgentHub
 	upgrader     websocket.Upgrader
 	controllerID string
 }
