@@ -13,17 +13,19 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+var closed = make(chan struct{})
+
+func init() { close(closed) }
+
 func NewService(ctx context.Context, cfg *config.Agent) (*Service, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, fmt.Errorf("failed to validate agent config: %w", err)
 	}
 
-	deadChan := make(chan struct{})
-	close(deadChan)
 	return &Service{
 		ctx:      ctx,
 		cfg:      cfg,
-		done:     deadChan,
+		done:     closed,
 		sessions: make(map[string]*ShellSession),
 	}, nil
 }
