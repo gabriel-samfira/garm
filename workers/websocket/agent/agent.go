@@ -42,18 +42,13 @@ func NewAgent(ctx context.Context, conn *websocket.Conn, instance params.Instanc
 		slog.Any("worker", "agent"),
 		slog.Any("agent_name", instance.Name),
 	)
-	// waiting on a nil channel will block forever. Create a channel here and close it,
-	// ensuring that even if we forget to call Start() before we call Done(), we never deadlock
-	// when waiting on Done().
-	deadChan := make(chan struct{})
-	close(deadChan)
 
 	return &Agent{
 		ctx:           ctx,
 		conn:          conn,
 		instance:      instance,
 		agentStore:    store,
-		done:          deadChan,
+		done:          closed,
 		shellSessions: make(map[string]*ClientSession),
 	}, nil
 }

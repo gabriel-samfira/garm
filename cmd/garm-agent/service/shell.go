@@ -23,14 +23,12 @@ func NewShellSession(ctx context.Context, shellMsg messaging.CreateShellMessage,
 	if err != nil {
 		return nil, fmt.Errorf("failed to create PTY: %w", err)
 	}
-	deadChan := make(chan struct{})
-	close(deadChan)
 	sess := &ShellSession{
 		ctx:       ctx,
 		SessionID: shellMsg.SessionID,
 		shell:     pty,
 		writer:    msgWriter,
-		done:      deadChan,
+		done:      closed,
 	}
 	return sess, nil
 }
