@@ -31,6 +31,9 @@ github.com/cloudbase/garm-provider-common/params
 github.com/cloudbase/garm-provider-common/util
 github.com/cloudbase/garm-provider-common/util/exec
 github.com/cloudbase/garm-provider-common/util/websocket
+# github.com/creack/pty v1.1.24
+## explicit; go 1.18
+github.com/creack/pty
 # github.com/davecgh/go-spew v1.1.1
 ## explicit
 github.com/davecgh/go-spew/spew

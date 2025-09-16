@@ -293,6 +293,10 @@ func (s *sqlDatabase) UpdateInstance(ctx context.Context, instanceName string, p
 		instance.RunnerStatus = param.RunnerStatus
 	}
 
+	if param.Heartbeat != nil {
+		instance.Heartbeat = *param.Heartbeat
+	}
+
 	if string(param.Status) != "" {
 		instance.Status = param.Status
 	}

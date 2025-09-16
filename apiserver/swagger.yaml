@@ -410,6 +410,27 @@ info:
     title: Garm API.
     version: 1.0.0
 paths:
+    /agent/{agentName}/token:
+        get:
+            operationId: GetAgentJWTToken
+            parameters:
+                - description: Runner Name.
+                  in: path
+                  name: agentName
+                  required: true
+                  type: string
+            responses:
+                "200":
+                    description: JWTResponse
+                    schema:
+                        $ref: '#/definitions/JWTResponse'
+                "401":
+                    description: APIErrorResponse
+                    schema:
+                        $ref: '#/definitions/APIErrorResponse'
+            summary: Returns a JWT token that can be used by an agent to access the websocket handler.
+            tags:
+                - agent
     /auth/login:
         post:
             operationId: Login

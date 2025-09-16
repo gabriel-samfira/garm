@@ -73,6 +73,7 @@ func (s *sqlDatabase) sqlToParamsInstance(instance Instance) (params.Instance, e
 		JitConfiguration:  jitConfig,
 		GitHubRunnerGroup: instance.GitHubRunnerGroup,
 		AditionalLabels:   labels,
+		Heartbeat:         instance.Heartbeat,
 	}
 
 	if instance.ScaleSetFkID != nil {
