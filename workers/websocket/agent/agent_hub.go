@@ -11,21 +11,20 @@ import (
 	garmUtil "github.com/cloudbase/garm/util"
 )
 
+var closed = make(chan struct{})
+
+func init() { close(closed) }
+
 func NewAgentHub(ctx context.Context) (*AgentHub, error) {
 	ctx = garmUtil.WithSlogContext(
 		ctx,
 		slog.Any("worker", "agent-hub"),
 	)
-	// waiting on a nil channel will block forever. Create a channel here and close it,
-	// ensuring that even if we forget to call Start() before we call Done(), we never deadlock
-	// when waiting on Done().
-	deadChan := make(chan struct{})
-	close(deadChan)
 
 	return &AgentHub{
 		ctx:    ctx,
 		agents: make(map[string]*Agent),
-		done:   deadChan,
+		done:   closed,
 	}, nil
 }
 

@@ -16,14 +16,12 @@ import (
 type writeMessage func(int, []byte) error
 
 func NewClientSession(ctx context.Context, clientConn *websocket.Conn, agentWriter writeMessage, sessionID uuid.UUID) (*ClientSession, error) {
-	deadChan := make(chan struct{})
-	close(deadChan)
 	return &ClientSession{
 		ctx:         ctx,
 		sessionID:   sessionID,
 		clientConn:  clientConn,
 		agentWriter: agentWriter,
-		done:        deadChan,
+		done:        closed,
 	}, nil
 }
 
