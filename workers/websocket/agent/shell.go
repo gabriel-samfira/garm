@@ -81,6 +81,12 @@ func (c *ClientSession) Stop() error {
 	c.safeWrite(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 	c.clientConn.Close()
 	close(c.done)
+	closeShellMsg := messaging.ClientShellClosedMessage{
+		SessionID: c.sessionID,
+	}
+	if err := c.agentWriter(websocket.BinaryMessage, closeShellMsg.Marshal()); err != nil {
+		slog.ErrorContext(c.ctx, "failed to send shell closed msg", "error", err)
+	}
 	c.running = false
 	return nil
 }
