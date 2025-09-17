@@ -171,10 +171,6 @@ func (c *Client) clientReader() {
 		return nil
 	})
 	for {
-		if err := c.conn.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
-			slog.With(slog.Any("error", err)).Error("failed to set read deadline")
-			return
-		}
 		mt, data, err := c.conn.ReadMessage()
 		if err != nil {
 			if IsErrorOfInterest(err) {

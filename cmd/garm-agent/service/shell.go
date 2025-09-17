@@ -86,7 +86,6 @@ func (s *ShellSession) Stop() error {
 			slog.ErrorContext(s.ctx, "failed to close PTY", "error", err)
 		}
 	}
-	s.shell = nil
 	slog.InfoContext(s.ctx, "stopping; closing done")
 	close(s.done)
 	slog.InfoContext(s.ctx, "stopping; sending exit msg")
@@ -118,6 +117,9 @@ func (s *ShellSession) handlePTYOutput() {
 		return
 	}
 	for {
+		if s.shell == nil {
+			break
+		}
 		buf := make([]byte, 1024)
 		n, err := s.shell.Read(buf)
 		if err != nil {

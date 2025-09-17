@@ -55,7 +55,6 @@ func (a *AgentHub) GetAgent(agentID string) (*Agent, error) {
 	a.mux.Lock()
 	defer a.mux.Unlock()
 
-	slog.InfoContext(a.ctx, ">>>> agents", "agents", a.agents)
 	if agent, ok := a.agents[agentID]; ok {
 		return agent, nil
 	}
