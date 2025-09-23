@@ -306,18 +306,57 @@
 	// Copy to clipboard functionality
 	async function copyToClipboard(text: string) {
 		try {
-			await navigator.clipboard.writeText(text);
-			toastStore.add({
-				type: 'success',
-				title: 'Copied to clipboard',
-				message: 'Template content has been copied to your clipboard.'
-			});
+			// Check if Clipboard API is available
+			if (navigator.clipboard && navigator.clipboard.writeText) {
+				await navigator.clipboard.writeText(text);
+				toastStore.add({
+					type: 'success',
+					title: 'Copied to clipboard',
+					message: 'Template content has been copied to your clipboard.'
+				});
+			} else {
+				// Fallback for older browsers or non-HTTPS contexts
+				fallbackCopyToClipboard(text);
+			}
 		} catch (err) {
 			console.error('Failed to copy to clipboard:', err);
+			// Try fallback method if clipboard API fails
+			fallbackCopyToClipboard(text);
+		}
+	}
+
+	// Fallback copy method for browsers without Clipboard API support
+	function fallbackCopyToClipboard(text: string) {
+		try {
+			// Create a temporary textarea element
+			const textArea = document.createElement('textarea');
+			textArea.value = text;
+			textArea.style.position = 'fixed';
+			textArea.style.left = '-999999px';
+			textArea.style.top = '-999999px';
+			document.body.appendChild(textArea);
+			textArea.focus();
+			textArea.select();
+			
+			// Execute copy command
+			const successful = document.execCommand('copy');
+			document.body.removeChild(textArea);
+			
+			if (successful) {
+				toastStore.add({
+					type: 'success',
+					title: 'Copied to clipboard',
+					message: 'Template content has been copied to your clipboard.'
+				});
+			} else {
+				throw new Error('Copy command failed');
+			}
+		} catch (err) {
+			console.error('Fallback copy failed:', err);
 			toastStore.add({
 				type: 'error',
 				title: 'Copy failed',
-				message: 'Failed to copy content to clipboard. Please try again.'
+				message: 'Unable to copy to clipboard. Please manually select and copy the content.'
 			});
 		}
 	}
