@@ -15,12 +15,12 @@
 				function applyTheme() {
 					const savedTheme = localStorage.getItem('theme');
 					const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-					
+
 					// Determine if we should use dark mode
-					const useDarkMode = savedTheme === 'dark' || 
-						(!savedTheme && prefersDark) || 
+					const useDarkMode = savedTheme === 'dark' ||
+						(!savedTheme && prefersDark) ||
 						(savedTheme === 'system' && prefersDark);
-					
+
 					// Apply the theme class to document
 					if (useDarkMode) {
 						document.documentElement.classList.add('dark');
@@ -28,26 +28,26 @@
 						document.documentElement.classList.remove('dark');
 					}
 				}
-				
+
 				function updateFavicon() {
 					const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 					const savedTheme = localStorage.getItem('theme');
-					const useDarkMode = savedTheme === 'dark' || 
-						(!savedTheme && prefersDark) || 
+					const useDarkMode = savedTheme === 'dark' ||
+						(!savedTheme && prefersDark) ||
 						(savedTheme === 'system' && prefersDark);
 					const fallbackIcon = document.getElementById('favicon-fallback');
-					
+
 					if (useDarkMode) {
 						fallbackIcon.href = '/ui/favicon-dark.png';
 					} else {
 						fallbackIcon.href = '/ui/favicon-light.png';
 					}
 				}
-				
+
 				// Apply theme and favicon on load
 				applyTheme();
 				updateFavicon();
-				
+
 				// Listen for system theme changes
 				if (window.matchMedia) {
 					const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -59,7 +59,7 @@
 							updateFavicon();
 						}
 					};
-					
+
 					// Modern browsers
 					if (mediaQuery.addEventListener) {
 						mediaQuery.addEventListener('change', handleChange);
@@ -70,7 +70,7 @@
 				}
 			})();
 		</script>
-		
+
 		<link rel="modulepreload" href="/ui/_app/immutable/entry/start.STBCHZlH.js">
 		<link rel="modulepreload" href="/ui/_app/immutable/chunks/DeKGyprh.js">
 		<link rel="modulepreload" href="/ui/_app/immutable/chunks/DniTuB_0.js">
