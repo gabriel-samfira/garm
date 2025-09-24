@@ -94,7 +94,13 @@ func (amw *agentMiddleware) claimsToContext(ctx context.Context, claims *Instanc
 		return ctx, runnerErrors.ErrUnauthorized
 	}
 
-	ctx = PopulateInstanceContext(ctx, instanceInfo, claims)
+	entity, err := getForgeEntityFromInstance(ctx, amw.store, instanceInfo)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to get entity from instance", "error", err)
+		return ctx, runnerErrors.ErrUnauthorized
+	}
+
+	ctx = PopulateInstanceContext(ctx, instanceInfo, entity, claims)
 	return ctx, nil
 }
 

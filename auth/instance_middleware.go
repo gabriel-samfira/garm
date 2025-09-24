@@ -112,14 +112,14 @@ func NewInstanceMiddleware(store dbCommon.Store, cfg config.JWTAuth) (Middleware
 	}, nil
 }
 
-func (amw *instanceMiddleware) getForgeEntityFromInstance(ctx context.Context, instance params.Instance) (params.ForgeEntity, error) {
+func getForgeEntityFromInstance(ctx context.Context, store dbCommon.Store, instance params.Instance) (params.ForgeEntity, error) {
 	var entityGetter params.EntityGetter
 	var err error
 	switch {
 	case instance.PoolID != "":
-		entityGetter, err = amw.store.GetPoolByID(ctx, instance.PoolID)
+		entityGetter, err = store.GetPoolByID(ctx, instance.PoolID)
 	case instance.ScaleSetID != 0:
-		entityGetter, err = amw.store.GetScaleSetByID(ctx, instance.ScaleSetID)
+		entityGetter, err = store.GetScaleSetByID(ctx, instance.ScaleSetID)
 	default:
 		return params.ForgeEntity{}, errors.New("instance not associated with a pool or scale set")
 	}
@@ -139,7 +139,7 @@ func (amw *instanceMiddleware) getForgeEntityFromInstance(ctx context.Context, i
 		return params.ForgeEntity{}, fmt.Errorf("error fetching entity: %w", err)
 	}
 
-	entity, err := amw.store.GetForgeEntity(ctx, poolEntity.EntityType, poolEntity.ID)
+	entity, err := store.GetForgeEntity(ctx, poolEntity.EntityType, poolEntity.ID)
 	if err != nil {
 		slog.With(slog.Any("error", err)).ErrorContext(
 			ctx, "failed to get entity",
@@ -166,7 +166,7 @@ func (amw *instanceMiddleware) claimsToContext(ctx context.Context, claims *Inst
 		return ctx, runnerErrors.ErrUnauthorized
 	}
 
-	entity, err := amw.getForgeEntityFromInstance(ctx, instanceInfo)
+	entity, err := getForgeEntityFromInstance(ctx, amw.store, instanceInfo)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to get entity from instance", "error", err)
 		return ctx, runnerErrors.ErrUnauthorized
