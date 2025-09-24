@@ -178,9 +178,6 @@ func (a *Agent) agentReader() {
 		return nil
 	})
 	for {
-		if err := a.conn.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
-			slog.With(slog.Any("error", err)).Error("failed to set read deadline")
-		}
 		mt, data, err := a.conn.ReadMessage()
 		if err != nil {
 			if IsErrorOfInterest(err) {
