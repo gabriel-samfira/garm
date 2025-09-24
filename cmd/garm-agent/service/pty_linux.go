@@ -62,23 +62,23 @@ func (p *sessionPTY) Close() error {
 	if p == nil {
 		return nil
 	}
-	
+
 	// Close PTY first to break any blocking reads
 	ptyErr := p.PTY.Close()
-	
+
 	if p.cmd != nil && p.cmd.Process != nil {
 		// Send SIGTERM to the process group for graceful shutdown
 		if err := syscall.Kill(-p.cmd.Process.Pid, syscall.SIGTERM); err != nil {
 			// If process group kill fails, try killing just the process
 			syscall.Kill(p.cmd.Process.Pid, syscall.SIGTERM)
 		}
-		
+
 		// Wait briefly for graceful exit
 		done := make(chan error, 1)
 		go func() {
 			done <- p.cmd.Wait()
 		}()
-		
+
 		select {
 		case <-done:
 			// Process exited gracefully
@@ -90,7 +90,7 @@ func (p *sessionPTY) Close() error {
 			<-done // Wait for the process to actually exit
 		}
 	}
-	
+
 	return ptyErr
 }
 

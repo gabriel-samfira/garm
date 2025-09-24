@@ -18,6 +18,12 @@ github.com/bradleyfalzon/ghinstallation/v2
 # github.com/cespare/xxhash/v2 v2.3.0
 ## explicit; go 1.11
 github.com/cespare/xxhash/v2
+# github.com/charmbracelet/x/conpty v0.1.1
+## explicit; go 1.24.0
+github.com/charmbracelet/x/conpty
+# github.com/charmbracelet/x/errors v0.0.0-20240508181413-e8d8b6e2de86
+## explicit; go 1.17
+github.com/charmbracelet/x/errors
 # github.com/chzyer/readline v1.5.1
 ## explicit; go 1.15
 github.com/chzyer/readline

@@ -214,12 +214,28 @@ func (s *Service) Stop() error {
 	return nil
 }
 
+func (s *Service) sendHeartbeat() error {
+	msg := messaging.AgentMessage{
+		Type: messaging.MessageTypeHeartbeat,
+		Data: []byte{},
+	}
+	if err := s.cli.WriteMessage(websocket.BinaryMessage, msg.Marshal()); err != nil {
+		return fmt.Errorf("failed to send heartbeat: %w", err)
+	}
+	return nil
+}
+
 func (s *Service) loop() {
 	heartbeatTicker := time.NewTicker(30 * time.Second)
 	defer func() {
 		s.Stop()
 		heartbeatTicker.Stop()
 	}()
+
+	// send initial heartbeat
+	if err := s.sendHeartbeat(); err != nil {
+		slog.ErrorContext(s.ctx, "failed to send heartbeat", "error", err)
+	}
 
 	for {
 		select {
@@ -233,11 +249,7 @@ func (s *Service) loop() {
 			return
 		case <-heartbeatTicker.C:
 			// send heartbeat
-			msg := messaging.AgentMessage{
-				Type: messaging.MessageTypeHeartbeat,
-				Data: []byte{},
-			}
-			if err := s.cli.WriteMessage(websocket.BinaryMessage, msg.Marshal()); err != nil {
+			if err := s.sendHeartbeat(); err != nil {
 				slog.ErrorContext(s.ctx, "failed to send heartbeat", "error", err)
 			}
 		}
