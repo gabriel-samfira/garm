@@ -86,7 +86,6 @@ func (s *ShellSession) Stop() error {
 			slog.ErrorContext(s.ctx, "failed to close PTY", "error", err)
 		}
 	}
-	s.shell = nil
 	slog.InfoContext(s.ctx, "stopping; closing done")
 	close(s.done)
 	slog.InfoContext(s.ctx, "stopping; sending exit msg")

@@ -6,6 +6,7 @@
 	import type { Instance } from '$lib/api/generated/api.js';
 	import { resolve } from '$app/paths';
 	import DeleteModal from '$lib/components/DeleteModal.svelte';
+	import ShellTerminal from '$lib/components/ShellTerminal.svelte';
 	import { websocketStore, type WebSocketEvent } from '$lib/stores/websocket.js';
 	import { formatStatusText, getStatusBadgeClass } from '$lib/utils/status.js';
 	import { formatDate, scrollToBottomEvents, getEventLevelBadge } from '$lib/utils/common.js';
@@ -16,11 +17,22 @@
 	let loading = true;
 	let error = '';
 	let showDeleteModal = false;
+	let showShellModal = false;
 	let unsubscribeWebsocket: (() => void) | null = null;
 	let statusMessagesContainer: HTMLElement;
 
 
 	$: instanceName = decodeURIComponent($page.params.id || '');
+	
+	// Check if heartbeat is stale (older than 60 seconds)
+	$: isHeartbeatStale = (instance?.agent_id) ? 
+		(() => {
+			const lastHeartbeat = instance.heartbeat;
+			if (!lastHeartbeat) return true;
+			const now = new Date();
+			const heartbeatTime = new Date(lastHeartbeat);
+			return (now.getTime() - heartbeatTime.getTime()) > 60000; // 60 seconds
+		})() : true;
 
 	async function loadInstance() {
 		if (!instanceName) return;
@@ -158,6 +170,17 @@
 				<div class="flex items-center justify-between mb-4">
 					<h3 class="text-lg font-medium text-gray-900 dark:text-white">Instance Information</h3>
 					<div class="flex items-center space-x-3">
+						<button
+							on:click={() => showShellModal = true}
+							disabled={isHeartbeatStale}
+							class="px-4 py-2 {isHeartbeatStale ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 cursor-pointer'} text-white rounded-lg font-medium text-sm flex items-center space-x-2"
+							title={isHeartbeatStale ? "Shell unavailable - Agent heartbeat is stale" : "Open Shell"}
+						>
+							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+							</svg>
+							<span>Shell</span>
+						</button>
 						<button
 							on:click={() => showDeleteModal = true}
 							class="px-4 py-2 bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 text-white rounded-lg font-medium text-sm cursor-pointer"
@@ -329,6 +352,18 @@
 		</div>
 	{/if}
 </div>
+
+<!-- Shell Modal -->
+{#if showShellModal && instance && !isHeartbeatStale}
+	<div class="fixed inset-0 bg-black/30 dark:bg-black/50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
+		<div class="w-full max-w-4xl max-h-[80vh] overflow-hidden">
+			<ShellTerminal
+				runnerName={instance.name!}
+				onClose={() => showShellModal = false}
+			/>
+		</div>
+	</div>
+{/if}
 
 <!-- Delete Modal -->
 {#if showDeleteModal && instance}
