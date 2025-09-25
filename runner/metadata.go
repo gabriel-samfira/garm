@@ -188,6 +188,11 @@ func (r *Runner) GetRunnerInstallScript(ctx context.Context) ([]byte, error) {
 		return nil, fmt.Errorf("failed to get instance token: %w", err)
 	}
 
+	agentToken, err := r.GetAgentJWTToken(r.ctx, instance.Name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get agent token: %w", err)
+	}
+
 	var templateID uint
 	var specs cloudconfig.CloudConfigSpec
 	var extraSpecs json.RawMessage
@@ -222,6 +227,10 @@ func (r *Runner) GetRunnerInstallScript(ctx context.Context) ([]byte, error) {
 		return nil, runnerErrors.NewConflictError("pool or scale set has no template associated and no template is defined in extra_specs")
 	}
 
+	if specs.ExtraContext == nil {
+		specs.ExtraContext = map[string]string{}
+	}
+	specs.ExtraContext["AgentToken"] = agentToken
 	installCtx, err := r.getRunnerInstallTemplateContext(instance, entity, token, specs.ExtraContext)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get runner install context: %w", err)
