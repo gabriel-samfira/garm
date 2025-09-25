@@ -40,6 +40,7 @@ type AgentJWTClaims struct {
 	Entity        string `json:"entity"`
 	CreateAttempt int    `json:"create_attempt"`
 	ForgeType     string `json:"forge_type"`
+	IsAgent       bool   `json:"is_agent"`
 	jwt.RegisteredClaims
 }
 
@@ -53,6 +54,7 @@ func (i *instanceToken) NewAgentJWTToken(instance params.Instance, entity params
 		PoolID:        instance.PoolID,
 		Scope:         entity.EntityType,
 		Entity:        entity.ID,
+		IsAgent:       true,
 		ForgeType:     string(entity.Credentials.ForgeType),
 		CreateAttempt: instance.CreateAttempt,
 	}
@@ -131,6 +133,11 @@ func (amw *agentMiddleware) Middleware(next http.Handler) http.Handler {
 		})
 		if err != nil {
 			slog.InfoContext(ctx, "failed to validate JWT token", "error", err)
+			invalidAuthResponse(ctx, w)
+			return
+		}
+
+		if !claims.IsAgent {
 			invalidAuthResponse(ctx, w)
 			return
 		}
