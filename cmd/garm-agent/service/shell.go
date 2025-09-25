@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"sync"
 
+	"github.com/cloudbase/garm/cmd/garm-agent/config"
 	"github.com/cloudbase/garm/workers/websocket/agent/messaging"
 )
 
@@ -18,8 +19,8 @@ type PTY interface {
 	Close() error
 }
 
-func NewShellSession(ctx context.Context, shellMsg messaging.CreateShellMessage, msgWriter messageWriter) (*ShellSession, error) {
-	pty, err := NewSessionPTY()
+func NewShellSession(ctx context.Context, shellMsg messaging.CreateShellMessage, msgWriter messageWriter, cfg *config.Agent) (*ShellSession, error) {
+	pty, err := NewSessionPTY(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create PTY: %w", err)
 	}

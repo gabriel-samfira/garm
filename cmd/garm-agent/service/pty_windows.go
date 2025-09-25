@@ -11,6 +11,7 @@ import (
 	"unsafe"
 
 	"github.com/charmbracelet/x/conpty"
+	"github.com/cloudbase/garm/cmd/garm-agent/config"
 	"golang.org/x/sys/windows"
 )
 
@@ -18,10 +19,15 @@ var _ PTY = &sessionPTY{}
 
 const CREATE_SUSPENDED = 0x00000004
 
-func NewSessionPTY() (PTY, error) {
+func NewSessionPTY(cfg *config.Agent) (PTY, error) {
 	defaultShell, err := DefaultShell()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get default shell: %w", err)
+	}
+
+	if cfg.Shell != "" {
+		// blindly trust the value in the config
+		defaultShell = cfg.Shell
 	}
 
 	c, err := conpty.New(120, 80, 0)
@@ -119,35 +125,35 @@ func (p *sessionPTY) Close() error {
 	if p == nil {
 		return nil
 	}
-	
+
 	var err error
 	p.once.Do(func() {
 		var errs []error
-		
+
 		// Signal that we're closing
 		if p.closed != nil {
 			close(p.closed)
 		}
-		
+
 		// Close job handle first to terminate child processes
 		if p.job != 0 {
 			if jobErr := windows.CloseHandle(p.job); jobErr != nil {
 				errs = append(errs, fmt.Errorf("failed to close job handle: %w", jobErr))
 			}
 		}
-		
+
 		// Close the ConPTY (this calls ClosePseudoConsole internally)
 		if p.ConPty != nil {
 			if conptyErr := p.ConPty.Close(); conptyErr != nil {
 				errs = append(errs, conptyErr)
 			}
 		}
-		
+
 		if len(errs) > 0 {
 			err = errors.Join(errs...)
 		}
 	})
-	
+
 	return err
 }
 

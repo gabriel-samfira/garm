@@ -3,11 +3,15 @@
 
 package service
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/cloudbase/garm/cmd/garm-agent/config"
+)
 
 var _ PTY = &sessionPTY{}
 
-func NewSessionPTY() (PTY, error) {
+func NewSessionPTY(_ *config.Agent) (PTY, error) {
 	return &sessionPTY{}, nil
 }
 

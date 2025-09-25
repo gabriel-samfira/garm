@@ -15,6 +15,8 @@ package cmd
 
 import (
 	"context"
+	"io"
+	"log"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -41,18 +43,36 @@ var daemonCmd = &cobra.Command{
 		ctx, stop := signal.NotifyContext(context.Background(), signals...)
 		defer stop()
 
+		cfg, err := config.NewConfig(agentConfig)
+		if err != nil {
+			log.Fatal(err)
+		}
+
 		opts := slog.HandlerOptions{
 			AddSource: true,
 			Level:     slog.LevelDebug,
 		}
-		fileHan := slog.NewTextHandler(os.Stdout, &opts)
+		var logDestination io.Writer
+		if cfg.LogFile == "" {
+			logDestination = os.Stdout
+		} else {
+			fd, err := os.OpenFile(cfg.LogFile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+			if err != nil {
+				log.Fatal(err)
+			}
+			logDestination = fd
+		}
+		fileHan := slog.NewTextHandler(logDestination, &opts)
 		slog.SetDefault(slog.New(fileHan))
 
-		slog.InfoContext(ctx, "test")
-
-		cfg, err := config.NewConfig(agentConfig)
-		if err != nil {
-			return err
+		if cfg.WorkDir != "" {
+			if mode, err := os.Stat(cfg.WorkDir); err == nil {
+				if mode.IsDir() {
+					os.Chdir(cfg.WorkDir)
+				}
+			} else {
+				slog.ErrorContext(ctx, "failed to access work_dir", "work_dir", cfg.WorkDir, "error", err)
+			}
 		}
 
 		svc, err := service.NewService(ctx, cfg)
@@ -60,16 +80,14 @@ var daemonCmd = &cobra.Command{
 			return err
 		}
 
-		if err := svc.Start(); err != nil {
+		if err := runService(svc); err != nil {
 			return err
 		}
-
-		<-svc.Done()
 		return nil
 	},
 }
 
 func init() {
-	daemonCmd.Flags().StringVar(&agentConfig, "config", "/etc/garm/agent.toml", "The GARM agent configuration file.")
+	daemonCmd.Flags().StringVar(&agentConfig, "config", defaultAgentConfig, "The GARM agent configuration file.")
 	rootCmd.AddCommand(daemonCmd)
 }
