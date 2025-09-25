@@ -45,6 +45,7 @@ type InstanceJWTClaims struct {
 	Entity        string `json:"entity"`
 	CreateAttempt int    `json:"create_attempt"`
 	ForgeType     string `json:"forge_type"`
+	IsAgent       bool   `json:"is_agent"`
 	jwt.RegisteredClaims
 }
 
@@ -86,6 +87,7 @@ func (i *instanceToken) NewInstanceJWTToken(instance params.Instance, entity par
 		Scope:         entity.EntityType,
 		Entity:        entity.String(),
 		ForgeType:     string(entity.Credentials.ForgeType),
+		IsAgent:       false,
 		CreateAttempt: instance.CreateAttempt,
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -207,6 +209,10 @@ func (amw *instanceMiddleware) Middleware(next http.Handler) http.Handler {
 		}
 
 		if !token.Valid {
+			invalidAuthResponse(ctx, w)
+			return
+		}
+		if claims.IsAgent {
 			invalidAuthResponse(ctx, w)
 			return
 		}
