@@ -23,6 +23,8 @@ type Agent struct {
 	ServerURL string `toml:"server_url"`
 	Token     string `toml:"token"`
 	WorkDir   string `toml:"work_dir"`
+	LogFile   string `toml:"log_file"`
+	Shell     string `toml:"shell"`
 }
 
 func (a *Agent) Validate() error {

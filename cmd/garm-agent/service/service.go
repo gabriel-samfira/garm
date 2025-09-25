@@ -95,7 +95,7 @@ func (s *Service) handleMessage(msgType int, msg []byte) (err error) {
 			s.mux.Unlock()
 			return fmt.Errorf("session ID %s already exists", sessionID)
 		}
-		session, err := NewShellSession(s.ctx, createShell, s.writeMessage)
+		session, err := NewShellSession(s.ctx, createShell, s.writeMessage, s.cfg)
 		if err != nil {
 			s.mux.Unlock()
 			return fmt.Errorf("failed to create session: %w", err)

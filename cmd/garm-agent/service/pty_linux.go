@@ -7,16 +7,22 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/cloudbase/garm/cmd/garm-agent/config"
 	"github.com/creack/pty"
 )
 
 var _ PTY = &sessionPTY{}
 
-func NewSessionPTY() (PTY, error) {
+func NewSessionPTY(cfg *config.Agent) (PTY, error) {
 	defaultShell, err := DefaultShell()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get default shell: %w", err)
 	}
+	if cfg.Shell != "" {
+		// blindly trust the value in the config
+		defaultShell = cfg.Shell
+	}
+
 	cmd := exec.Command(defaultShell)
 	ptyFile, err := pty.Start(cmd)
 	if err != nil {
