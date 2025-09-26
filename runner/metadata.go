@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"html/template"
 	"log/slog"
+	"net/url"
 	"strings"
 
 	"github.com/cloudbase/garm-provider-common/cloudconfig"
@@ -150,6 +151,12 @@ func (r *Runner) getRunnerInstallTemplateContext(instance params.Instance, entit
 	if err != nil {
 		return cloudconfig.InstallRunnerParams{}, fmt.Errorf("failed to find tools: %w", err)
 	}
+	parsed, err := url.ParseRequestURI(instance.MetadataURL)
+	if err != nil {
+		return cloudconfig.InstallRunnerParams{}, fmt.Errorf("failed to parse metadata URL: %w", err)
+	}
+	baseURL := fmt.Sprintf("%s://%s", parsed.Scheme, parsed.Host)
+	extraContext["BaseURL"] = baseURL
 
 	installRunnerParams := cloudconfig.InstallRunnerParams{
 		FileName:          foundTools.GetFilename(),
