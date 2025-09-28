@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
 	"sync"
 	"time"
 
 	garmWs "github.com/cloudbase/garm-provider-common/util/websocket"
 	"github.com/cloudbase/garm/cmd/garm-agent/config"
+	"github.com/cloudbase/garm/params"
 	"github.com/cloudbase/garm/workers/websocket/agent/messaging"
 	"github.com/gorilla/websocket"
 )
@@ -22,11 +24,18 @@ func NewService(ctx context.Context, cfg *config.Agent) (*Service, error) {
 		return nil, fmt.Errorf("failed to validate agent config: %w", err)
 	}
 
+	forgeType, err := cfg.ForgeType()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get forge type for agent: %w", err)
+	}
 	return &Service{
-		ctx:      ctx,
-		cfg:      cfg,
-		done:     closed,
-		sessions: make(map[string]*ShellSession),
+		ctx:        ctx,
+		cfg:        cfg,
+		done:       closed,
+		connecting: make(chan struct{}),
+		connected:  closed,
+		forgeType:  forgeType,
+		sessions:   make(map[string]*ShellSession),
 	}, nil
 }
 
@@ -35,9 +44,14 @@ type Service struct {
 	cfg *config.Agent
 	cli *garmWs.Reader
 
+	forgeType params.EndpointType
+
 	mux     sync.Mutex
 	running bool
 	done    chan struct{}
+
+	connecting chan struct{}
+	connected  chan struct{}
 
 	sessions map[string]*ShellSession
 }
@@ -65,14 +79,13 @@ func (s *Service) handleMessage(msgType int, msg []byte) (err error) {
 		return fmt.Errorf("failed to unmarshal agent message")
 	}
 
-	slog.InfoContext(s.ctx, "handling message", "message_type", agentMsg.Type)
 	switch agentMsg.Type {
 	case messaging.MessageTypeCreateShell:
-		slog.InfoContext(s.ctx, "handling create shell message")
 		createShell, err := messaging.Unmarshal[messaging.CreateShellMessage](agentMsg)
 		if err != nil {
 			return fmt.Errorf("failed to unmarshall create shell message: %w", err)
 		}
+		slog.InfoContext(s.ctx, "handling create shell message", "session_id", createShell.ID())
 		defer func() {
 			if err != nil {
 				shellReadyMsg := messaging.ShellReadyMessage{
@@ -138,6 +151,7 @@ func (s *Service) handleMessage(msgType int, msg []byte) (err error) {
 		if err != nil {
 			return fmt.Errorf("failed to unmarshall shell closed message: %w", err)
 		}
+		slog.InfoContext(s.ctx, "handling close shell message", "session_id", closedMsg.ID())
 		s.mux.Lock()
 		session, ok := s.sessions[closedMsg.ID()]
 		if !ok {
@@ -150,7 +164,6 @@ func (s *Service) handleMessage(msgType int, msg []byte) (err error) {
 		}
 		s.mux.Unlock()
 	case messaging.MessageTypeShellData:
-		slog.InfoContext(s.ctx, "received shell data message")
 		shellData, err := messaging.Unmarshal[messaging.ShellDataMessage](agentMsg)
 		if err != nil {
 			return fmt.Errorf("failed to unmarshall shell data message: %w", err)
@@ -161,7 +174,6 @@ func (s *Service) handleMessage(msgType int, msg []byte) (err error) {
 			s.mux.Unlock()
 			return nil
 		}
-		slog.InfoContext(s.ctx, "found shell session", "session_id", shellData.ID())
 		if _, err := session.shell.Write(shellData.Data); err != nil {
 			slog.ErrorContext(s.ctx, "failed to write shell data; stopping session", "error", err, "session_id", shellData.ID())
 			if err := session.Stop(); err != nil {
@@ -182,17 +194,20 @@ func (s *Service) Start() error {
 		return nil
 	}
 
-	cli, err := garmWs.NewReader(s.ctx, s.cfg.ServerURL, "/agent/", s.cfg.Token, s.handleMessage)
-	if err != nil {
-		return fmt.Errorf("failed to create websocket client: %w", err)
+	if s.cfg.WorkDir != "" {
+		if mode, err := os.Stat(s.cfg.WorkDir); err == nil {
+			if mode.IsDir() {
+				os.Chdir(s.cfg.WorkDir)
+			}
+		} else {
+			slog.ErrorContext(s.ctx, "failed to access work_dir", "work_dir", s.cfg.WorkDir, "error", err)
+			return err
+		}
 	}
-	s.cli = cli
 
-	if err := s.cli.Start(); err != nil {
-		return fmt.Errorf("failed to start websocket connection: %w", err)
-	}
 	s.running = true
 	s.done = make(chan struct{})
+	go s.keepAliveLoop()
 	go s.loop()
 
 	return nil
@@ -225,13 +240,69 @@ func (s *Service) sendHeartbeat() error {
 	return nil
 }
 
+func (s *Service) sleepWithCancel(d time.Duration) bool {
+	sleepTicker := time.NewTicker(d)
+	defer sleepTicker.Stop()
+
+	select {
+	case <-sleepTicker.C:
+		return false
+	case <-s.done:
+	case <-s.ctx.Done():
+	}
+	return true
+}
+
+func (s *Service) keepAliveLoop() {
+	var sleepTime time.Duration
+retryConnecting:
+	if sleepTime > 0 {
+		s.sleepWithCancel(sleepTime)
+	}
+	for {
+		select {
+		case <-s.done:
+			return
+		case <-s.ctx.Done():
+			return
+		case <-s.connected:
+			slog.InfoContext(s.ctx, "attempting to connect to GARM server", "server", s.cfg.ServerURL)
+			sleepTime = 5 * time.Second
+			cli, err := garmWs.NewReader(s.ctx, s.cfg.ServerURL, "/agent/", s.cfg.Token, s.handleMessage)
+			if err != nil {
+				slog.WarnContext(s.ctx, "failed to create websocket client", "error", err)
+				goto retryConnecting
+			}
+			s.cli = cli
+
+			if err := s.cli.Start(); err != nil {
+				slog.WarnContext(s.ctx, "failed to start websocket connection", "error", err)
+				goto retryConnecting
+			}
+			slog.InfoContext(s.ctx, "successfully connected to GARM", "server", s.cfg.ServerURL)
+			s.connected = make(chan struct{})
+			close(s.connecting)
+		}
+	}
+
+}
+
 func (s *Service) loop() {
 	heartbeatTicker := time.NewTicker(30 * time.Second)
 	defer func() {
+		slog.InfoContext(s.ctx, "daemon is shutting down")
 		s.Stop()
 		heartbeatTicker.Stop()
 	}()
 
+connecting:
+	select {
+	case <-s.done:
+		return
+	case <-s.ctx.Done():
+		return
+	case <-s.connecting:
+	}
 	// send initial heartbeat
 	if err := s.sendHeartbeat(); err != nil {
 		slog.ErrorContext(s.ctx, "failed to send heartbeat", "error", err)
@@ -242,11 +313,12 @@ func (s *Service) loop() {
 		case <-s.done:
 			return
 		case <-s.ctx.Done():
-			slog.InfoContext(s.ctx, "daemon is shutting down")
 			return
 		case <-s.cli.Done():
 			slog.InfoContext(s.ctx, "remote host closed WS connection")
-			return
+			s.connecting = make(chan struct{})
+			close(s.connected)
+			goto connecting
 		case <-heartbeatTicker.C:
 			// send heartbeat
 			if err := s.sendHeartbeat(); err != nil {

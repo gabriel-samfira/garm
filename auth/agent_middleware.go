@@ -29,21 +29,6 @@ import (
 	"github.com/cloudbase/garm/params"
 )
 
-// AgentJWTClaims holds JWT claims
-type AgentJWTClaims struct {
-	ID     string `json:"id"`
-	Name   string `json:"name"`
-	PoolID string `json:"provider_id"`
-	// Scope is either repository or organization
-	Scope params.ForgeEntityType `json:"scope"`
-	// Entity is the repo or org name
-	Entity        string `json:"entity"`
-	CreateAttempt int    `json:"create_attempt"`
-	ForgeType     string `json:"forge_type"`
-	IsAgent       bool   `json:"is_agent"`
-	jwt.RegisteredClaims
-}
-
 func (i *instanceToken) NewAgentJWTToken(instance params.Instance, entity params.ForgeEntity) (string, error) {
 	claims := InstanceJWTClaims{
 		RegisteredClaims: jwt.RegisteredClaims{

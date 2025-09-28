@@ -30,13 +30,23 @@ func (r *Runner) RecordAgentHeartbeat(ctx context.Context) error {
 }
 
 func (r *Runner) GetAgentJWTToken(ctx context.Context, runnerName string) (string, error) {
+	var instance params.Instance
+	var err error
 	if !auth.IsAdmin(ctx) {
-		return "", runnerErrors.ErrUnauthorized
-	}
+		instance, err = auth.InstanceParams(ctx)
+		if err != nil {
+			return "", runnerErrors.ErrUnauthorized
+		}
 
-	instance, err := r.GetInstance(ctx, runnerName)
-	if err != nil {
-		return "", fmt.Errorf("failed to get runner: %w", err)
+		// A runner bootstrap token can get an agent token for itself.
+		if instance.Name != runnerName || auth.InstanceIsAgent(ctx) {
+			return "", runnerErrors.ErrUnauthorized
+		}
+	} else {
+		instance, err = r.GetInstance(ctx, runnerName)
+		if err != nil {
+			return "", fmt.Errorf("failed to get runner: %w", err)
+		}
 	}
 
 	var entityGetter params.EntityGetter
