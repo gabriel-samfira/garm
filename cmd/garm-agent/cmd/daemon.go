@@ -65,16 +65,6 @@ var daemonCmd = &cobra.Command{
 		fileHan := slog.NewTextHandler(logDestination, &opts)
 		slog.SetDefault(slog.New(fileHan))
 
-		if cfg.WorkDir != "" {
-			if mode, err := os.Stat(cfg.WorkDir); err == nil {
-				if mode.IsDir() {
-					os.Chdir(cfg.WorkDir)
-				}
-			} else {
-				slog.ErrorContext(ctx, "failed to access work_dir", "work_dir", cfg.WorkDir, "error", err)
-			}
-		}
-
 		svc, err := service.NewService(ctx, cfg)
 		if err != nil {
 			return err

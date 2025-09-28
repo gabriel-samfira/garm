@@ -142,7 +142,6 @@ func (c *ClientSession) clientReader() {
 			slog.ErrorContext(c.ctx, "invalid message received from client", "error", err)
 			return
 		}
-		slog.InfoContext(c.ctx, "client msg", "message", agentMsg)
 
 		switch agentMsg.Type {
 		case messaging.MessageTypeClientShellClosed, messaging.MessageTypeShellData,
@@ -156,7 +155,6 @@ func (c *ClientSession) clientReader() {
 			return
 		}
 
-		slog.InfoContext(c.ctx, "sending message to agent", "data", string(agentMsg.Data))
 		if err := c.agentWriter(websocket.BinaryMessage, data); err != nil {
 			slog.ErrorContext(c.ctx, "error handling message", slog.Any("error", err))
 			return

@@ -186,7 +186,6 @@ func (a *Agent) agentReader() {
 			return
 		}
 
-		slog.InfoContext(a.ctx, "got websocket message", "message_type", mt, "message_data", data)
 		if mt == websocket.CloseMessage {
 			return
 		}

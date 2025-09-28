@@ -130,7 +130,6 @@ func (s *ShellSession) handlePTYOutput() {
 			SessionID: s.SessionID,
 			Data:      buf[:n],
 		}
-		slog.InfoContext(s.ctx, "sending response to writer", "response", string(buf[:n]))
 		if err := s.writer(shellMsg.Marshal()); err != nil {
 			slog.ErrorContext(s.ctx, "failed to write message", "error", err)
 			break
