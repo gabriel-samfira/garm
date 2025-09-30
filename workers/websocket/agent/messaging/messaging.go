@@ -20,6 +20,7 @@ const (
 	MessageTypeShellResize       byte = 0x07
 	MessageTypeShellExit         byte = 0x08
 	MessageTypeClientShellClosed byte = 0x09
+	MessageTypeRunnerUpdate      byte = 0x10
 )
 
 type AgentMessage struct {
@@ -274,3 +275,29 @@ func (s *ShellResizeMessage) UnmarshalFromAgentMessage(data []byte) error {
 	s.Cols = binary.BigEndian.Uint16(data[18:20])
 	return nil
 }
+
+type RunnerUpdateMessage struct {
+	AgentID uint64
+	Payload []byte
+}
+
+func (s RunnerUpdateMessage) Marshal() []byte {
+	msg := AgentMessage{
+		Type: MessageTypeRunnerUpdate,
+	}
+
+	msg.Data = make([]byte, 8+len(s.Payload))
+	binary.BigEndian.PutUint64(msg.Data[0:8], s.AgentID)
+	copy(msg.Data[8:], s.Payload)
+	return msg.Marshal()
+}
+
+func (s *RunnerUpdateMessage) UnmarshalFromAgentMessage(data []byte) error {
+	if len(data) < 8 {
+		return fmt.Errorf("invalid MessageTypeRunnerUpdate data length: %d", len(data))
+	}
+	s.AgentID = binary.BigEndian.Uint64(data[0:8])
+	copy(s.Payload[:], data[8:])
+	return nil
+}
+

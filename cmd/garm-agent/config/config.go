@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"os"
 
 	"github.com/BurntSushi/toml"
 	jwt "github.com/golang-jwt/jwt/v5"
@@ -34,10 +33,23 @@ type Agent struct {
 	WorkDir string `toml:"work_dir"`
 	LogFile string `toml:"log_file"`
 	Shell   string `toml:"shell"`
-	// RunnerExecutable is the absolute path on disk to the runner executable. This can be
-	// any executable (bash, binary, etc). For github it will most likely be the papth to
-	// run.sh, which is usually in the WorkDir folder. For gitea the binary can be anywhere.
-	RunnerExecutable string `toml:"runner_executable"`
+	// RunnerExecArgs is a list of command line parameters needed to launch the runner.
+	// This must include the executable as the first arg and any needed subsequent parametes.
+	// If the runner is started via a wrapper script, the fist argument must be the proper interpretor
+	// that can launch the wrapper script. For example, if the runner is launched by a bash script, the
+	// RunnerExecArgs will need to include: ["/bin/bash", "-C", "/path/to/script.sh", "any", "other", "args"].
+	// If the runner is an ELF or a Windows executable, the first arg can be the runner itself.
+	RunnerExecArgs []string `toml:"runner_cmdline"`
+	// StateDBPath is the path on disk to the bbold DB file where the agent saves some state. Currently
+	// the agent uses this file to store whether or not it has detected that a job was run. A runner may
+	// pick up a job and run it while the connection between GARM and the agent was down. In which case,
+	// the agent might not have notified GARM that it needs to be removed. We save state in this file for 2
+	// reasond:
+	//   * If a job runs and the agent gets restarted, it must not attempt to start the runner again
+	//   * It needs to let GARM know that it can no longer be used and needs to be removed.
+	//
+	// The parent folder must allow tha agent process write access and expected to persist across reboots.
+	StateDBPath string `toml:"state_db_path"`
 }
 
 func (a *Agent) Validate() error {
@@ -53,16 +65,8 @@ func (a *Agent) Validate() error {
 		return fmt.Errorf("failed to parse token: %w", err)
 	}
 
-	if a.RunnerExecutable == "" {
-		return fmt.Errorf("runner executable path is not set")
-	}
-	mode, err := os.Stat(a.RunnerExecutable)
-	if err != nil {
-		return fmt.Errorf("failed to access runner executable %s: %w", a.RunnerExecutable, err)
-	}
-
-	if mode.IsDir() {
-		return fmt.Errorf("runner executable seems to be a directory")
+	if len(a.RunnerExecArgs) == 0 {
+		return fmt.Errorf("runner_cmdline is not set")
 	}
 
 	return nil
