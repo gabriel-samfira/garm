@@ -21,7 +21,8 @@ var (
 type Worker interface {
 	Start() error
 	Stop() error
-	Wait() <-chan error
+	Wait() <-chan struct{}
+	Error() error
 }
 
 type RunnerStateManager interface {

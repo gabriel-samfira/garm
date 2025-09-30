@@ -355,8 +355,8 @@
 
 <!-- Shell Modal -->
 {#if showShellModal && instance && !isHeartbeatStale}
-	<div class="fixed inset-0 bg-black/30 dark:bg-black/50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
-		<div class="w-full max-w-4xl max-h-[80vh] overflow-hidden">
+	<div class="fixed inset-0 bg-black/30 dark:bg-black/50 overflow-hidden h-full w-full z-50">
+		<div class="relative w-full h-full flex items-center justify-center p-4">
 			<ShellTerminal
 				runnerName={instance.name!}
 				onClose={() => showShellModal = false}
