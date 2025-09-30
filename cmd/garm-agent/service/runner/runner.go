@@ -108,6 +108,13 @@ func (r *runnerCmd) Stop() error {
 	close(r.done)
 	r.running = false
 
+	// Kill the command if it's running
+	if r.cmd != nil && r.cmd.Process != nil {
+		if err := r.cmd.Process.Kill(); err != nil {
+			slog.ErrorContext(r.ctx, "failed to kill process", "error", err)
+		}
+	}
+
 	return nil
 }
 
@@ -115,15 +122,23 @@ func (r *runnerCmd) executeCommand() {
 	var err error
 	var stdout, stderr io.ReadCloser
 	var jobStarted bool
+	var jobMux sync.Mutex
+
 	defer func() {
 		r.cmdErr = err
 		if stopErr := r.Stop(); stopErr != nil {
 			slog.ErrorContext(r.ctx, "failed to stop runner", "error", stopErr)
 		}
 		r.st.SetRunnerStarted(false)
-		if jobStarted {
+
+		jobMux.Lock()
+		started := jobStarted
+		jobMux.Unlock()
+
+		if started {
 			// Job was started and the runner exited. This means that the job reached a conclusion
 			// and we need to remove the runner.
+			slog.InfoContext(r.ctx, "runner has finished th job")
 			r.st.SetJobFinished()
 		}
 	}()
@@ -144,10 +159,13 @@ func (r *runnerCmd) executeCommand() {
 		scanner := bufio.NewScanner(stdout)
 		for scanner.Scan() {
 			line := scanner.Bytes()
+			slog.InfoContext(r.ctx, string(line))
 			if r.isJobStartedLine(line) {
 				slog.InfoContext(r.ctx, "runner is active")
 				r.st.SetJobStarted()
+				jobMux.Lock()
 				jobStarted = true
+				jobMux.Unlock()
 				continue
 			}
 
@@ -166,10 +184,13 @@ func (r *runnerCmd) executeCommand() {
 		scanner := bufio.NewScanner(stderr)
 		for scanner.Scan() {
 			line := scanner.Bytes()
+			slog.InfoContext(r.ctx, string(line))
 			if r.isJobStartedLine(line) {
 				slog.InfoContext(r.ctx, "runner is active")
 				r.st.SetJobStarted()
+				jobMux.Lock()
 				jobStarted = true
+				jobMux.Unlock()
 				continue
 			}
 
@@ -185,7 +206,7 @@ func (r *runnerCmd) executeCommand() {
 	}()
 
 	err = r.cmd.Start()
-	if r.cmdErr != nil {
+	if err != nil {
 		slog.ErrorContext(r.ctx, "failed to start command", "error", err)
 		return
 	}

@@ -72,8 +72,24 @@ func (s *Service) Done() chan struct{} {
 	return s.done
 }
 
+func (s *Service) getClient() (*garmWs.Reader, error) {
+	// s.mux.Lock()
+	cli := s.cli
+	// s.mux.Unlock()
+
+	if cli == nil {
+		return nil, fmt.Errorf("websocket client not connected")
+	}
+	return cli, nil
+}
+
 func (s *Service) writeMessage(msg []byte) error {
-	if err := s.cli.WriteMessage(websocket.BinaryMessage, msg); err != nil {
+	cli, err := s.getClient()
+	if err != nil {
+		return err
+	}
+
+	if err := cli.WriteMessage(websocket.BinaryMessage, msg); err != nil {
 		return err
 	}
 	return nil
@@ -222,21 +238,26 @@ func (s *Service) Start() error {
 		return fmt.Errorf("could not get token claims: %w", err)
 	}
 	runnerCommand, err := runner.NewRunnerCommand(s.ctx, s.cfg.RunnerExecArgs, s.cfg.WorkDir, params.EndpointType(claims.ForgeType), s)
-	if err != nil {
-		return fmt.Errorf("failed to create runner command: %w", err)
-	}
-
-	if err := runnerCommand.Start(); err != nil {
-		slog.ErrorContext(s.ctx, "failed to start runner", "error", err)
+	if err == nil {
 		runnerState := s.determineRunnerState()
 		if runnerState == params.RunnerOffline {
-			// The runner did not run a job as far as we know, but it's failing to start. Send a failed message to GARM.
-			s.sendRunnerStatusMessage(runner.RunnerState{RunnerStatus: params.RunnerFailed})
+			// we only attepmt to start the runner if we need to. A runner that has already run a job,
+			// should not be started again, even if the agent is still online.
+			if err := runnerCommand.Start(); err != nil {
+				slog.ErrorContext(s.ctx, "failed to start runner", "error", err)
+				runnerState := s.determineRunnerState()
+				if runnerState == params.RunnerOffline {
+					// The runner did not run a job as far as we know, but it's failing to start. Send a failed message to GARM.
+					s.sendRunnerStatusMessage(runner.RunnerState{RunnerStatus: params.RunnerFailed})
+				}
+			}
 		}
+		// Set the runnerCmd even if it failed to start
+		s.runnerCmd = runnerCommand
+	} else {
+		// TODO: Add failure message
+		s.sendRunnerStatusMessage(runner.RunnerState{RunnerStatus: params.RunnerFailed})
 	}
-	// Set the runnerCmd even if it failed to start
-	s.runnerCmd = runnerCommand
-
 	s.running = true
 	s.done = make(chan struct{})
 	go s.keepAliveLoop()
@@ -309,7 +330,13 @@ func (s *Service) sendRunnerStatusMessage(status runner.RunnerState) error {
 		Type: messaging.MessageTypeRunnerUpdate,
 		Data: asJs,
 	}
-	if err := s.cli.WriteMessage(websocket.BinaryMessage, msg.Marshal()); err != nil {
+
+	cli, err := s.getClient()
+	if err != nil {
+		return err
+	}
+
+	if err := cli.WriteMessage(websocket.BinaryMessage, msg.Marshal()); err != nil {
 		return fmt.Errorf("failed to send runner status: %w", err)
 	}
 	return nil
@@ -341,7 +368,7 @@ func (s *Service) SetJobFinished() {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 	if err := s.agentState.SetJobFinished(); err != nil {
-		slog.ErrorContext(s.ctx, "failed to set job started", "error", err)
+		slog.ErrorContext(s.ctx, "failed to set job finished", "error", err)
 	}
 	// attempt to send message to GARM anyway
 	status := runner.RunnerState{
@@ -357,7 +384,13 @@ func (s *Service) sendHeartbeat() error {
 		Type: messaging.MessageTypeHeartbeat,
 		Data: []byte{},
 	}
-	if err := s.cli.WriteMessage(websocket.BinaryMessage, msg.Marshal()); err != nil {
+
+	cli, err := s.getClient()
+	if err != nil {
+		return err
+	}
+
+	if err := cli.WriteMessage(websocket.BinaryMessage, msg.Marshal()); err != nil {
 		return fmt.Errorf("failed to send heartbeat: %w", err)
 	}
 	return nil
@@ -396,7 +429,10 @@ retryConnecting:
 				slog.WarnContext(s.ctx, "failed to create websocket client", "error", err)
 				goto retryConnecting
 			}
+
+			s.mux.Lock()
 			s.cli = cli
+			s.mux.Unlock()
 
 			if err := s.cli.Start(); err != nil {
 				slog.WarnContext(s.ctx, "failed to start websocket connection", "error", err)
@@ -448,8 +484,6 @@ connecting:
 			if err := s.sendHeartbeat(); err != nil {
 				slog.ErrorContext(s.ctx, "failed to send heartbeat", "error", err)
 			}
-		case err := <-s.runnerCmd.Wait():
-			slog.InfoContext(s.ctx, "runner command exited", "error", err)
 		}
 	}
 }

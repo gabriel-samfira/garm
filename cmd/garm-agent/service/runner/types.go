@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"strconv"
 
 	"github.com/cloudbase/garm/params"
 )
 
 var (
-	giteaJobStartedRegex  = regexp.MustCompile(" task [0-9]+ repo is .*")
-	githubJobStartedRegex = regexp.MustCompile(" Job started .*")
+	giteaJobStartedRegex  = regexp.MustCompile(".* task [0-9]+ repo is .*")
+	githubJobStartedRegex = regexp.MustCompile(".* Running job: .*")
 
 	githubListenForJobs = regexp.MustCompile("Listening for Jobs")
 	giteaListenForJobs  = regexp.MustCompile("runner: .*, declare successfully")
@@ -74,7 +75,7 @@ func NewRunnerConfig(cfg string, forgeType params.EndpointType) (RunnerConfig, e
 	case params.GithubEndpointType:
 		var githubCfg GitHubRunnerConfig
 		if err = json.Unmarshal(data, &githubCfg); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal gitea runner config: %w", err)
+			return nil, fmt.Errorf("failed to unmarshal github runner config: %w", err)
 		}
 		runCfg = githubCfg
 	default:
@@ -84,35 +85,43 @@ func NewRunnerConfig(cfg string, forgeType params.EndpointType) (RunnerConfig, e
 }
 
 type GitHubRunnerConfig struct {
-	AgentID   uint   `json:"agentId"`
+	AgentID   string `json:"agentId"`
 	AgentName string `json:"agentName"`
-	Ephemeral bool   `json:"ephemeral"`
+	Ephemeral string `json:"ephemeral"`
 	ServerURL string `json:"serverUrl"`
 }
 
 func (r GitHubRunnerConfig) GetAgentID() uint {
-	return r.AgentID
+	asUint, err := strconv.ParseUint(r.AgentID, 10, 32)
+	if err != nil {
+		return 0
+	}
+	return uint(asUint)
 }
 
 func (r GitHubRunnerConfig) GetAgentName() string {
 	return r.AgentName
 }
 func (r GitHubRunnerConfig) IsEphemeral() bool {
-	return r.Ephemeral
+	return r.Ephemeral == "True"
 }
 func (r GitHubRunnerConfig) GetServerURL() string {
 	return r.ServerURL
 }
 
 type GiteaRunnerConfig struct {
-	AgentID   uint   `json:"id"`
+	AgentID   string `json:"id"`
 	AgentName string `json:"name"`
 	Ephemeral bool   `json:"ephemeral"`
 	ServerURL string `json:"address"`
 }
 
 func (r GiteaRunnerConfig) GetAgentID() uint {
-	return r.AgentID
+	asUint, err := strconv.ParseUint(r.AgentID, 10, 32)
+	if err != nil {
+		return 0
+	}
+	return uint(asUint)
 }
 
 func (r GiteaRunnerConfig) GetAgentName() string {
