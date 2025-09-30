@@ -59,6 +59,7 @@ type Service struct {
 	forgeType params.EndpointType
 
 	mux     sync.Mutex
+	cliMux  sync.Mutex
 	running bool
 	done    chan struct{}
 
@@ -73,9 +74,9 @@ func (s *Service) Done() chan struct{} {
 }
 
 func (s *Service) getClient() (*garmWs.Reader, error) {
-	// s.mux.Lock()
+	s.cliMux.Lock()
 	cli := s.cli
-	// s.mux.Unlock()
+	s.cliMux.Unlock()
 
 	if cli == nil {
 		return nil, fmt.Errorf("websocket client not connected")
@@ -233,35 +234,11 @@ func (s *Service) Start() error {
 		}
 	}
 
-	claims, err := s.cfg.TokenClaims()
-	if err != nil {
-		return fmt.Errorf("could not get token claims: %w", err)
-	}
-	runnerCommand, err := runner.NewRunnerCommand(s.ctx, s.cfg.RunnerExecArgs, s.cfg.WorkDir, params.EndpointType(claims.ForgeType), s)
-	if err == nil {
-		runnerState := s.determineRunnerState()
-		if runnerState == params.RunnerOffline {
-			// we only attepmt to start the runner if we need to. A runner that has already run a job,
-			// should not be started again, even if the agent is still online.
-			if err := runnerCommand.Start(); err != nil {
-				slog.ErrorContext(s.ctx, "failed to start runner", "error", err)
-				runnerState := s.determineRunnerState()
-				if runnerState == params.RunnerOffline {
-					// The runner did not run a job as far as we know, but it's failing to start. Send a failed message to GARM.
-					s.sendRunnerStatusMessage(runner.RunnerState{RunnerStatus: params.RunnerFailed})
-				}
-			}
-		}
-		// Set the runnerCmd even if it failed to start
-		s.runnerCmd = runnerCommand
-	} else {
-		// TODO: Add failure message
-		s.sendRunnerStatusMessage(runner.RunnerState{RunnerStatus: params.RunnerFailed})
-	}
 	s.running = true
 	s.done = make(chan struct{})
 	go s.keepAliveLoop()
 	go s.loop()
+	go s.keepRunnerAlive()
 
 	return nil
 }
@@ -396,7 +373,7 @@ func (s *Service) sendHeartbeat() error {
 	return nil
 }
 
-func (s *Service) sleepWithCancel(d time.Duration) bool {
+func (s *Service) sleepWithCancel(d time.Duration) (shouldQuit bool) {
 	sleepTicker := time.NewTicker(d)
 	defer sleepTicker.Stop()
 
@@ -409,11 +386,79 @@ func (s *Service) sleepWithCancel(d time.Duration) bool {
 	return true
 }
 
+func (s *Service) keepRunnerAlive() {
+retryCreate:
+	state := s.determineRunnerState()
+	if state == params.RunnerTerminated {
+		// no need for this goroutine.
+		return
+	}
+	runnerCommand, err := runner.NewRunnerCommand(s.ctx, s.cfg.RunnerExecArgs, s.cfg.WorkDir, s.forgeType, s)
+	if err != nil {
+		slog.ErrorContext(s.ctx, "failed to create runner command", "error", err)
+		if s.sleepWithCancel(5 * time.Second) {
+			return
+		}
+		goto retryCreate
+	}
+	s.mux.Lock()
+	s.runnerCmd = runnerCommand
+	s.mux.Unlock()
+	defer s.runnerCmd.Stop()
+
+	retryCount := 0
+
+retryStart:
+	if retryCount > 5 {
+		slog.WarnContext(s.ctx, "max retry reached", "max_retries", 5)
+		return
+	}
+	runnerState := s.determineRunnerState()
+	if runnerState == params.RunnerTerminated {
+		// we only attepmt to start the runner if we need to. A runner that has already run a job,
+		// should not be started again, even if the agent is still online.
+		return
+	}
+	if err := runnerCommand.Start(); err != nil {
+		slog.ErrorContext(s.ctx, "failed to start runner", "error", err)
+		retryCount++
+		runnerState := s.determineRunnerState()
+		if runnerState == params.RunnerOffline {
+			// The runner did not run a job as far as we know, but it's failing to start. Send a failed message to GARM.
+			s.sendRunnerStatusMessage(runner.RunnerState{RunnerStatus: params.RunnerFailed})
+		}
+		if s.sleepWithCancel(5 * time.Second) {
+			return
+		}
+		goto retryStart
+	}
+	retryCount = 0
+
+	for {
+		select {
+		case <-s.done:
+			return
+		case <-s.ctx.Done():
+			return
+		case <-s.runnerCmd.Wait():
+			if s.determineRunnerState() == params.RunnerTerminated {
+				return
+			}
+			if s.sleepWithCancel(5 * time.Second) {
+				return
+			}
+			goto retryStart
+		}
+	}
+}
+
 func (s *Service) keepAliveLoop() {
 	var sleepTime time.Duration
 retryConnecting:
 	if sleepTime > 0 {
-		s.sleepWithCancel(sleepTime)
+		if s.sleepWithCancel(sleepTime) {
+			return
+		}
 	}
 	for {
 		select {
@@ -430,9 +475,9 @@ retryConnecting:
 				goto retryConnecting
 			}
 
-			s.mux.Lock()
+			s.cliMux.Lock()
 			s.cli = cli
-			s.mux.Unlock()
+			s.cliMux.Unlock()
 
 			if err := s.cli.Start(); err != nil {
 				slog.WarnContext(s.ctx, "failed to start websocket connection", "error", err)

@@ -54,7 +54,6 @@ func NewRunnerCommand(ctx context.Context, cmdParams []string, workdir string, f
 		cmd:       command,
 		runnerCfg: runCfg,
 		done:      doneChan,
-		errChan:   make(chan error, 1),
 		st:        st,
 	}
 
@@ -72,13 +71,16 @@ type runnerCmd struct {
 	running bool
 	mux     sync.Mutex
 
-	cmd     *exec.Cmd
-	cmdErr  error
-	errChan chan error
+	cmd    *exec.Cmd
+	cmdErr error
 }
 
-func (r *runnerCmd) Wait() <-chan error {
-	return r.errChan
+func (r *runnerCmd) Error() error {
+	return r.cmdErr
+}
+
+func (r *runnerCmd) Wait() <-chan struct{} {
+	return r.done
 }
 
 func (r *runnerCmd) Start() error {
@@ -220,9 +222,7 @@ func (r *runnerCmd) executeCommand() {
 
 func (r *runnerCmd) loop() {
 	defer func() {
-		r.mux.Lock()
-		defer r.mux.Unlock()
-		r.errChan <- r.cmdErr
+		r.Stop()
 	}()
 
 	for {
