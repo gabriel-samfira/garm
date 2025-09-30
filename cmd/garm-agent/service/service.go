@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"os"
@@ -10,6 +11,8 @@ import (
 
 	garmWs "github.com/cloudbase/garm-provider-common/util/websocket"
 	"github.com/cloudbase/garm/cmd/garm-agent/config"
+	"github.com/cloudbase/garm/cmd/garm-agent/service/runner"
+	"github.com/cloudbase/garm/cmd/garm-agent/state"
 	"github.com/cloudbase/garm/params"
 	"github.com/cloudbase/garm/workers/websocket/agent/messaging"
 	"github.com/gorilla/websocket"
@@ -28,6 +31,11 @@ func NewService(ctx context.Context, cfg *config.Agent) (*Service, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get forge type for agent: %w", err)
 	}
+
+	agentState, err := state.NewStateManager(cfg.StateDBPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create state manager: %w", err)
+	}
 	return &Service{
 		ctx:        ctx,
 		cfg:        cfg,
@@ -36,13 +44,17 @@ func NewService(ctx context.Context, cfg *config.Agent) (*Service, error) {
 		connected:  closed,
 		forgeType:  forgeType,
 		sessions:   make(map[string]*ShellSession),
+		agentState: agentState,
 	}, nil
 }
 
 type Service struct {
-	ctx context.Context
-	cfg *config.Agent
-	cli *garmWs.Reader
+	ctx         context.Context
+	cfg         *config.Agent
+	cli         *garmWs.Reader
+	agentState  *state.StateManager
+	runnerAlive bool
+	runnerCmd   runner.Worker
 
 	forgeType params.EndpointType
 
@@ -205,6 +217,26 @@ func (s *Service) Start() error {
 		}
 	}
 
+	claims, err := s.cfg.TokenClaims()
+	if err != nil {
+		return fmt.Errorf("could not get token claims: %w", err)
+	}
+	runnerCommand, err := runner.NewRunnerCommand(s.ctx, s.cfg.RunnerExecArgs, s.cfg.WorkDir, params.EndpointType(claims.ForgeType), s)
+	if err != nil {
+		return fmt.Errorf("failed to create runner command: %w", err)
+	}
+
+	if err := runnerCommand.Start(); err != nil {
+		slog.ErrorContext(s.ctx, "failed to start runner", "error", err)
+		runnerState := s.determineRunnerState()
+		if runnerState == params.RunnerOffline {
+			// The runner did not run a job as far as we know, but it's failing to start. Send a failed message to GARM.
+			s.sendRunnerStatusMessage(runner.RunnerState{RunnerStatus: params.RunnerFailed})
+		}
+	}
+	// Set the runnerCmd even if it failed to start
+	s.runnerCmd = runnerCommand
+
 	s.running = true
 	s.done = make(chan struct{})
 	go s.keepAliveLoop()
@@ -227,6 +259,97 @@ func (s *Service) Stop() error {
 		s.cli.Stop()
 	}
 	return nil
+}
+
+func (s *Service) determineRunnerState() params.RunnerStatus {
+	state := params.RunnerOffline
+	if s.runnerAlive {
+		state = params.RunnerIdle
+	}
+
+	st, err := s.agentState.GetState()
+	if err != nil {
+		slog.ErrorContext(s.ctx, "failed to get state", "error", err)
+		return state
+	}
+	if st.JobStarted {
+		if !s.runnerAlive {
+			// We're comming back online and for some reason, we didn't record
+			// that the job was finished, but we did record that the job was started.
+			// If the job was started but the runner is offline, then the job was either
+			// finished, or canceled.
+			state = params.RunnerTerminated
+		} else {
+			state = params.RunnerActive
+		}
+	}
+
+	if st.JobFinished {
+		state = params.RunnerTerminated
+	}
+
+	return state
+}
+
+func (s *Service) sendRunnerStatus() {
+	status := runner.RunnerState{
+		RunnerStatus: s.determineRunnerState(),
+	}
+	if err := s.sendRunnerStatusMessage(status); err != nil {
+		slog.ErrorContext(s.ctx, "failed to send status", "error", err)
+	}
+}
+
+func (s *Service) sendRunnerStatusMessage(status runner.RunnerState) error {
+	asJs, err := json.Marshal(status)
+	if err != nil {
+		return fmt.Errorf("failed to marshal message: %w", err)
+	}
+	msg := messaging.AgentMessage{
+		Type: messaging.MessageTypeRunnerUpdate,
+		Data: asJs,
+	}
+	if err := s.cli.WriteMessage(websocket.BinaryMessage, msg.Marshal()); err != nil {
+		return fmt.Errorf("failed to send runner status: %w", err)
+	}
+	return nil
+}
+
+func (s *Service) SetRunnerStarted(st bool) {
+	s.mux.Lock()
+	defer s.mux.Unlock()
+
+	s.runnerAlive = st
+	s.sendRunnerStatus()
+}
+
+func (s *Service) SetJobStarted() {
+	s.mux.Lock()
+	defer s.mux.Unlock()
+	if err := s.agentState.SetJobStarted(); err != nil {
+		slog.ErrorContext(s.ctx, "failed to set job started", "error", err)
+	}
+	// attempt to send message to GARM anyway
+	status := runner.RunnerState{
+		RunnerStatus: params.RunnerActive,
+	}
+	if err := s.sendRunnerStatusMessage(status); err != nil {
+		slog.ErrorContext(s.ctx, "failed to send status", "error", err)
+	}
+}
+func (s *Service) SetJobFinished() {
+	s.mux.Lock()
+	defer s.mux.Unlock()
+	if err := s.agentState.SetJobFinished(); err != nil {
+		slog.ErrorContext(s.ctx, "failed to set job started", "error", err)
+	}
+	// attempt to send message to GARM anyway
+	status := runner.RunnerState{
+		RunnerStatus: params.RunnerTerminated,
+	}
+	if err := s.sendRunnerStatusMessage(status); err != nil {
+		slog.ErrorContext(s.ctx, "failed to send status", "error", err)
+	}
 }
 
 func (s *Service) sendHeartbeat() error {
@@ -307,6 +430,7 @@ connecting:
 	if err := s.sendHeartbeat(); err != nil {
 		slog.ErrorContext(s.ctx, "failed to send heartbeat", "error", err)
 	}
+	s.sendRunnerStatus()
 
 	for {
 		select {
@@ -324,6 +448,8 @@ connecting:
 			if err := s.sendHeartbeat(); err != nil {
 				slog.ErrorContext(s.ctx, "failed to send heartbeat", "error", err)
 			}
+		case err := <-s.runnerCmd.Wait():
+			slog.InfoContext(s.ctx, "runner command exited", "error", err)
 		}
 	}
 }
