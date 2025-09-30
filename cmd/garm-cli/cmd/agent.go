@@ -84,6 +84,7 @@ var agentShellCmd = &cobra.Command{
 
 		handlerErr := make(chan struct{})
 		resizeCh := make(chan [2]int, 1)
+		defer close(resizeCh)
 		handler := func(msgType int, msg []byte) error {
 			switch msgType {
 			case websocket.CloseAbnormalClosure, websocket.CloseGoingAway, websocket.CloseMessage:
@@ -107,6 +108,7 @@ var agentShellCmd = &cobra.Command{
 						resizeCh <- [2]int{w, h}
 					}
 				case messaging.MessageTypeShellExit:
+					os.Stdout.Write(fmt.Appendf(nil, ">>>>>> got shell exit"))
 					close(handlerErr)
 				case messaging.MessageTypeShellData:
 					shellData, err := messaging.Unmarshal[messaging.ShellDataMessage](agentMsg)
@@ -115,6 +117,8 @@ var agentShellCmd = &cobra.Command{
 						close(handlerErr)
 					}
 					os.Stdout.Write(shellData.Data)
+				default:
+					os.Stdout.Write(fmt.Appendf(nil, "invalid agentMsg.Type: %v", agentMsg.Type))
 				}
 			default:
 				os.Stdout.Write(fmt.Appendf(nil, "invalid message type: %v", msgType))
@@ -169,20 +173,29 @@ var agentShellCmd = &cobra.Command{
 		}()
 
 		// ---- Watch terminal resize ----
-		go watchTermResize(resizeCh, sessionID)
+		go watchTermResize(ctx, resizeCh, sessionID)
 
 		// ---- Send resize messages ----
 		go func() {
-			for size := range resizeCh {
-				if sessionID == uuid.Nil {
-					continue
+			for {
+				select {
+				case size := <-resizeCh:
+					if sessionID == uuid.Nil {
+						continue
+					}
+					msg := messaging.ShellResizeMessage{
+						SessionID: sessionID,
+						Cols:      uint16(size[0]),
+						Rows:      uint16(size[1]),
+					}
+					reader.WriteMessage(websocket.BinaryMessage, msg.Marshal())
+				case <-ctx.Done():
+					return
+				case <-reader.Done():
+					return
+				case <-handlerErr:
+					return
 				}
-				msg := messaging.ShellResizeMessage{
-					SessionID: sessionID,
-					Cols:      uint16(size[0]),
-					Rows:      uint16(size[1]),
-				}
-				reader.WriteMessage(websocket.BinaryMessage, msg.Marshal())
 			}
 		}()
 
@@ -191,7 +204,6 @@ var agentShellCmd = &cobra.Command{
 		case <-reader.Done():
 		case <-handlerErr:
 		}
-
 		return nil
 	},
 }

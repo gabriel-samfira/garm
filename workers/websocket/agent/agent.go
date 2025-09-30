@@ -167,7 +167,7 @@ func (a *Agent) writeMessage(messageType int, message []byte) error {
 // routes it to appropriate functions.
 func (a *Agent) agentReader() {
 	defer func() {
-		slog.InfoContext(a.ctx, ">>> stopping agent")
+		slog.InfoContext(a.ctx, "stopping agent reader")
 		a.Stop()
 	}()
 	a.conn.SetReadLimit(maxMessageSize)
@@ -180,9 +180,7 @@ func (a *Agent) agentReader() {
 	for {
 		mt, data, err := a.conn.ReadMessage()
 		if err != nil {
-			if IsErrorOfInterest(err) {
-				slog.ErrorContext(a.ctx, "error reading websocket message", slog.Any("error", err))
-			}
+			slog.ErrorContext(a.ctx, "error reading websocket message", slog.Any("error", err))
 			return
 		}
 
