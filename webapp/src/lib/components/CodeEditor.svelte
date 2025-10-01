@@ -12,6 +12,7 @@
 
 	const dispatch = createEventDispatcher<{
 		change: { value: string };
+		save: void;
 	}>();
 
 	export let value: string = '';
@@ -266,6 +267,15 @@
 						view.dispatch(changes);
 						return true;
 					}
+				},
+				{
+					key: 'Ctrl-s',
+					preventDefault: true,
+					run: () => {
+						if (readonly) return false;
+						dispatch('save');
+						return true;
+					}
 				}
 			])
 		];
@@ -334,6 +344,15 @@
 							range: EditorSelection.range(range.from + 4, range.from + 4)
 						}));
 						view.dispatch(changes);
+						return true;
+					}
+				},
+				{
+					key: 'Ctrl-s',
+					preventDefault: true,
+					run: () => {
+						if (readonly) return false;
+						dispatch('save');
 						return true;
 					}
 				}
