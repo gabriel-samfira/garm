@@ -108,7 +108,6 @@ var agentShellCmd = &cobra.Command{
 						resizeCh <- [2]int{w, h}
 					}
 				case messaging.MessageTypeShellExit:
-					os.Stdout.Write(fmt.Appendf(nil, ">>>>>> got shell exit"))
 					close(handlerErr)
 				case messaging.MessageTypeShellData:
 					shellData, err := messaging.Unmarshal[messaging.ShellDataMessage](agentMsg)
