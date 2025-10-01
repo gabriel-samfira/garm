@@ -29,6 +29,30 @@
   // Reactive computed array for template iteration, ordered by ID
   $: tabs = Array.from(tabsMap.values()).sort((a, b) => a.id - b.id);
   
+  // Calculate minimum width based on number of tabs
+  $: {
+    const tabCount = tabs.filter(t => !t.isClosing).length;
+    const tabWidth = 120; // Each tab is min 120px
+    const newTabButtonWidth = 50; // New tab button width
+    const containerPadding = 40; // Container padding
+    const minWidthForTabs = (tabCount * tabWidth) + newTabButtonWidth + containerPadding;
+    const absoluteMinWidth = 300; // Never go below 300px
+    
+    const requiredMinWidth = Math.max(minWidthForTabs, absoluteMinWidth);
+    
+    if (terminalContainer && !isMaximized) {
+      const currentWidth = terminalContainer.offsetWidth;
+      if (currentWidth < requiredMinWidth) {
+        console.log(`Expanding terminal width from ${currentWidth}px to ${requiredMinWidth}px to fit ${tabCount} tabs`);
+        terminalContainer.style.width = `${requiredMinWidth}px`;
+        // Trigger terminal resize after width change
+        setTimeout(() => {
+          fitAllTerminals();
+        }, 10);
+      }
+    }
+  }
+  
   // Debug: Log tabs array changes
   $: {
     console.log(`Reactive tabs array updated: ${tabs.length} tabs`, 
@@ -640,6 +664,12 @@
 
   // Function to add a new tab
   function addNewTab() {
+    // Limit maximum number of tabs to 5
+    if (tabsMap.size >= 5) {
+      console.log('addNewTab: Maximum number of tabs (5) reached');
+      return;
+    }
+    
     const isDarkMode = document.documentElement.classList.contains('dark');
     const theme = isDarkMode ? solarizedDark : solarizedLight;
     
@@ -768,12 +798,20 @@
     const deltaX = event.clientX - initialMouseX;
     const deltaY = event.clientY - initialMouseY;
     
+    // Calculate minimum width based on current number of tabs
+    const tabCount = tabs.filter(t => !t.isClosing).length;
+    const tabWidth = 120; // Each tab is min 120px
+    const newTabButtonWidth = 50; // New tab button width
+    const containerPadding = 40; // Container padding
+    const minWidthForTabs = (tabCount * tabWidth) + newTabButtonWidth + containerPadding;
+    const dynamicMinWidth = Math.max(minWidthForTabs, 300); // Never go below 300px
+    
     // Calculate new dimensions with viewport constraints
     // Leave some padding (32px) from viewport edges for visibility
     const maxWidth = window.innerWidth - 32;
     const maxHeight = window.innerHeight - 32;
     
-    const newWidth = Math.max(300, Math.min(maxWidth, initialWidth + deltaX));
+    const newWidth = Math.max(dynamicMinWidth, Math.min(maxWidth, initialWidth + deltaX));
     const newHeight = Math.max(200, Math.min(maxHeight, initialHeight + deltaY));
     
     terminalContainer.style.width = `${newWidth}px`;
@@ -951,7 +989,8 @@
       <button 
         class="new-tab-button"
         on:click={addNewTab}
-        title="New tab"
+        disabled={tabsMap.size >= 5}
+        title={tabsMap.size >= 5 ? "Maximum 5 tabs allowed" : "New tab"}
         aria-label="New tab"
       >
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1159,6 +1198,21 @@
   :global(.dark) .new-tab-button:hover {
     background-color: rgb(31 41 55 / 0.7);
     color: rgb(96 165 250);
+  }
+
+  .new-tab-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .new-tab-button:disabled:hover {
+    background-color: transparent;
+    color: rgb(107 114 128);
+  }
+
+  :global(.dark) .new-tab-button:disabled:hover {
+    background-color: transparent;
+    color: rgb(156 163 175);
   }
 
   :global(.dark) .shell-terminal-container {
