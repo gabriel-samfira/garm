@@ -500,27 +500,27 @@
     brightWhite: '#fdf6e3'
   };
 
-  // Solarized Light theme
+  // Light mode friendly theme (dark background that works in light UI)
   const solarizedLight = {
-    background: '#fdf6e3',
-    foreground: '#657b83',
-    cursor: '#586e75',
-    black: '#073642',
-    red: '#dc322f',
-    green: '#859900',
-    yellow: '#b58900',
-    blue: '#268bd2',
-    magenta: '#d33682',
-    cyan: '#2aa198',
-    white: '#eee8d5',
-    brightBlack: '#002b36',
-    brightRed: '#cb4b16',
-    brightGreen: '#859900',
-    brightYellow: '#b58900',
-    brightBlue: '#268bd2',
-    brightMagenta: '#d33682',
-    brightCyan: '#2aa198',
-    brightWhite: '#657b83'
+    background: '#2d3748', // Dark gray background for light mode
+    foreground: '#e2e8f0', // Light gray text
+    cursor: '#cbd5e0',
+    black: '#1a202c',
+    red: '#e53e3e',
+    green: '#38a169',
+    yellow: '#d69e2e',
+    blue: '#3182ce',
+    magenta: '#9f7aea',
+    cyan: '#0bc5ea',
+    white: '#f7fafc',
+    brightBlack: '#4a5568',
+    brightRed: '#fc8181',
+    brightGreen: '#68d391',
+    brightYellow: '#f6e05e',
+    brightBlue: '#63b3ed',
+    brightMagenta: '#b794f6',
+    brightCyan: '#76e4f7',
+    brightWhite: '#ffffff'
   };
 
   function updateTerminalTheme() {
