@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount, onDestroy, tick } from 'svelte';
   import { createShellConnection, type ShellConnection } from '$lib/utils/shell';
   import { Terminal } from '@xterm/xterm';
   import { FitAddon } from '@xterm/addon-fit';
@@ -9,7 +9,8 @@
   export let onClose: () => void;
 
   interface TabSession {
-    id: string;
+    id: number; // Auto-incremented numeric ID for ordering
+    key: string; // The map key (e.g., "shell-1", "shell-2")
     title: string;
     connection: ShellConnection | null;
     terminal: Terminal | null;
@@ -18,11 +19,24 @@
     isConnecting: boolean;
     isConnected: boolean;
     error: string;
+    isClosing: boolean;
   }
 
-  let tabs: TabSession[] = [];
-  let activeTabId: string = '';
+  let tabsMap = new Map<string, TabSession>(); // Key: "shell-1", "shell-2", etc.
+  let activeTabKey: string = ''; // Now uses the map key instead of tab ID
   let tabCounter = 1;
+  
+  // Reactive computed array for template iteration, ordered by ID
+  $: tabs = Array.from(tabsMap.values()).sort((a, b) => a.id - b.id);
+  
+  // Debug: Log tabs array changes
+  $: {
+    console.log(`Reactive tabs array updated: ${tabs.length} tabs`, 
+      tabs.map(t => ({ key: t.key, id: t.id, title: t.title, isClosing: t.isClosing })));
+    console.log(`Map has ${tabsMap.size} entries:`, Array.from(tabsMap.keys()));
+    console.log(`Filtered tabs for rendering: ${tabs.filter(t => !t.isClosing).length} tabs`, 
+      tabs.filter(t => !t.isClosing).map(t => ({ key: t.key, title: t.title })));
+  }
 
   let terminalContainer: HTMLDivElement;
   let isMaximized = false;
@@ -39,19 +53,72 @@
   let windowedLeft = 0;
   let windowedTop = 0;
   let hasRestoredState = false;
+  
+  // Store and persist terminal dimensions
+  const TERMINAL_DIMENSIONS_KEY = 'garm-terminal-dimensions';
+  
+  function getStoredDimensions() {
+    try {
+      const stored = localStorage.getItem(TERMINAL_DIMENSIONS_KEY);
+      if (stored) {
+        const { cols, rows } = JSON.parse(stored);
+        if (cols >= 50 && rows >= 15) {
+          return { cols, rows };
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to load stored terminal dimensions:', err);
+    }
+    // Default dimensions if nothing stored or invalid
+    return { cols: 107, rows: 29 };
+  }
+  
+  function saveDimensions(cols: number, rows: number) {
+    try {
+      localStorage.setItem(TERMINAL_DIMENSIONS_KEY, JSON.stringify({ cols, rows }));
+      console.log(`saveDimensions: Saved ${cols}x${rows} to localStorage`);
+    } catch (err) {
+      console.warn('Failed to save terminal dimensions:', err);
+    }
+  }
+  
+  // Load stored dimensions
+  let { cols: lastGoodCols, rows: lastGoodRows } = getStoredDimensions();
+  console.log(`ShellTerminal: Loaded stored dimensions ${lastGoodCols}x${lastGoodRows} from localStorage`);
 
-  // Computed values for active tab
-  $: activeTab = tabs.find(tab => tab.id === activeTabId);
+  // Computed values for active tab using Map
+  $: activeTab = tabsMap.get(activeTabKey) || null;
   $: connection = activeTab?.connection || null;
   $: terminal = activeTab?.terminal || null;
   $: isConnecting = activeTab?.isConnecting || false;
   $: isConnected = activeTab?.isConnected || false;
   $: error = activeTab?.error || '';
 
+  // Debug: Log when activeTabKey changes (this should trigger z-index changes)
+  $: if (activeTabKey) {
+    console.log(`Reactive: activeTabKey changed to ${activeTabKey}, this should bring tab to front`);
+  }
+
+  // Reactive focus: Focus the active terminal whenever activeTabKey changes
+  $: if (activeTabKey && tabsMap.size > 0) {
+    const activeTab = tabsMap.get(activeTabKey);
+    if (activeTab?.terminal && activeTab.isInitialized && activeTab.isConnected) {
+      console.log(`Reactive focus: Bringing terminal ${activeTabKey} to front`);
+      // Use tick() to ensure DOM updates (including z-index changes) have completed
+      tick().then(() => {
+        if (activeTab.terminal) {
+          console.log(`Reactive focus: Focusing terminal ${activeTabKey}`);
+          activeTab.terminal.focus();
+        }
+      });
+    }
+  }
+
   function createNewTab(): string {
-    const id = `tab-${Date.now()}-${tabCounter}`;
+    const shellKey = `shell-${tabCounter}`;
     const newTab: TabSession = {
-      id,
+      id: tabCounter, // Auto-incremented numeric ID for ordering
+      key: shellKey, // The map key
       title: `Shell ${tabCounter}`,
       connection: null,
       terminal: null,
@@ -59,149 +126,223 @@
       isInitialized: false,
       isConnecting: true,
       isConnected: false,
-      error: ''
+      error: '',
+      isClosing: false
     };
     
-    tabs = [...tabs, newTab];
+    tabsMap.set(shellKey, newTab);
+    tabsMap = tabsMap; // Force Svelte reactivity
     tabCounter++;
-    return id;
+    return shellKey; // Return the map key
   }
 
-  function switchToTab(tabId: string) {
-    if (activeTabId !== tabId) {
-      console.log(`switchToTab: Switching from ${activeTabId} to ${tabId}`);
-      activeTabId = tabId;
-      
-      // Only focus and fit - NEVER reinitialize
-      setTimeout(() => {
-        const tab = tabs.find(t => t.id === tabId);
-        console.log(`switchToTab: Tab ${tabId} - isInitialized=${tab?.isInitialized}, hasTerminal=${!!tab?.terminal}, isConnected=${tab?.isConnected}`);
-        if (tab?.terminal && tab.isInitialized && tab.isConnected && tab.fitAddon) {
-          console.log(`switchToTab: Fitting terminal for tab ${tabId} (now visible)`);
-          // Fit the terminal now that it's visible and can calculate dimensions correctly
-          fitTerminalForTab(tab);
-          tab.terminal.focus();
-        }
-      }, 10);
+  function switchToTab(tabKey: string) {
+    if (activeTabKey !== tabKey) {
+      console.log(`switchToTab: Switching from ${activeTabKey} to ${tabKey} (z-index stacking)`);
+      activeTabKey = tabKey; // This will trigger reactive focus
     }
   }
 
-  function closeTab(tabId: string) {
-    const tabIndex = tabs.findIndex(tab => tab.id === tabId);
-    if (tabIndex === -1) return;
-
-    const tab = tabs[tabIndex];
+  // Reactive cleanup - when a tab is marked as closing and is no longer active
+  $: {
+    // Find closing tabs that are not active
+    const closingTabs = Array.from(tabsMap.entries()).filter(([tabKey, tab]) => 
+      tab.isClosing && tab.key !== activeTabKey
+    );
     
-    // Send close message and dispose resources
-    cleanupTab(tab);
+    // Clean up one closing tab per reactive cycle
+    if (closingTabs.length > 0) {
+      const [tabKey, tab] = closingTabs[0];
+      console.log(`Reactive cleanup: Cleaning up tab ${tab.key} that is closing and inactive`);
+      cleanupTab(tab);
+      // Remove the closing tab from the map
+      tabsMap.delete(tabKey);
+      // Force reactivity update only once after deletion
+      tabsMap = tabsMap;
+    }
+  }
 
-    // Remove tab from array
-    tabs = tabs.filter(t => t.id !== tabId);
+  function closeTab(tabKey: string) {
+    console.log(`closeTab: Closing tab ${tabKey}`);
+    const tab = tabsMap.get(tabKey);
+    if (!tab) {
+      console.error(`closeTab: Tab ${tabKey} not found`);
+      return;
+    }
 
-    // Switch to another tab if this was active
-    if (activeTabId === tabId) {
-      if (tabs.length > 0) {
-        // Switch to the previous tab, or first tab if we closed the first one
-        const newActiveIndex = Math.max(0, Math.min(tabIndex - 1, tabs.length - 1));
-        activeTabId = tabs[newActiveIndex]?.id || '';
+    // Before closing, preserve current dimensions (don't let them change during close)
+    const currentCols = lastGoodCols;
+    const currentRows = lastGoodRows;
+    console.log(`closeTab: Preserving dimensions ${currentCols}x${currentRows} during tab close`);
+    
+    // If this is the active tab, switch to another tab FIRST
+    if (activeTabKey === tabKey) {
+      if (tabsMap.size > 1) {
+        // Find next tab to switch to using ID comparison for ordering
+        const allTabs = Array.from(tabsMap.values()).sort((a, b) => a.id - b.id);
+        const currentTab = tab;
+        
+        let newActiveTab: TabSession | undefined;
+        
+        // Find next tab with higher ID, or previous tab with lower ID
+        const nextTab = allTabs.find(t => t.id > currentTab.id);
+        if (nextTab) {
+          // Found a tab with higher ID
+          newActiveTab = nextTab;
+        } else {
+          // No higher ID, find the highest ID that's lower than current
+          const previousTabs = allTabs.filter(t => t.id < currentTab.id).sort((a, b) => b.id - a.id);
+          newActiveTab = previousTabs[0];
+        }
+        
+        if (newActiveTab) {
+          console.log(`closeTab: Switching from active tab ${tabKey} (ID: ${currentTab.id}) to ${newActiveTab.key} (ID: ${newActiveTab.id}) before cleanup`);
+          
+          // Switch to new active tab FIRST, before marking as closing
+          switchToTab(newActiveTab.key);
+          
+          // Then mark the tab as closing - this will trigger reactive cleanup
+          tab.isClosing = true;
+          tabsMap.set(tabKey, tab);
+          tabsMap = tabsMap; // Force Svelte reactivity
+          
+          // Preserve dimensions
+          lastGoodCols = currentCols;
+          lastGoodRows = currentRows;
+          console.log(`closeTab: Preserved dimensions ${lastGoodCols}x${lastGoodRows} for future use`);
+        } else {
+          // No other tabs left, close the terminal
+          console.log(`closeTab: No other tabs left, closing terminal`);
+          onClose();
+        }
       } else {
-        // No tabs left, close the terminal
+        // No other tabs left, close the terminal
+        console.log(`closeTab: No other tabs left, closing terminal`);
         onClose();
       }
+    } else {
+      // This is not the active tab, safe to cleanup immediately
+      console.log(`closeTab: Closing inactive tab ${tabKey}`);
+      cleanupTab(tab);
+      tabsMap.delete(tabKey);
+      // Force reactivity update
+      tabsMap = tabsMap;
     }
   }
 
   function cleanupTab(tab: TabSession) {
+    console.log(`cleanupTab: Cleaning up tab ${tab.key}`);
+    
     // Close connection (this should send the close shell message)
     if (tab.connection) {
+      console.log(`cleanupTab: Closing connection for tab ${tab.key}`);
       tab.connection.close();
+      tab.connection = null;
     }
+    
     // Dispose terminal
     if (tab.terminal) {
-      tab.terminal.dispose();
+      console.log(`cleanupTab: Disposing terminal for tab ${tab.key}`);
+      try {
+        tab.terminal.dispose();
+      } catch (err) {
+        console.error(`cleanupTab: Error disposing terminal for tab ${tab.key}:`, err);
+      }
+      tab.terminal = null;
     }
+    
+    // Clear other references
+    tab.fitAddon = null;
+    tab.isInitialized = false;
+    tab.isConnected = false;
+    tab.isConnecting = false;
   }
 
-  async function createConnection(tabId: string) {
-    const tabIndex = tabs.findIndex(tab => tab.id === tabId);
-    if (tabIndex === -1) return;
+  async function createConnection(tabKey: string) {
+    const tab = tabsMap.get(tabKey);
+    if (!tab) return;
 
     try {
       const newConnection = await createShellConnection(
         runnerName,
-        (data: Uint8Array) => handleData(tabId, data),
-        () => handleReady(tabId),
-        () => handleExit(tabId),
-        (errorMsg: string) => handleError(tabId, errorMsg)
+        (data: Uint8Array) => handleData(tabKey, data),
+        () => handleReady(tabKey),
+        () => handleExit(tabKey),
+        (errorMsg: string) => handleError(tabKey, errorMsg)
       );
       
-      tabs[tabIndex].connection = newConnection;
-      tabs = [...tabs];
+      tab.connection = newConnection;
+      tabsMap.set(tabKey, tab);
+      tabsMap = tabsMap; // Force Svelte reactivity
     } catch (err) {
-      tabs[tabIndex].error = err instanceof Error ? err.message : 'Failed to connect';
-      tabs[tabIndex].isConnecting = false;
-      tabs = [...tabs];
+      tab.error = err instanceof Error ? err.message : 'Failed to connect';
+      tab.isConnecting = false;
+      tabsMap.set(tabKey, tab);
+      tabsMap = tabsMap; // Force Svelte reactivity
     }
   }
 
-  function initializeTerminal(tabId: string) {
-    const tabIndex = tabs.findIndex(t => t.id === tabId);
-    if (tabIndex === -1) return;
+  function initializeTerminalElement(element: HTMLElement, tab: TabSession) {
+    // This Svelte action runs when the terminal div is created in DOM
+    console.log(`initializeTerminalElement: Action called for ${tab.key}, hasTerminal=${!!tab.terminal}, isInitialized=${tab.isInitialized}`);
     
-    const tab = tabs[tabIndex];
-    
-    // NEVER reinitialize a terminal that's already been initialized
-    if (!tab.terminal || tab.isInitialized) {
-      console.log(`initializeTerminal: Skipping tab ${tabId}, isInitialized=${tab.isInitialized}, hasTerminal=${!!tab.terminal}`);
-      return;
-    }
-    
-    console.log(`initializeTerminal: Initializing tab ${tabId} for the first time`);
-
-    // Create FitAddon for this tab if it doesn't exist
-    if (!tab.fitAddon) {
-      tab.fitAddon = new FitAddon();
-      tab.terminal.loadAddon(tab.fitAddon);
-    }
-
-    // Find the terminal element for this tab
-    const terminalElement = document.querySelector(`.terminal-tab[data-tab-id="${tabId}"]`) as HTMLDivElement;
-    if (!terminalElement) return;
-
-    // Open terminal in its dedicated element - THIS SHOULD ONLY HAPPEN ONCE
-    tab.terminal.open(terminalElement);
-    
-    if (tab.fitAddon) {
-      tab.fitAddon.fit();
-    }
-
-    // Handle terminal input
-    tab.terminal.onData((data) => {
-      if (tab.connection && tab.isConnected) {
-        const encoder = new TextEncoder();
-        tab.connection.sendData(encoder.encode(data));
+    if (tab.terminal && !tab.isInitialized) {
+      console.log(`initializeTerminalElement: Initializing terminal for ${tab.key} via Svelte action`);
+      
+      // Create FitAddon if needed
+      if (!tab.fitAddon) {
+        tab.fitAddon = new FitAddon();
+        tab.terminal.loadAddon(tab.fitAddon);
       }
-    });
 
-    // Handle terminal resize
-    tab.terminal.onResize(({ cols, rows }) => {
-      if (tab.connection && tab.isConnected) {
-        tab.connection.resize(cols, rows);
+      try {
+        // Open terminal in this DOM element
+        tab.terminal.open(element);
+        console.log(`initializeTerminalElement: Successfully opened terminal ${tab.key} in DOM element`);
+      } catch (err) {
+        console.error(`initializeTerminalElement: Failed to open terminal ${tab.key}:`, err);
+        return;
       }
-    });
+      
+      // Handle terminal input
+      tab.terminal.onData((data) => {
+        if (tab.connection && tab.isConnected) {
+          const encoder = new TextEncoder();
+          tab.connection.sendData(encoder.encode(data));
+        }
+      });
 
-    // Mark as initialized so this never happens again
-    tab.isInitialized = true;
+      // Handle terminal resize
+      tab.terminal.onResize(({ cols, rows }) => {
+        if (tab.connection && tab.isConnected) {
+          tab.connection.resize(cols, rows);
+        }
+      });
 
-    // Update tabs array
-    tabs[tabIndex] = tab;
-    tabs = [...tabs];
+      // Mark as initialized
+      tab.isInitialized = true;
+      tabsMap.set(tab.key, tab);
+      tabsMap = tabsMap; // Force Svelte reactivity
 
-    // Focus the terminal if it's the active tab
-    if (tabId === activeTabId) {
-      tab.terminal.focus();
+      // Focus if active
+      if (tab.key === activeTabKey) {
+        tab.terminal.focus();
+      }
+
+      console.log(`initializeTerminalElement: Terminal ${tab.key} fully initialized and opened in DOM`);
+    } else {
+      console.log(`initializeTerminalElement: Skipping ${tab.key} - no terminal object or already initialized`);
     }
+
+    return {
+      destroy() {
+        console.log(`initializeTerminalElement: DOM element being destroyed for ${tab.key}`);
+        // DO NOT dispose the terminal here - that should only happen in cleanupTab
+        // This is just DOM cleanup
+      }
+    };
   }
+
 
   function fitTerminal() {
     if (!activeTab?.terminal || !activeTab.fitAddon) return;
@@ -214,47 +355,62 @@
   }
 
   function fitTerminalForTab(tab: TabSession) {
-    if (!tab.terminal || !tab.fitAddon || !tab.connection || !tab.isConnected) {
+    if (!tab.terminal || !tab.connection || !tab.isConnected) {
       console.log(`fitTerminalForTab: Skipping tab ${tab.id} - missing requirements`);
       return;
     }
 
-    // Only fit if the terminal is properly initialized (has element)
-    if (!tab.terminal.element) {
-      console.log(`fitTerminalForTab: Skipping tab ${tab.id} - no terminal element`);
+    // Set terminal to current stored dimensions
+    console.log(`fitTerminalForTab: Setting tab ${tab.id} to dimensions ${lastGoodCols}x${lastGoodRows}`);
+    tab.terminal.resize(lastGoodCols, lastGoodRows);
+    tab.connection.resize(lastGoodCols, lastGoodRows);
+  }
+
+  function notifyTerminalResize(tab: TabSession) {
+    if (!tab.connection || !tab.isConnected) {
       return;
     }
-
-    console.log(`fitTerminalForTab: Fitting tab ${tab.id}, cols=${tab.terminal.cols}, rows=${tab.terminal.rows}`);
-    tab.fitAddon.fit();
-    tab.connection.resize(tab.terminal.cols, tab.terminal.rows);
+    
+    // Only notify the connection about size change, don't resize terminal buffer
+    console.log(`notifyTerminalResize: Notifying tab ${tab.key} about dimensions ${lastGoodCols}x${lastGoodRows}`);
+    tab.connection.resize(lastGoodCols, lastGoodRows);
   }
 
   function fitAllTerminals() {
-    console.log(`fitAllTerminals: Fitting ${tabs.length} tabs`);
-    
-    // First, fit the visible terminal to get the correct dimensions
-    const activeTab = tabs.find(tab => tab.id === activeTabId);
-    let targetCols = 80, targetRows = 24; // defaults
-    
-    if (activeTab?.terminal && activeTab.fitAddon && activeTab.connection && activeTab.isConnected && activeTab.terminal.element) {
-      console.log(`fitAllTerminals: Fitting visible tab ${activeTab.id} to get dimensions`);
+    // Get dimensions from the active (visible) terminal
+    const activeTab = tabsMap.get(activeTabKey);
+    if (activeTab?.terminal && activeTab.fitAddon && activeTab.terminal.element) {
+      // Fit the active terminal to its container
       activeTab.fitAddon.fit();
-      targetCols = activeTab.terminal.cols;
-      targetRows = activeTab.terminal.rows;
-      activeTab.connection.resize(targetCols, targetRows);
-      console.log(`fitAllTerminals: Target dimensions from visible terminal: ${targetCols}x${targetRows}`);
-    }
-    
-    // Then apply the same dimensions to all other terminals
-    tabs.forEach(tab => {
-      if (tab.terminal && tab.fitAddon && tab.connection && tab.isConnected && tab.terminal.element && tab.id !== activeTabId) {
-        console.log(`fitAllTerminals: Applying ${targetCols}x${targetRows} to hidden tab ${tab.id}`);
-        // Set the terminal size to match the visible one
-        tab.terminal.resize(targetCols, targetRows);
-        tab.connection.resize(targetCols, targetRows);
+      const activeCols = activeTab.terminal.cols;
+      const activeRows = activeTab.terminal.rows;
+      
+      // Only update if we get reasonable dimensions
+      if (activeCols >= 50 && activeRows >= 15) {
+        lastGoodCols = activeCols;
+        lastGoodRows = activeRows;
+        saveDimensions(activeCols, activeRows);
+        console.log(`fitAllTerminals: Active terminal ${activeTab.key} is ${activeCols}x${activeRows}, applying to all tabs`);
+        
+        // Apply active terminal's size to all terminals and notify all connections
+        for (const tab of tabsMap.values()) {
+          if (tab.terminal && tab.connection && tab.isConnected) {
+            if (tab.key === activeTabKey) {
+              // Active terminal - already fitted above, just notify connection
+              console.log(`fitAllTerminals: Notifying active terminal ${tab.key} connection about resize to ${lastGoodCols}x${lastGoodRows}`);
+              tab.connection.resize(lastGoodCols, lastGoodRows);
+            } else {
+              // Hidden terminal - resize buffer to match active terminal and notify connection
+              console.log(`fitAllTerminals: Resizing hidden terminal ${tab.key} buffer and connection to ${lastGoodCols}x${lastGoodRows}`);
+              tab.terminal.resize(lastGoodCols, lastGoodRows);
+              tab.connection.resize(lastGoodCols, lastGoodRows);
+            }
+          }
+        }
+      } else {
+        console.warn(`fitAllTerminals: Active terminal has tiny dimensions ${activeCols}x${activeRows}, skipping update`);
       }
-    });
+    }
   }
 
   // Solarized Dark theme
@@ -308,7 +464,7 @@
     const theme = isDarkMode ? solarizedDark : solarizedLight;
     
     // Update theme for all terminals
-    tabs.forEach(tab => {
+    for (const tab of tabsMap.values()) {
       if (tab.terminal) {
         tab.terminal.options.theme = theme;
         // Re-fit terminal after theme change
@@ -316,17 +472,34 @@
           setTimeout(() => tab.fitAddon?.fit(), 0);
         }
       }
-    });
+    }
   }
 
   onMount(() => {
+    // 1. Check localStorage for terminal dimensions, set default if not found
+    const storedDimensions = getStoredDimensions();
+    lastGoodCols = storedDimensions.cols;
+    lastGoodRows = storedDimensions.rows;
+    console.log(`ShellTerminal onMount: Using dimensions ${lastGoodCols}x${lastGoodRows}`);
+    
+    // 2. Calculate container size based on terminal dimensions
+    // Approximate: each char is ~8px wide, ~17px tall, plus padding for window decorations
+    const containerWidth = Math.max(600, (lastGoodCols * 8) + 40); // 40px for padding/scrollbar
+    const containerHeight = Math.max(400, (lastGoodRows * 17) + 120); // 120px for title bar, tabs, padding
+    
+    // 3. Set initial container size
+    if (terminalContainer) {
+      terminalContainer.style.width = `${containerWidth}px`;
+      terminalContainer.style.height = `${containerHeight}px`;
+    }
+    
     // Detect initial theme from document class
     const isDarkMode = document.documentElement.classList.contains('dark');
     const theme = isDarkMode ? solarizedDark : solarizedLight;
 
     // Create the first tab
-    const firstTabId = createNewTab();
-    activeTabId = firstTabId;
+    const firstTabKey = createNewTab();
+    activeTabKey = firstTabKey;
 
     // Create terminal and fitAddon for first tab
     const newTerminal = new Terminal({
@@ -340,20 +513,17 @@
     const newFitAddon = new FitAddon();
     newTerminal.loadAddon(newFitAddon);
     
-    const tabIndex = tabs.findIndex(t => t.id === firstTabId);
-    if (tabIndex !== -1) {
-      tabs[tabIndex].terminal = newTerminal;
-      tabs[tabIndex].fitAddon = newFitAddon;
-      tabs = [...tabs];
+    const firstTab = tabsMap.get(firstTabKey);
+    if (firstTab) {
+      firstTab.terminal = newTerminal;
+      firstTab.fitAddon = newFitAddon;
+      tabsMap.set(firstTabKey, firstTab);
+      tabsMap = tabsMap; // Force Svelte reactivity
       
-      // Initialize the terminal immediately
-      setTimeout(() => {
-        initializeTerminal(firstTabId);
-      }, 10);
     }
 
     // Create the connection for first tab
-    createConnection(firstTabId);
+    createConnection(firstTabKey);
 
     // Handle window resize - only fit the currently visible terminal
     function onWindowResize() {
@@ -384,54 +554,83 @@
 
   onDestroy(() => {
     // Clean up all tabs - this will send close messages for each connection
-    tabs.forEach(tab => {
+    for (const tab of tabsMap.values()) {
       cleanupTab(tab);
-    });
+    }
   });
 
-  function handleData(tabId: string, data: Uint8Array) {
-    const tab = tabs.find(t => t.id === tabId);
+  function handleData(tabKey: string, data: Uint8Array) {
+    const tab = tabsMap.get(tabKey);
     if (tab?.terminal) {
       const text = new TextDecoder().decode(data);
       tab.terminal.write(text);
     }
   }
 
-  function handleReady(tabId: string) {
-    const tabIndex = tabs.findIndex(t => t.id === tabId);
-    if (tabIndex === -1) return;
+  function handleReady(tabKey: string) {
+    const tab = tabsMap.get(tabKey);
+    if (!tab) return;
 
-    tabs[tabIndex].isConnecting = false;
-    tabs[tabIndex].isConnected = true;
-    tabs = [...tabs];
+    tab.isConnecting = false;
+    tab.isConnected = true;
+    tabsMap.set(tabKey, tab);
+    tabsMap = tabsMap; // Force Svelte reactivity
 
-    // Send resize message immediately after receiving ShellReadyMessage
-    const tab = tabs[tabIndex];
+    // Properly size the terminal and send resize message immediately after receiving ShellReadyMessage
     if (tab.connection && tab.terminal && tab.fitAddon) {
-      fitTerminalForTab(tab);
+      console.log(`handleReady: Terminal ${tabKey} connected, fitting to available space`);
+      
+      // First, fit the terminal to the available container space
+      tab.fitAddon.fit();
+      
+      // Get the fitted dimensions
+      const fittedCols = tab.terminal.cols;
+      const fittedRows = tab.terminal.rows;
+      
+      console.log(`handleReady: Terminal ${tabKey} fitted to ${fittedCols}x${fittedRows}`);
+      
+      // Update our stored dimensions if this gives us reasonable values
+      if (fittedCols >= 50 && fittedRows >= 15) {
+        lastGoodCols = fittedCols;
+        lastGoodRows = fittedRows;
+        saveDimensions(fittedCols, fittedRows);
+        console.log(`handleReady: Updated stored dimensions to ${fittedCols}x${fittedRows}`);
+      } else {
+        // If fitted dimensions are too small, use stored dimensions
+        console.log(`handleReady: Fitted dimensions too small (${fittedCols}x${fittedRows}), using stored ${lastGoodCols}x${lastGoodRows}`);
+        tab.terminal.resize(lastGoodCols, lastGoodRows);
+      }
+      
+      // Send resize message to server with the final dimensions
+      const finalCols = tab.terminal.cols;
+      const finalRows = tab.terminal.rows;
+      console.log(`handleReady: Sending resize message to server: ${finalCols}x${finalRows}`);
+      tab.connection.resize(finalCols, finalRows);
     }
   }
 
-  function handleExit(tabId: string) {
-    const tabIndex = tabs.findIndex(t => t.id === tabId);
-    if (tabIndex === -1) return;
+  function handleExit(tabKey: string) {
+    const tab = tabsMap.get(tabKey);
+    if (!tab) return;
 
-    tabs[tabIndex].isConnected = false;
-    tabs = [...tabs];
+    tab.isConnected = false;
+    tabsMap.set(tabKey, tab);
+    tabsMap = tabsMap; // Force Svelte reactivity
     
-    if (tabs[tabIndex].terminal) {
-      tabs[tabIndex].terminal.write('\r\n[Shell session ended]');
+    if (tab.terminal) {
+      tab.terminal.write('\r\n[Shell session ended]');
     }
   }
 
-  function handleError(tabId: string, errorMsg: string) {
-    const tabIndex = tabs.findIndex(t => t.id === tabId);
-    if (tabIndex === -1) return;
+  function handleError(tabKey: string, errorMsg: string) {
+    const tab = tabsMap.get(tabKey);
+    if (!tab) return;
 
-    tabs[tabIndex].error = errorMsg;
-    tabs[tabIndex].isConnecting = false;
-    tabs[tabIndex].isConnected = false;
-    tabs = [...tabs];
+    tab.error = errorMsg;
+    tab.isConnecting = false;
+    tab.isConnected = false;
+    tabsMap.set(tabKey, tab);
+    tabsMap = tabsMap; // Force Svelte reactivity
   }
 
   // Handle window resize
@@ -444,7 +643,7 @@
     const isDarkMode = document.documentElement.classList.contains('dark');
     const theme = isDarkMode ? solarizedDark : solarizedLight;
     
-    const newTabId = createNewTab();
+    const newTabKey = createNewTab();
     
     // Create terminal and fitAddon for new tab
     const newTerminal = new Terminal({
@@ -458,21 +657,18 @@
     const newFitAddon = new FitAddon();
     newTerminal.loadAddon(newFitAddon);
     
-    const tabIndex = tabs.findIndex(t => t.id === newTabId);
-    if (tabIndex !== -1) {
-      tabs[tabIndex].terminal = newTerminal;
-      tabs[tabIndex].fitAddon = newFitAddon;
-      tabs = [...tabs];
+    const newTab = tabsMap.get(newTabKey);
+    if (newTab) {
+      newTab.terminal = newTerminal;
+      newTab.fitAddon = newFitAddon;
+      tabsMap.set(newTabKey, newTab);
+      tabsMap = tabsMap; // Force Svelte reactivity
       
-      // Initialize the terminal immediately  
-      setTimeout(() => {
-        initializeTerminal(newTabId);
-      }, 10);
     }
 
     // Switch to new tab and create connection
-    activeTabId = newTabId;
-    createConnection(newTabId);
+    switchToTab(newTabKey);
+    createConnection(newTabKey);
   }
 
   function toggleMaximize() {
@@ -602,8 +798,26 @@
       saveWindowedState();
     }
     
-    // Final terminal resize - fit all terminals after manual resize ends
-    fitAllTerminals();
+    // Capture new terminal dimensions from the active terminal after manual resize
+    setTimeout(() => {
+      const activeTab = tabsMap.get(activeTabKey);
+      if (activeTab?.terminal && activeTab.fitAddon && activeTab.terminal.element) {
+        // Fit the active terminal to the new container size
+        activeTab.fitAddon.fit();
+        const newCols = activeTab.terminal.cols;
+        const newRows = activeTab.terminal.rows;
+        
+        if (newCols >= 50 && newRows >= 15) {
+          console.log(`stopResize: Saving new dimensions from manual resize: ${newCols}x${newRows}`);
+          lastGoodCols = newCols;
+          lastGoodRows = newRows;
+          saveDimensions(newCols, newRows);
+        }
+      }
+      
+      // Now apply the captured dimensions to all terminals
+      fitAllTerminals();
+    }, 100);
   }
 
   // Drag-to-move functionality
@@ -708,14 +922,14 @@
   <!-- Tab Bar -->
   <div class="tab-bar">
     <div class="tabs-container">
-      {#each tabs as tab}
+      {#each tabs.filter(t => !t.isClosing) as tab (tab.key)}
         <div 
-          class="tab {tab.id === activeTabId ? 'active' : ''}"
-          on:click={() => switchToTab(tab.id)}
+          class="tab {tab.key === activeTabKey ? 'active' : ''}"
+          on:click={() => switchToTab(tab.key)}
           on:keydown={(event) => {
             if (event.key === 'Enter' || event.key === ' ') {
               event.preventDefault();
-              switchToTab(tab.id);
+              switchToTab(tab.key);
             }
           }}
           role="button"
@@ -724,7 +938,7 @@
           <span class="tab-title">{tab.title}</span>
           <button 
             class="tab-close"
-            on:click|stopPropagation={() => closeTab(tab.id)}
+            on:click|stopPropagation={() => closeTab(tab.key)}
             title="Close tab"
             aria-label="Close tab"
           >
@@ -748,13 +962,14 @@
   </div>
 
   <div class="shell-body">
-    {#each tabs as tab}
+    {#each tabs.filter(t => !t.isClosing) as tab (tab.key)}
       <div 
-        class="terminal-tab {tab.id === activeTabId ? 'active' : ''}" 
-        data-tab-id={tab.id}
+        class="terminal-tab {tab.key === activeTabKey ? 'active' : ''}" 
+        data-tab-key={tab.key}
+        use:initializeTerminalElement={tab}
       >
         {#if tab.isConnecting}
-          <div class="shell-status">
+          <div class="shell-status connecting">
             <div class="flex items-center justify-center space-x-3">
               <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
               <span>Connecting to shell...</span>
@@ -1010,6 +1225,7 @@
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    position: relative; /* Contain absolutely positioned terminal tabs */
   }
 
   .shell-body::-webkit-scrollbar {
@@ -1028,10 +1244,27 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    position: relative;
+    z-index: 10;
+  }
+
+  .shell-status.connecting {
+    background-color: rgb(248 250 252); /* Light gray background */
+    color: rgb(75 85 99);
+  }
+
+  :global(.dark) .shell-status.connecting {
+    background-color: rgb(15 23 42); /* Dark background */
+    color: rgb(209 213 219);
   }
 
   .shell-status.error {
     color: rgb(252 165 165);
+    background-color: rgb(254 242 242); /* Light red background */
+  }
+
+  :global(.dark) .shell-status.error {
+    background-color: rgb(35 12 12); /* Dark red background */
   }
 
   .terminal-tab {
@@ -1041,13 +1274,21 @@
     overflow: hidden;
     border: none !important;
     outline: none !important;
-    position: relative;
+    position: absolute;
     width: 100%;
-    display: none; /* Hidden by default */
+    top: 0;
+    left: 0;
+    z-index: 1; /* Background layer for inactive tabs */
+    pointer-events: none; /* Prevent interaction when not active */
+    visibility: hidden; /* Hide inactive tabs completely */
+    opacity: 0; /* Also hide with opacity for smooth transitions */
   }
 
   .terminal-tab.active {
-    display: block; /* Show only the active tab */
+    z-index: 10; /* Foreground layer for active tab */
+    pointer-events: auto; /* Allow interaction when active */
+    visibility: visible; /* Show active tab */
+    opacity: 1; /* Make active tab fully visible */
   }
 
   .terminal-tab::-webkit-scrollbar {

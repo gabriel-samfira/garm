@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	giteaJobStartedRegex  = regexp.MustCompile(".* task [0-9]+ repo is .*")
+	giteaJobStartedRegex  = regexp.MustCompile(".*task [0-9]+ repo is .*")
 	githubJobStartedRegex = regexp.MustCompile(".* Running job: .*")
 
 	githubListenForJobs = regexp.MustCompile("Listening for Jobs")
@@ -111,18 +111,14 @@ func (r GitHubRunnerConfig) GetServerURL() string {
 }
 
 type GiteaRunnerConfig struct {
-	AgentID   string `json:"id"`
+	AgentID   uint   `json:"id"`
 	AgentName string `json:"name"`
 	Ephemeral bool   `json:"ephemeral"`
 	ServerURL string `json:"address"`
 }
 
 func (r GiteaRunnerConfig) GetAgentID() uint {
-	asUint, err := strconv.ParseUint(r.AgentID, 10, 32)
-	if err != nil {
-		return 0
-	}
-	return uint(asUint)
+	return r.AgentID
 }
 
 func (r GiteaRunnerConfig) GetAgentName() string {
