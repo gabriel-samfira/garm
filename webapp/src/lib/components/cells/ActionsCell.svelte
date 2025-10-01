@@ -6,16 +6,19 @@
 		edit: { item: any };
 		delete: { item: any };
 		clone: { item: any };
+		shell: { item: any };
 		action: { type: string; item: any };
 	}>();
 
 	export let item: any;
 	export let actions: Array<{
-		type: 'edit' | 'delete' | 'copy' | 'custom';
+		type: 'edit' | 'delete' | 'copy' | 'custom' | 'shell';
 		label?: string;
 		title?: string;
 		ariaLabel?: string;
-		action?: 'edit' | 'delete' | 'view' | 'copy' | 'clone';
+		action?: 'edit' | 'delete' | 'view' | 'copy' | 'clone' | 'shell';
+		isDisabled?: (item: any) => boolean;
+		disabledTitle?: string;
 	}> = [
 		{ type: 'edit', title: 'Edit', ariaLabel: 'Edit item', action: 'edit' },
 		{ type: 'delete', title: 'Delete', ariaLabel: 'Delete item', action: 'delete' }
@@ -31,6 +34,8 @@
 			dispatch('delete', { item });
 		} else if (actionType === 'copy') {
 			dispatch('clone', { item });
+		} else if (actionType === 'shell') {
+			dispatch('shell', { item });
 		} else {
 			dispatch('action', { type: actionType, item });
 		}
@@ -39,10 +44,14 @@
 
 <div class="flex justify-end space-x-2">
 	{#each actions as action}
+		{@const isDisabled = action.isDisabled ? action.isDisabled(item) : false}
+		{@const buttonAction = action.action === 'clone' ? 'copy' : (action.action || (action.type === 'edit' ? 'edit' : action.type === 'delete' ? 'delete' : action.type === 'copy' ? 'copy' : action.type === 'shell' ? 'shell' : 'view'))}
+		{@const buttonTitle = isDisabled && action.disabledTitle ? action.disabledTitle : (action.title || (action.type === 'edit' ? 'Edit' : action.type === 'delete' ? 'Delete' : action.type === 'copy' ? 'Clone' : action.type === 'shell' ? 'Shell' : action.label))}
 		<ActionButton
-			action={action.action === 'clone' ? 'copy' : (action.action || (action.type === 'edit' ? 'edit' : action.type === 'delete' ? 'delete' : action.type === 'copy' ? 'copy' : 'view'))}
-			title={action.title || (action.type === 'edit' ? 'Edit' : action.type === 'delete' ? 'Delete' : action.type === 'copy' ? 'Clone' : action.label)}
-			ariaLabel={action.ariaLabel || (action.type === 'edit' ? 'Edit item' : action.type === 'delete' ? 'Delete item' : action.type === 'copy' ? 'Clone item' : action.label)}
+			action={buttonAction}
+			title={buttonTitle}
+			ariaLabel={action.ariaLabel || (action.type === 'edit' ? 'Edit item' : action.type === 'delete' ? 'Delete item' : action.type === 'copy' ? 'Clone item' : action.type === 'shell' ? 'Open shell' : action.label)}
+			disabled={isDisabled}
 			on:click={() => handleAction(action.type)}
 		/>
 	{/each}

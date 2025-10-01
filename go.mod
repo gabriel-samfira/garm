@@ -6,7 +6,7 @@ require (
 	github.com/BurntSushi/toml v1.5.0
 	github.com/bradleyfalzon/ghinstallation/v2 v2.16.0
 	github.com/charmbracelet/x/conpty v0.1.1
-	github.com/cloudbase/garm-provider-common v0.1.7
+	github.com/cloudbase/garm-provider-common v0.1.8-0.20251001105909-bbcacae60e7c
 	github.com/creack/pty v1.1.24
 	github.com/felixge/httpsnoop v1.0.4
 	github.com/gdamore/tcell/v2 v2.9.0

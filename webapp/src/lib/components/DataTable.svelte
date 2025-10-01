@@ -61,6 +61,7 @@
 		edit: { item: any };
 		delete: { item: any };
 		clone: { item: any };
+		shell: { item: any };
 		action: { type: string; item: any };
 	}>();
 	
@@ -98,6 +99,10 @@
 
 	function handleClone(event: CustomEvent<{ item: any }>) {
 		dispatch('clone', event.detail);
+	}
+
+	function handleShell(event: CustomEvent<{ item: any }>) {
+		dispatch('shell', event.detail);
 	}
 
 	function handleAction(event: CustomEvent<{ type: string; item: any }>) {
@@ -217,6 +222,7 @@
 											on:edit={handleEdit}
 											on:delete={handleDelete}
 											on:clone={handleClone}
+											on:shell={handleShell}
 											on:action={handleAction}
 										/>
 									{/key}
