@@ -78,8 +78,9 @@
   let windowedTop = 0;
   let hasRestoredState = false;
   
-  // Store and persist terminal dimensions
+  // Store and persist terminal dimensions and container size
   const TERMINAL_DIMENSIONS_KEY = 'garm-terminal-dimensions';
+  const TERMINAL_CONTAINER_SIZE_KEY = 'garm-terminal-container-size';
   
   function getStoredDimensions() {
     try {
@@ -97,12 +98,51 @@
     return { cols: 107, rows: 29 };
   }
   
-  function saveDimensions(cols: number, rows: number) {
+  function getStoredContainerSize() {
     try {
-      localStorage.setItem(TERMINAL_DIMENSIONS_KEY, JSON.stringify({ cols, rows }));
-      console.log(`saveDimensions: Saved ${cols}x${rows} to localStorage`);
+      const stored = localStorage.getItem(TERMINAL_CONTAINER_SIZE_KEY);
+      if (stored) {
+        const { width, height } = JSON.parse(stored);
+        if (width >= 300 && height >= 200 && width <= 1400 && height <= 800) {
+          return { width, height };
+        }
+      }
     } catch (err) {
-      console.warn('Failed to save terminal dimensions:', err);
+      console.warn('Failed to load stored container size:', err);
+    }
+    // Default container size if nothing stored or invalid
+    return { width: 800, height: 500 };
+  }
+  
+  function saveContainerSize(width: number, height: number) {
+    if (width >= 300 && height >= 200 && width <= 1400 && height <= 800) {
+      try {
+        localStorage.setItem(TERMINAL_CONTAINER_SIZE_KEY, JSON.stringify({ width, height }));
+        console.log(`saveContainerSize: Saved ${width}x${height}px to localStorage`);
+      } catch (err) {
+        console.warn('Failed to save container size:', err);
+      }
+    } else {
+      console.warn(`saveContainerSize: Rejecting invalid size ${width}x${height}`);
+    }
+  }
+  
+  function saveDimensions(cols: number, rows: number) {
+    // Only save if dimensions are reasonable and different from what's stored
+    if (cols >= 50 && rows >= 15 && cols <= 200 && rows <= 60) {
+      const current = getStoredDimensions();
+      if (current.cols !== cols || current.rows !== rows) {
+        try {
+          localStorage.setItem(TERMINAL_DIMENSIONS_KEY, JSON.stringify({ cols, rows }));
+          console.log(`saveDimensions: Saved ${cols}x${rows} to localStorage (was ${current.cols}x${current.rows})`);
+        } catch (err) {
+          console.warn('Failed to save terminal dimensions:', err);
+        }
+      } else {
+        console.log(`saveDimensions: Skipping save - ${cols}x${rows} already stored`);
+      }
+    } else {
+      console.warn(`saveDimensions: Rejecting invalid dimensions ${cols}x${rows}`);
     }
   }
   
@@ -413,7 +453,7 @@
       if (activeCols >= 50 && activeRows >= 15) {
         lastGoodCols = activeCols;
         lastGoodRows = activeRows;
-        saveDimensions(activeCols, activeRows);
+        // Don't automatically save dimensions from fitAllTerminals - only save on explicit user resize
         console.log(`fitAllTerminals: Active terminal ${activeTab.key} is ${activeCols}x${activeRows}, applying to all tabs`);
         
         // Apply active terminal's size to all terminals and notify all connections
@@ -500,18 +540,18 @@
   }
 
   onMount(() => {
-    // 1. Check localStorage for terminal dimensions, set default if not found
+    // 1. Check localStorage for terminal dimensions and container size
     const storedDimensions = getStoredDimensions();
+    const storedContainerSize = getStoredContainerSize();
     lastGoodCols = storedDimensions.cols;
     lastGoodRows = storedDimensions.rows;
-    console.log(`ShellTerminal onMount: Using dimensions ${lastGoodCols}x${lastGoodRows}`);
+    console.log(`ShellTerminal onMount: Using dimensions ${lastGoodCols}x${lastGoodRows} and container size ${storedContainerSize.width}x${storedContainerSize.height}`);
     
-    // 2. Calculate container size based on terminal dimensions
-    // Approximate: each char is ~8px wide, ~17px tall, plus padding for window decorations
-    const containerWidth = Math.max(600, (lastGoodCols * 8) + 40); // 40px for padding/scrollbar
-    const containerHeight = Math.max(400, (lastGoodRows * 17) + 120); // 120px for title bar, tabs, padding
+    // 2. Use stored container size to restore user's preferred window size
+    const containerWidth = storedContainerSize.width;
+    const containerHeight = storedContainerSize.height;
     
-    // 3. Set initial container size
+    // 3. Set initial container size to stored values
     if (terminalContainer) {
       terminalContainer.style.width = `${containerWidth}px`;
       terminalContainer.style.height = `${containerHeight}px`;
@@ -600,36 +640,24 @@
     tabsMap.set(tabKey, tab);
     tabsMap = tabsMap; // Force Svelte reactivity
 
-    // Properly size the terminal and send resize message immediately after receiving ShellReadyMessage
+    // Fit terminal to the restored container size
     if (tab.connection && tab.terminal && tab.fitAddon) {
-      console.log(`handleReady: Terminal ${tabKey} connected, fitting to available space`);
+      console.log(`handleReady: Terminal ${tabKey} connected, fitting to restored container`);
       
-      // First, fit the terminal to the available container space
+      // Fit the terminal to the restored container size
       tab.fitAddon.fit();
       
-      // Get the fitted dimensions
-      const fittedCols = tab.terminal.cols;
-      const fittedRows = tab.terminal.rows;
+      // Get the fitted dimensions and send to server
+      const cols = tab.terminal.cols;
+      const rows = tab.terminal.rows;
+      console.log(`handleReady: Terminal fitted to ${cols}x${rows}, sending to server`);
+      tab.connection.resize(cols, rows);
       
-      console.log(`handleReady: Terminal ${tabKey} fitted to ${fittedCols}x${fittedRows}`);
-      
-      // Update our stored dimensions if this gives us reasonable values
-      if (fittedCols >= 50 && fittedRows >= 15) {
-        lastGoodCols = fittedCols;
-        lastGoodRows = fittedRows;
-        saveDimensions(fittedCols, fittedRows);
-        console.log(`handleReady: Updated stored dimensions to ${fittedCols}x${fittedRows}`);
-      } else {
-        // If fitted dimensions are too small, use stored dimensions
-        console.log(`handleReady: Fitted dimensions too small (${fittedCols}x${fittedRows}), using stored ${lastGoodCols}x${lastGoodRows}`);
-        tab.terminal.resize(lastGoodCols, lastGoodRows);
+      // Update stored dimensions if they're reasonable
+      if (cols >= 50 && rows >= 15) {
+        lastGoodCols = cols;
+        lastGoodRows = rows;
       }
-      
-      // Send resize message to server with the final dimensions
-      const finalCols = tab.terminal.cols;
-      const finalRows = tab.terminal.rows;
-      console.log(`handleReady: Sending resize message to server: ${finalCols}x${finalRows}`);
-      tab.connection.resize(finalCols, finalRows);
     }
   }
 
@@ -831,9 +859,13 @@
     document.body.style.userSelect = '';
     document.body.style.cursor = '';
     
-    // Save the new windowed state
+    // Save the new windowed state and container size
     if (!isMaximized) {
       saveWindowedState();
+      // Save the new container size to localStorage
+      const newWidth = terminalContainer.offsetWidth;
+      const newHeight = terminalContainer.offsetHeight;
+      saveContainerSize(newWidth, newHeight);
     }
     
     // Capture new terminal dimensions from the active terminal after manual resize

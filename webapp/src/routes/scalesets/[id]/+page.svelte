@@ -14,6 +14,7 @@
 	import type { Instance } from '$lib/api/generated/api.js';
 	import { extractAPIError } from '$lib/utils/apiError';
 	import { formatDate, getForgeIcon, getEntityName, getEntityType, getEntityUrl } from '$lib/utils/common.js';
+	import ForgeTypeCell from '$lib/components/cells/ForgeTypeCell.svelte';
 
 	let scaleSet: ScaleSet | null = null;
 	let loading = true;
@@ -259,6 +260,12 @@
 						<div>
 							<dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Provider</dt>
 							<dd class="mt-1 text-sm text-gray-900 dark:text-white">{scaleSet.provider_name}</dd>
+						</div>
+						<div>
+							<dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Forge Type</dt>
+							<dd class="mt-1">
+								<ForgeTypeCell item={scaleSet} />
+							</dd>
 						</div>
 						<div>
 							<dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Image</dt>

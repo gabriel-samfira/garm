@@ -7,6 +7,7 @@ require (
 	github.com/bradleyfalzon/ghinstallation/v2 v2.16.0
 	github.com/cloudbase/garm-provider-common v0.1.8-0.20251001105909-bbcacae60e7c
 	github.com/charmbracelet/x/conpty v0.1.1
+	github.com/cloudbase/garm-provider-common v0.1.8-0.20251001105909-bbcacae60e7c
 	github.com/creack/pty v1.1.24
 	github.com/felixge/httpsnoop v1.0.4
 	github.com/gdamore/tcell/v2 v2.9.0
@@ -106,15 +107,10 @@ require (
 	go.opentelemetry.io/otel/trace v1.38.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-<<<<<<< HEAD
 	golang.org/x/net v0.45.0 // indirect
 	golang.org/x/sys v0.37.0 // indirect
 	golang.org/x/term v0.36.0 // indirect
 	golang.org/x/text v0.30.0 // indirect
-=======
-	golang.org/x/net v0.44.0 // indirect
-	golang.org/x/text v0.29.0 // indirect
->>>>>>> 4fa5e32a (Add Windows shell support)
 	google.golang.org/protobuf v1.36.9 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
