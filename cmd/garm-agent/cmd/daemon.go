@@ -22,9 +22,10 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/spf13/cobra"
+
 	"github.com/cloudbase/garm/cmd/garm-agent/config"
 	"github.com/cloudbase/garm/cmd/garm-agent/service"
-	"github.com/spf13/cobra"
 )
 
 var agentConfig = "/etc/garm/agent.toml"
@@ -56,7 +57,7 @@ var daemonCmd = &cobra.Command{
 		if cfg.LogFile == "" {
 			logDestination = os.Stdout
 		} else {
-			fd, err := os.OpenFile(cfg.LogFile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+			fd, err := os.OpenFile(cfg.LogFile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0o600)
 			if err != nil {
 				log.Fatal(err)
 			}

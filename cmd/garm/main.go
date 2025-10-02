@@ -221,7 +221,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	agentHub, err := agent.NewAgentHub(ctx)
+	agentHub, err := agent.NewHub(ctx)
 	if err != nil {
 		log.Fatalf("failed to create agent hub: %q", err)
 	}

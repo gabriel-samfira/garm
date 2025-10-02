@@ -6,13 +6,14 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/google/uuid"
+	"github.com/gorilla/mux"
+
 	gErrors "github.com/cloudbase/garm-provider-common/errors"
 	"github.com/cloudbase/garm/apiserver/params"
 	"github.com/cloudbase/garm/auth"
 	runnerParams "github.com/cloudbase/garm/params"
 	"github.com/cloudbase/garm/workers/websocket/agent"
-	"github.com/google/uuid"
-	"github.com/gorilla/mux"
 )
 
 func (a *APIController) AgentHandler(w http.ResponseWriter, r *http.Request) {

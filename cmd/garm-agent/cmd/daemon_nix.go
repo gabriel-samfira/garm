@@ -9,9 +9,7 @@ import (
 	"github.com/cloudbase/garm/cmd/garm-agent/service"
 )
 
-var (
-	defaultAgentConfig = "/etc/garm/agent.toml"
-)
+var defaultAgentConfig = "/etc/garm/agent.toml"
 
 func runService(service *service.Service) error {
 	if err := service.Start(); err != nil {

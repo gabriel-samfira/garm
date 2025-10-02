@@ -2,6 +2,6 @@ package runner
 
 import "github.com/cloudbase/garm/params"
 
-type RunnerState struct {
+type State struct {
 	RunnerStatus params.RunnerStatus
 }

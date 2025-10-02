@@ -192,10 +192,11 @@ func (s *WatcherStoreTestSuite) TestInstanceWatcher() {
 	s.T().Cleanup(func() { s.store.DeleteEntityPool(s.ctx, entity, pool.ID) })
 
 	createInstanceParams := params.CreateInstanceParams{
-		Name:   "test-instance",
-		OSType: commonParams.Linux,
-		OSArch: commonParams.Amd64,
-		Status: commonParams.InstanceCreating,
+		Name:         "test-instance",
+		OSType:       commonParams.Linux,
+		OSArch:       commonParams.Amd64,
+		Status:       commonParams.InstanceCreating,
+		RunnerStatus: params.RunnerIdle,
 	}
 	instance, err := s.store.CreateInstance(s.ctx, pool.ID, createInstanceParams)
 	s.Require().NoError(err)
@@ -298,10 +299,11 @@ func (s *WatcherStoreTestSuite) TestScaleSetInstanceWatcher() {
 	s.T().Cleanup(func() { s.store.DeleteScaleSetByID(s.ctx, scaleSet.ID) })
 
 	createInstanceParams := params.CreateInstanceParams{
-		Name:   "test-instance",
-		OSType: commonParams.Linux,
-		OSArch: commonParams.Amd64,
-		Status: commonParams.InstanceCreating,
+		Name:         "test-instance",
+		OSType:       commonParams.Linux,
+		OSArch:       commonParams.Amd64,
+		Status:       commonParams.InstanceCreating,
+		RunnerStatus: params.RunnerIdle,
 	}
 	instance, err := s.store.CreateScaleSetInstance(s.ctx, scaleSet.ID, createInstanceParams)
 	s.Require().NoError(err)

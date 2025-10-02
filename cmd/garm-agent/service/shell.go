@@ -121,7 +121,6 @@ func (s *ShellSession) handlePTYOutput() {
 		buf := make([]byte, 1024)
 		n, err := s.shell.Read(buf)
 		if err != nil {
-			// TODO(gabriel-samfira): Include the error in the exit message
 			slog.ErrorContext(s.ctx, "failed to read shell", "error", err)
 			return
 		}

@@ -19,19 +19,20 @@ var (
 )
 
 type Worker interface {
+	AgentID() uint
 	Start() error
 	Stop() error
 	Wait() <-chan struct{}
 	Error() error
 }
 
-type RunnerStateManager interface {
+type StateManager interface {
 	SetRunnerStarted(st bool)
 	SetJobStarted()
 	SetJobFinished()
 }
 
-type RunnerConfig interface {
+type Config interface {
 	GetAgentID() uint
 	GetAgentName() string
 	IsEphemeral() bool
@@ -39,7 +40,7 @@ type RunnerConfig interface {
 }
 
 func (r *runnerCmd) isJobStartedLine(msg []byte) bool {
-	switch params.EndpointType(r.forgeType) {
+	switch r.forgeType {
 	case params.GiteaEndpointType:
 		return giteaJobStartedRegex.Match(msg)
 	case params.GithubEndpointType:
@@ -50,7 +51,7 @@ func (r *runnerCmd) isJobStartedLine(msg []byte) bool {
 }
 
 func (r *runnerCmd) isRunnerStartedLine(msg []byte) bool {
-	switch params.EndpointType(r.forgeType) {
+	switch r.forgeType {
 	case params.GiteaEndpointType:
 		return giteaListenForJobs.Match(msg)
 	case params.GithubEndpointType:
@@ -60,12 +61,12 @@ func (r *runnerCmd) isRunnerStartedLine(msg []byte) bool {
 	}
 }
 
-func NewRunnerConfig(cfg string, forgeType params.EndpointType) (RunnerConfig, error) {
+func NewRunnerConfig(cfg string, forgeType params.EndpointType) (Config, error) {
 	data, err := os.ReadFile(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read runner config: %w", err)
 	}
-	var runCfg RunnerConfig
+	var runCfg Config
 	switch forgeType {
 	case params.GiteaEndpointType:
 		var giteaCfg GiteaRunnerConfig
@@ -103,9 +104,11 @@ func (r GitHubRunnerConfig) GetAgentID() uint {
 func (r GitHubRunnerConfig) GetAgentName() string {
 	return r.AgentName
 }
+
 func (r GitHubRunnerConfig) IsEphemeral() bool {
 	return r.Ephemeral == "True"
 }
+
 func (r GitHubRunnerConfig) GetServerURL() string {
 	return r.ServerURL
 }
@@ -124,9 +127,11 @@ func (r GiteaRunnerConfig) GetAgentID() uint {
 func (r GiteaRunnerConfig) GetAgentName() string {
 	return r.AgentName
 }
+
 func (r GiteaRunnerConfig) IsEphemeral() bool {
 	return r.Ephemeral
 }
+
 func (r GiteaRunnerConfig) GetServerURL() string {
 	return r.ServerURL
 }

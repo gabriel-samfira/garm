@@ -35,7 +35,7 @@ type Agent struct {
 	Shell   string `toml:"shell"`
 	// RunnerExecArgs is a list of command line parameters needed to launch the runner.
 	// This must include the executable as the first arg and any needed subsequent parametes.
-	// If the runner is started via a wrapper script, the fist argument must be the proper interpretor
+	// If the runner is started via a wrapper script, the fist argument must be the proper interpreter
 	// that can launch the wrapper script. For example, if the runner is launched by a bash script, the
 	// RunnerExecArgs will need to include: ["/bin/bash", "-C", "/path/to/script.sh", "any", "other", "args"].
 	// If the runner is an ELF or a Windows executable, the first arg can be the runner itself.

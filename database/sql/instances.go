@@ -103,7 +103,7 @@ func (s *sqlDatabase) getPoolInstanceByName(poolID string, instanceName string) 
 	return instance, nil
 }
 
-func (s *sqlDatabase) getInstance(_ context.Context, instanceNameOrID string, preload ...string) (Instance, error) {
+func (s *sqlDatabase) getInstance(_ context.Context, tx *gorm.DB, instanceNameOrID string, preload ...string) (Instance, error) {
 	var instance Instance
 
 	var whereArg any = instanceNameOrID
@@ -113,7 +113,7 @@ func (s *sqlDatabase) getInstance(_ context.Context, instanceNameOrID string, pr
 		whereArg = id
 		whereClause = "id = ?"
 	}
-	q := s.conn
+	q := tx
 
 	if len(preload) > 0 {
 		for _, item := range preload {
@@ -135,7 +135,7 @@ func (s *sqlDatabase) getInstance(_ context.Context, instanceNameOrID string, pr
 }
 
 func (s *sqlDatabase) GetInstance(ctx context.Context, instanceName string) (params.Instance, error) {
-	instance, err := s.getInstance(ctx, instanceName, "StatusMessages", "Pool", "ScaleSet")
+	instance, err := s.getInstance(ctx, s.conn, instanceName, "StatusMessages", "Pool", "ScaleSet")
 	if err != nil {
 		return params.Instance{}, fmt.Errorf("error fetching instance: %w", err)
 	}
@@ -187,7 +187,7 @@ func (s *sqlDatabase) DeleteInstance(_ context.Context, poolID string, instanceN
 }
 
 func (s *sqlDatabase) DeleteInstanceByName(ctx context.Context, instanceName string) error {
-	instance, err := s.getInstance(ctx, instanceName, "Pool", "ScaleSet")
+	instance, err := s.getInstance(ctx, s.conn, instanceName, "Pool", "ScaleSet")
 	if err != nil {
 		if errors.Is(err, runnerErrors.ErrNotFound) {
 			return nil
@@ -229,7 +229,7 @@ func (s *sqlDatabase) DeleteInstanceByName(ctx context.Context, instanceName str
 }
 
 func (s *sqlDatabase) AddInstanceEvent(ctx context.Context, instanceName string, event params.EventType, eventLevel params.EventLevel, statusMessage string) error {
-	instance, err := s.getInstance(ctx, instanceName)
+	instance, err := s.getInstance(ctx, s.conn, instanceName)
 	if err != nil {
 		return fmt.Errorf("error updating instance: %w", err)
 	}
@@ -247,73 +247,104 @@ func (s *sqlDatabase) AddInstanceEvent(ctx context.Context, instanceName string,
 }
 
 func (s *sqlDatabase) UpdateInstance(ctx context.Context, instanceName string, param params.UpdateInstanceParams) (params.Instance, error) {
-	instance, err := s.getInstance(ctx, instanceName, "Pool", "ScaleSet")
+	err := s.conn.Transaction(func(tx *gorm.DB) error {
+		instance, err := s.getInstance(ctx, tx, instanceName, "Pool", "ScaleSet")
+		if err != nil {
+			return fmt.Errorf("error updating instance: %w", err)
+		}
+		if instance.AgentID != 0 && param.AgentID != 0 {
+			if instance.AgentID != param.AgentID {
+				return runnerErrors.NewBadRequestError("agent ID mismatch")
+			}
+		}
+		if param.RunnerStatus != "" {
+			allowedTransitions, ok := params.RunnerStatusTransitions[instance.RunnerStatus]
+			if !ok {
+				return fmt.Errorf("Instance is in invalid state: %s", instance.RunnerStatus)
+			}
+			found := false
+			for _, val := range allowedTransitions {
+				if val == param.RunnerStatus {
+					found = true
+					break
+				}
+			}
+			if !found {
+				return runnerErrors.NewBadRequestError("invalid runner status transition from %s to %s", instance.RunnerStatus, param.RunnerStatus)
+			}
+		}
+		if param.AgentID != 0 {
+			instance.AgentID = param.AgentID
+		}
+
+		if param.ProviderID != "" {
+			instance.ProviderID = &param.ProviderID
+		}
+
+		if param.OSName != "" {
+			instance.OSName = param.OSName
+		}
+
+		if param.OSVersion != "" {
+			instance.OSVersion = param.OSVersion
+		}
+
+		if string(param.RunnerStatus) != "" {
+			instance.RunnerStatus = param.RunnerStatus
+		}
+
+		if param.Heartbeat != nil {
+			instance.Heartbeat = *param.Heartbeat
+		}
+
+		if string(param.Status) != "" {
+			instance.Status = param.Status
+		}
+		if param.CreateAttempt != 0 {
+			instance.CreateAttempt = param.CreateAttempt
+		}
+
+		if param.TokenFetched != nil {
+			instance.TokenFetched = *param.TokenFetched
+		}
+
+		if param.JitConfiguration != nil {
+			secret, err := s.marshalAndSeal(param.JitConfiguration)
+			if err != nil {
+				return fmt.Errorf("error marshalling jit config: %w", err)
+			}
+			instance.JitConfiguration = secret
+		}
+
+		instance.ProviderFault = param.ProviderFault
+
+		q := tx.Save(&instance)
+		if q.Error != nil {
+			return fmt.Errorf("error updating instance: %w", q.Error)
+		}
+		if len(param.Addresses) > 0 {
+			addrs := []Address{}
+			for _, addr := range param.Addresses {
+				addrs = append(addrs, Address{
+					Address: addr.Address,
+					Type:    string(addr.Type),
+				})
+			}
+			if err := tx.Model(&instance).Association("Addresses").Replace(addrs); err != nil {
+				return fmt.Errorf("error updating addresses: %w", err)
+			}
+		}
+		return nil
+	})
 	if err != nil {
 		return params.Instance{}, fmt.Errorf("error updating instance: %w", err)
 	}
 
-	if param.AgentID != 0 {
-		instance.AgentID = param.AgentID
+	instance, err := s.getInstance(ctx, s.conn, instanceName, "Pool", "ScaleSet")
+	if err != nil {
+		return params.Instance{}, fmt.Errorf("error updating instance: %w", err)
 	}
 
-	if param.ProviderID != "" {
-		instance.ProviderID = &param.ProviderID
-	}
-
-	if param.OSName != "" {
-		instance.OSName = param.OSName
-	}
-
-	if param.OSVersion != "" {
-		instance.OSVersion = param.OSVersion
-	}
-
-	if string(param.RunnerStatus) != "" {
-		instance.RunnerStatus = param.RunnerStatus
-	}
-
-	if param.Heartbeat != nil {
-		instance.Heartbeat = *param.Heartbeat
-	}
-
-	if string(param.Status) != "" {
-		instance.Status = param.Status
-	}
-	if param.CreateAttempt != 0 {
-		instance.CreateAttempt = param.CreateAttempt
-	}
-
-	if param.TokenFetched != nil {
-		instance.TokenFetched = *param.TokenFetched
-	}
-
-	if param.JitConfiguration != nil {
-		secret, err := s.marshalAndSeal(param.JitConfiguration)
-		if err != nil {
-			return params.Instance{}, fmt.Errorf("error marshalling jit config: %w", err)
-		}
-		instance.JitConfiguration = secret
-	}
-
-	instance.ProviderFault = param.ProviderFault
-
-	q := s.conn.Save(&instance)
-	if q.Error != nil {
-		return params.Instance{}, fmt.Errorf("error updating instance: %w", q.Error)
-	}
-
-	if len(param.Addresses) > 0 {
-		addrs := []Address{}
-		for _, addr := range param.Addresses {
-			addrs = append(addrs, Address{
-				Address: addr.Address,
-				Type:    string(addr.Type),
-			})
-		}
-		if err := s.conn.Model(&instance).Association("Addresses").Replace(addrs); err != nil {
-			return params.Instance{}, fmt.Errorf("error updating addresses: %w", err)
-		}
-	}
 	inst, err := s.sqlToParamsInstance(instance)
 	if err != nil {
 		return params.Instance{}, fmt.Errorf("error converting instance: %w", err)
