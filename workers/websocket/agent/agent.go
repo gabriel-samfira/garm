@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -13,6 +14,8 @@ import (
 	"github.com/gorilla/websocket"
 
 	runnerErrors "github.com/cloudbase/garm-provider-common/errors"
+	"github.com/cloudbase/garm/database/common"
+	"github.com/cloudbase/garm/database/watcher"
 	"github.com/cloudbase/garm/params"
 	"github.com/cloudbase/garm/runner"
 	garmUtil "github.com/cloudbase/garm/util"
@@ -37,6 +40,7 @@ func NewAgent(ctx context.Context, conn *websocket.Conn, instance params.Instanc
 	if conn == nil {
 		return nil, fmt.Errorf("missing connection for agent")
 	}
+	consumerID := fmt.Sprintf("agent-worker-%s", instance.Name)
 	ctx = garmUtil.WithSlogContext(
 		ctx,
 		slog.Any("worker", "agent"),
@@ -49,6 +53,7 @@ func NewAgent(ctx context.Context, conn *websocket.Conn, instance params.Instanc
 		instance:      instance,
 		agentStore:    store,
 		done:          closed,
+		consumerID:    consumerID,
 		shellSessions: make(map[string]*ClientSession),
 	}, nil
 }
@@ -60,6 +65,9 @@ type Agent struct {
 	writeMux   sync.Mutex
 	conn       *websocket.Conn
 	agentStore runner.AgentStoreOps
+
+	consumerID string
+	consumer   common.Consumer
 
 	running bool
 	done    chan struct{}
@@ -120,6 +128,21 @@ func (a *Agent) Start() error {
 	if a.running {
 		return nil
 	}
+
+	consumer, err := watcher.RegisterConsumer(
+		a.ctx, a.consumerID,
+		watcher.WithAll(
+			// Filter for update and delete ops for the instance the agent belongs to.
+			watcher.WithInstanceFilter(a.instance),
+			watcher.WithAny(
+				watcher.WithOperationTypeFilter(common.DeleteOperation),
+				watcher.WithOperationTypeFilter(common.UpdateOperation),
+			),
+		))
+	if err != nil {
+		return fmt.Errorf("registering consumer: %w", err)
+	}
+	a.consumer = consumer
 
 	a.done = make(chan struct{})
 	a.running = true
@@ -245,8 +268,22 @@ func (a *Agent) messageHandler(msg []byte) (err error) {
 		if err := session.Write(msg); err != nil {
 			return fmt.Errorf("failed to write message: %w", err)
 		}
+	case messaging.MessageTypeRunnerUpdate:
+		statusUpdate, err := messaging.Unmarshal[messaging.RunnerUpdateMessage](agentMsg)
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal runner status message: %w", err)
+		}
+		// var status
+		slog.InfoContext(a.ctx, "got runner status update", "status", statusUpdate)
+		var status params.InstanceUpdateMessage
+		if err := json.Unmarshal(statusUpdate.Payload, &status); err != nil {
+			return fmt.Errorf("failed to unmarshal instance update: %w", err)
+		}
+		if err := a.agentStore.AddInstanceStatusMessage(a.ctx, status); err != nil {
+			return fmt.Errorf("failed to add status message: %w", err)
+		}
 	}
-	return
+	return err
 }
 
 func (a *Agent) loop() {
@@ -268,6 +305,25 @@ func (a *Agent) loop() {
 			return
 		case <-a.done:
 			return
+		case payload := <-a.consumer.Watch():
+			instance, ok := payload.Payload.(params.Instance)
+			if !ok {
+				continue
+			}
+			if instance.Name != a.instance.Name {
+				slog.WarnContext(a.ctx, "invalid instance object received", "agent_instance", a.instance.Name, "payload_instance", instance.Name)
+				continue
+			}
+			// We only really care about update and delete operations.
+			switch payload.Operation {
+			case common.UpdateOperation:
+				a.mux.Lock()
+				a.instance = instance
+				a.mux.Unlock()
+			case common.DeleteOperation:
+				// This instance was deleted. The agent connection needs to be dropped and this worker closed.
+				return
+			}
 		}
 	}
 }

@@ -115,29 +115,29 @@ func (c *ShellReadyMessage) ID() string {
 	return uuid.String()
 }
 
-func (s ShellReadyMessage) Marshal() []byte {
+func (c ShellReadyMessage) Marshal() []byte {
 	msg := AgentMessage{
 		Type: MessageTypeShellReady,
-		Data: make([]byte, 17+len(s.Message)),
+		Data: make([]byte, 17+len(c.Message)),
 	}
 
-	copy(msg.Data, s.SessionID[:])
-	msg.Data[16] = s.IsError
-	if len(s.Message) > 0 {
-		copy(msg.Data[17:], s.Message)
+	copy(msg.Data, c.SessionID[:])
+	msg.Data[16] = c.IsError
+	if len(c.Message) > 0 {
+		copy(msg.Data[17:], c.Message)
 	}
 	return msg.Marshal()
 }
 
-func (s *ShellReadyMessage) UnmarshalFromAgentMessage(data []byte) error {
+func (c *ShellReadyMessage) UnmarshalFromAgentMessage(data []byte) error {
 	if len(data) < 17 {
 		return fmt.Errorf("invalid ShellReadyMessage data length: %d", len(data))
 	}
-	copy(s.SessionID[:], data[:16])
-	s.IsError = data[16]
+	copy(c.SessionID[:], data[:16])
+	c.IsError = data[16]
 	if len(data) > 17 {
-		s.Message = make([]byte, len(data)-17)
-		copy(s.Message, data[17:])
+		c.Message = make([]byte, len(data)-17)
+		copy(c.Message, data[17:])
 	}
 	return nil
 }
@@ -155,21 +155,21 @@ func (c *ShellExitMessage) ID() string {
 	return uuid.String()
 }
 
-func (s ShellExitMessage) Marshal() []byte {
+func (c ShellExitMessage) Marshal() []byte {
 	msg := AgentMessage{
 		Type: MessageTypeShellExit,
 		Data: make([]byte, 16),
 	}
 
-	copy(msg.Data, s.SessionID[:])
+	copy(msg.Data, c.SessionID[:])
 	return msg.Marshal()
 }
 
-func (s *ShellExitMessage) UnmarshalFromAgentMessage(data []byte) error {
+func (c *ShellExitMessage) UnmarshalFromAgentMessage(data []byte) error {
 	if len(data) < 16 {
 		return fmt.Errorf("invalid ShellExitMessage data length: %d", len(data))
 	}
-	copy(s.SessionID[:], data[:16])
+	copy(c.SessionID[:], data[:16])
 	return nil
 }
 
@@ -218,24 +218,24 @@ func (c *ShellDataMessage) ID() string {
 	return uuid.String()
 }
 
-func (s ShellDataMessage) Marshal() []byte {
+func (c ShellDataMessage) Marshal() []byte {
 	msg := AgentMessage{
 		Type: MessageTypeShellData,
 	}
 
-	msg.Data = make([]byte, len(s.Data)+16)
-	copy(msg.Data, s.SessionID[:])
-	copy(msg.Data[16:], s.Data)
+	msg.Data = make([]byte, len(c.Data)+16)
+	copy(msg.Data, c.SessionID[:])
+	copy(msg.Data[16:], c.Data)
 	return msg.Marshal()
 }
 
-func (s *ShellDataMessage) UnmarshalFromAgentMessage(data []byte) error {
+func (c *ShellDataMessage) UnmarshalFromAgentMessage(data []byte) error {
 	if len(data) < 16 {
 		return fmt.Errorf("invalid ShellDataMessage data length: %d", len(data))
 	}
-	copy(s.SessionID[:], data[:16])
-	s.Data = make([]byte, len(data)-16)
-	copy(s.Data, data[16:])
+	copy(c.SessionID[:], data[:16])
+	c.Data = make([]byte, len(data)-16)
+	copy(c.Data, data[16:])
 	return nil
 }
 
@@ -254,25 +254,25 @@ func (c *ShellResizeMessage) ID() string {
 	return uuid.String()
 }
 
-func (s ShellResizeMessage) Marshal() []byte {
+func (c ShellResizeMessage) Marshal() []byte {
 	msg := AgentMessage{
 		Type: MessageTypeShellResize,
 	}
 
 	msg.Data = make([]byte, 20)
-	copy(msg.Data, s.SessionID[:])
-	binary.BigEndian.PutUint16(msg.Data[16:18], s.Rows)
-	binary.BigEndian.PutUint16(msg.Data[18:20], s.Cols)
+	copy(msg.Data, c.SessionID[:])
+	binary.BigEndian.PutUint16(msg.Data[16:18], c.Rows)
+	binary.BigEndian.PutUint16(msg.Data[18:20], c.Cols)
 	return msg.Marshal()
 }
 
-func (s *ShellResizeMessage) UnmarshalFromAgentMessage(data []byte) error {
+func (c *ShellResizeMessage) UnmarshalFromAgentMessage(data []byte) error {
 	if len(data) < 20 {
 		return fmt.Errorf("invalid ShellResizeMessage data length: %d", len(data))
 	}
-	copy(s.SessionID[:], data[:16])
-	s.Rows = binary.BigEndian.Uint16(data[16:18])
-	s.Cols = binary.BigEndian.Uint16(data[18:20])
+	copy(c.SessionID[:], data[:16])
+	c.Rows = binary.BigEndian.Uint16(data[16:18])
+	c.Cols = binary.BigEndian.Uint16(data[18:20])
 	return nil
 }
 
@@ -288,7 +288,7 @@ func (s RunnerUpdateMessage) Marshal() []byte {
 
 	msg.Data = make([]byte, 8+len(s.Payload))
 	binary.BigEndian.PutUint64(msg.Data[0:8], s.AgentID)
-	copy(msg.Data[8:], s.Payload)
+	copy(msg.Data[8:], s.Payload[:])
 	return msg.Marshal()
 }
 
@@ -297,7 +297,7 @@ func (s *RunnerUpdateMessage) UnmarshalFromAgentMessage(data []byte) error {
 		return fmt.Errorf("invalid MessageTypeRunnerUpdate data length: %d", len(data))
 	}
 	s.AgentID = binary.BigEndian.Uint64(data[0:8])
-	copy(s.Payload[:], data[8:])
+	s.Payload = make([]byte, len(data)-8)
+	copy(s.Payload, data[8:])
 	return nil
 }
-

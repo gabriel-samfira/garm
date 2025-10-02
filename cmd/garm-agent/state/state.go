@@ -15,13 +15,13 @@ type State struct {
 	FinishTime  *time.Time `json:"finishTime,omitempty"`
 }
 
-type StateManager struct {
+type Manager struct {
 	db     *bolt.DB
 	bucket []byte
 }
 
-func NewStateManager(dbPath string) (*StateManager, error) {
-	db, err := bolt.Open(dbPath, 0600, nil)
+func NewManager(dbPath string) (*Manager, error) {
+	db, err := bolt.Open(dbPath, 0o600, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
@@ -38,17 +38,17 @@ func NewStateManager(dbPath string) (*StateManager, error) {
 		return nil, fmt.Errorf("failed to create bucket: %w", err)
 	}
 
-	return &StateManager{
+	return &Manager{
 		db:     db,
 		bucket: bucket,
 	}, nil
 }
 
-func (sm *StateManager) Close() error {
+func (sm *Manager) Close() error {
 	return sm.db.Close()
 }
 
-func (sm *StateManager) SetState(state State) error {
+func (sm *Manager) SetState(state State) error {
 	return sm.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket(sm.bucket)
 
@@ -61,7 +61,7 @@ func (sm *StateManager) SetState(state State) error {
 	})
 }
 
-func (sm *StateManager) GetState() (State, error) {
+func (sm *Manager) GetState() (State, error) {
 	var state State
 
 	err := sm.db.View(func(tx *bolt.Tx) error {
@@ -79,7 +79,7 @@ func (sm *StateManager) GetState() (State, error) {
 	return state, err
 }
 
-func (sm *StateManager) SetJobStarted() error {
+func (sm *Manager) SetJobStarted() error {
 	state, err := sm.GetState()
 	if err != nil {
 		return err
@@ -92,7 +92,7 @@ func (sm *StateManager) SetJobStarted() error {
 	return sm.SetState(state)
 }
 
-func (sm *StateManager) SetJobFinished() error {
+func (sm *Manager) SetJobFinished() error {
 	state, err := sm.GetState()
 	if err != nil {
 		return err
@@ -105,17 +105,17 @@ func (sm *StateManager) SetJobFinished() error {
 	return sm.SetState(state)
 }
 
-func (sm *StateManager) IsJobStarted() (bool, error) {
+func (sm *Manager) IsJobStarted() (bool, error) {
 	state, err := sm.GetState()
 	return state.JobStarted, err
 }
 
-func (sm *StateManager) IsJobFinished() (bool, error) {
+func (sm *Manager) IsJobFinished() (bool, error) {
 	state, err := sm.GetState()
 	return state.JobFinished, err
 }
 
-func (sm *StateManager) IsJobRunning() (bool, error) {
+func (sm *Manager) IsJobRunning() (bool, error) {
 	state, err := sm.GetState()
 	if err != nil {
 		return false, err
@@ -123,7 +123,7 @@ func (sm *StateManager) IsJobRunning() (bool, error) {
 	return state.JobStarted && !state.JobFinished, nil
 }
 
-func (sm *StateManager) GetJobDuration() (time.Duration, error) {
+func (sm *Manager) GetJobDuration() (time.Duration, error) {
 	state, err := sm.GetState()
 	if err != nil {
 		return 0, err

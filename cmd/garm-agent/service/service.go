@@ -9,13 +9,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gorilla/websocket"
+
 	garmWs "github.com/cloudbase/garm-provider-common/util/websocket"
 	"github.com/cloudbase/garm/cmd/garm-agent/config"
 	"github.com/cloudbase/garm/cmd/garm-agent/service/runner"
 	"github.com/cloudbase/garm/cmd/garm-agent/state"
 	"github.com/cloudbase/garm/params"
 	"github.com/cloudbase/garm/workers/websocket/agent/messaging"
-	"github.com/gorilla/websocket"
 )
 
 var closed = make(chan struct{})
@@ -32,7 +33,7 @@ func NewService(ctx context.Context, cfg *config.Agent) (*Service, error) {
 		return nil, fmt.Errorf("failed to get forge type for agent: %w", err)
 	}
 
-	agentState, err := state.NewStateManager(cfg.StateDBPath)
+	agentState, err := state.NewManager(cfg.StateDBPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create state manager: %w", err)
 	}
@@ -52,7 +53,7 @@ type Service struct {
 	ctx         context.Context
 	cfg         *config.Agent
 	cli         *garmWs.Reader
-	agentState  *state.StateManager
+	agentState  *state.Manager
 	runnerAlive bool
 	runnerCmd   runner.Worker
 
@@ -272,7 +273,7 @@ func (s *Service) determineRunnerState() params.RunnerStatus {
 	}
 	if st.JobStarted {
 		if !s.runnerAlive {
-			// We're comming back online and for some reason, we didn't record
+			// We're coming back online and for some reason, we didn't record
 			// that the job was finished, but we did record that the job was started.
 			// If the job was started but the runner is offline, then the job was either
 			// finished, or canceled.
@@ -290,22 +291,26 @@ func (s *Service) determineRunnerState() params.RunnerStatus {
 }
 
 func (s *Service) sendRunnerStatus() {
-	status := runner.RunnerState{
-		RunnerStatus: s.determineRunnerState(),
+	agentID := int64(s.runnerCmd.AgentID())
+	state := s.determineRunnerState()
+	status := params.InstanceUpdateMessage{
+		Status:  state,
+		AgentID: &agentID,
+		Message: fmt.Sprintf("Agent update status to: %s", state),
 	}
 	if err := s.sendRunnerStatusMessage(status); err != nil {
 		slog.ErrorContext(s.ctx, "failed to send status", "error", err)
 	}
 }
 
-func (s *Service) sendRunnerStatusMessage(status runner.RunnerState) error {
+func (s *Service) sendRunnerStatusMessage(status params.InstanceUpdateMessage) error {
 	asJs, err := json.Marshal(status)
 	if err != nil {
 		return fmt.Errorf("failed to marshal message: %w", err)
 	}
-	msg := messaging.AgentMessage{
-		Type: messaging.MessageTypeRunnerUpdate,
-		Data: asJs,
+	msg := messaging.RunnerUpdateMessage{
+		AgentID: uint64(s.runnerCmd.AgentID()),
+		Payload: asJs,
 	}
 
 	cli, err := s.getClient()
@@ -333,23 +338,29 @@ func (s *Service) SetJobStarted() {
 	if err := s.agentState.SetJobStarted(); err != nil {
 		slog.ErrorContext(s.ctx, "failed to set job started", "error", err)
 	}
-	// attempt to send message to GARM anyway
-	status := runner.RunnerState{
-		RunnerStatus: params.RunnerActive,
+	agentID := int64(s.runnerCmd.AgentID())
+	status := params.InstanceUpdateMessage{
+		AgentID: &agentID,
+		Status:  params.RunnerActive,
+		Message: "runner is now executing a job",
 	}
 	if err := s.sendRunnerStatusMessage(status); err != nil {
 		slog.ErrorContext(s.ctx, "failed to send status", "error", err)
 	}
 }
+
 func (s *Service) SetJobFinished() {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 	if err := s.agentState.SetJobFinished(); err != nil {
 		slog.ErrorContext(s.ctx, "failed to set job finished", "error", err)
 	}
-	// attempt to send message to GARM anyway
-	status := runner.RunnerState{
-		RunnerStatus: params.RunnerTerminated,
+
+	agentID := int64(s.runnerCmd.AgentID())
+	status := params.InstanceUpdateMessage{
+		AgentID: &agentID,
+		Status:  params.RunnerTerminated,
+		Message: "Job execution has finished",
 	}
 	if err := s.sendRunnerStatusMessage(status); err != nil {
 		slog.ErrorContext(s.ctx, "failed to send status", "error", err)
@@ -425,7 +436,13 @@ retryStart:
 		runnerState := s.determineRunnerState()
 		if runnerState == params.RunnerOffline {
 			// The runner did not run a job as far as we know, but it's failing to start. Send a failed message to GARM.
-			s.sendRunnerStatusMessage(runner.RunnerState{RunnerStatus: params.RunnerFailed})
+			agentID := int64(s.runnerCmd.AgentID())
+			status := params.InstanceUpdateMessage{
+				AgentID: &agentID,
+				Status:  params.RunnerFailed,
+				Message: fmt.Sprintf("Runner failed to start: %s", s.runnerCmd.Error()),
+			}
+			s.sendRunnerStatusMessage(status)
 		}
 		if s.sleepWithCancel(5 * time.Second) {
 			return
@@ -488,7 +505,6 @@ retryConnecting:
 			close(s.connecting)
 		}
 	}
-
 }
 
 func (s *Service) loop() {

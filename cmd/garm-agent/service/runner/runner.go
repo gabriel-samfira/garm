@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/cloudbase/garm/params"
@@ -20,15 +21,33 @@ func init() {
 	close(doneChan)
 }
 
-func NewRunnerCommand(ctx context.Context, cmdParams []string, workdir string, forgeType params.EndpointType, st RunnerStateManager) (Worker, error) {
+// validateCmdParams validates command parameters to prevent command injection
+func validateCmdParams(cmdParams []string) error {
+	if len(cmdParams) == 0 {
+		return fmt.Errorf("cmdParams is empty")
+	}
+
+	// Validate the executable path must be absolute
+	execPath := cmdParams[0]
+	if !filepath.IsAbs(execPath) {
+		return fmt.Errorf("executable path must be absolute: %s", execPath)
+	}
+
+	// Validate arguments don't contain dangerous shell metacharacters
+	for i, arg := range cmdParams {
+		if strings.ContainsAny(arg, ";|&<>$`") {
+			return fmt.Errorf("argument %d contains potentially dangerous characters: %s", i, arg)
+		}
+	}
+
+	return nil
+}
+
+func NewRunnerCommand(ctx context.Context, cmdParams []string, workdir string, forgeType params.EndpointType, st StateManager) (Worker, error) {
 	runnerCfg := filepath.Join(workdir, ".runner")
 	runCfg, err := NewRunnerConfig(runnerCfg, forgeType)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read runner config: %w", err)
-	}
-
-	if len(cmdParams) < 1 {
-		return nil, fmt.Errorf("cmdParams is empty")
 	}
 
 	mode, err := os.Stat(workdir)
@@ -46,6 +65,13 @@ func NewRunnerCommand(ctx context.Context, cmdParams []string, workdir string, f
 	if st == nil {
 		return nil, fmt.Errorf("invalid state manager")
 	}
+
+	// Validate command parameters to prevent command injection
+	if err := validateCmdParams(cmdParams); err != nil {
+		return nil, fmt.Errorf("invalid command parameters: %w", err)
+	}
+
+	// #nosec G204 - cmdParams validated above for security
 	command := exec.Command(cmdParams[0], cmdParams[1:]...)
 	ret := &runnerCmd{
 		ctx:       ctx,
@@ -64,8 +90,8 @@ type runnerCmd struct {
 	ctx       context.Context
 	forgeType params.EndpointType
 	workdir   string
-	runnerCfg RunnerConfig
-	st        RunnerStateManager
+	runnerCfg Config
+	st        StateManager
 
 	done    chan struct{}
 	running bool
@@ -73,6 +99,10 @@ type runnerCmd struct {
 
 	cmd    *exec.Cmd
 	cmdErr error
+}
+
+func (r *runnerCmd) AgentID() uint {
+	return r.runnerCfg.GetAgentID()
 }
 
 func (r *runnerCmd) Error() error {

@@ -7,7 +7,6 @@ import (
 	"sync"
 
 	runnerErrors "github.com/cloudbase/garm-provider-common/errors"
-
 	garmUtil "github.com/cloudbase/garm/util"
 )
 
@@ -15,20 +14,20 @@ var closed = make(chan struct{})
 
 func init() { close(closed) }
 
-func NewAgentHub(ctx context.Context) (*AgentHub, error) {
+func NewHub(ctx context.Context) (*Hub, error) {
 	ctx = garmUtil.WithSlogContext(
 		ctx,
 		slog.Any("worker", "agent-hub"),
 	)
 
-	return &AgentHub{
+	return &Hub{
 		ctx:    ctx,
 		agents: make(map[string]*Agent),
 		done:   closed,
 	}, nil
 }
 
-type AgentHub struct {
+type Hub struct {
 	ctx    context.Context
 	agents map[string]*Agent
 	mux    sync.Mutex
@@ -37,7 +36,7 @@ type AgentHub struct {
 	running bool
 }
 
-func (a *AgentHub) Start() error {
+func (a *Hub) Start() error {
 	a.mux.Lock()
 	defer a.mux.Unlock()
 
@@ -51,7 +50,7 @@ func (a *AgentHub) Start() error {
 	return nil
 }
 
-func (a *AgentHub) GetAgent(agentID string) (*Agent, error) {
+func (a *Hub) GetAgent(agentID string) (*Agent, error) {
 	a.mux.Lock()
 	defer a.mux.Unlock()
 
@@ -61,7 +60,7 @@ func (a *AgentHub) GetAgent(agentID string) (*Agent, error) {
 	return nil, runnerErrors.NewNotFoundError("no such agent")
 }
 
-func (a *AgentHub) Stop() error {
+func (a *Hub) Stop() error {
 	a.mux.Lock()
 	defer a.mux.Unlock()
 
@@ -74,7 +73,7 @@ func (a *AgentHub) Stop() error {
 	return nil
 }
 
-func (a *AgentHub) RegisterAgent(agent *Agent) error {
+func (a *Hub) RegisterAgent(agent *Agent) error {
 	a.mux.Lock()
 	defer a.mux.Unlock()
 
@@ -95,7 +94,7 @@ func (a *AgentHub) RegisterAgent(agent *Agent) error {
 	return nil
 }
 
-func (a *AgentHub) UnregisterAgent(agentID string) error {
+func (a *Hub) UnregisterAgent(agentID string) error {
 	a.mux.Lock()
 	defer a.mux.Unlock()
 	if agent, ok := a.agents[agentID]; ok {
@@ -107,7 +106,7 @@ func (a *AgentHub) UnregisterAgent(agentID string) error {
 	return nil
 }
 
-func (a *AgentHub) reapStoppedAgent(agent *Agent) {
+func (a *Hub) reapStoppedAgent(agent *Agent) {
 	if agent == nil {
 		return
 	}
@@ -123,7 +122,7 @@ func (a *AgentHub) reapStoppedAgent(agent *Agent) {
 	}
 }
 
-func (a *AgentHub) loop() {
+func (a *Hub) loop() {
 	defer func() {
 		a.Stop()
 	}()

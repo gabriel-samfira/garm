@@ -7,8 +7,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/cloudbase/garm/cmd/garm-agent/config"
 	"github.com/creack/pty"
+
+	"github.com/cloudbase/garm/cmd/garm-agent/config"
 )
 
 var _ PTY = &sessionPTY{}

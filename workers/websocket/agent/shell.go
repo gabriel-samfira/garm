@@ -8,9 +8,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cloudbase/garm/workers/websocket/agent/messaging"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+
+	"github.com/cloudbase/garm/workers/websocket/agent/messaging"
 )
 
 type writeMessage func(int, []byte) error

@@ -173,6 +173,44 @@ const (
 	MessageTypeJobAvailable = "JobAvailable"
 )
 
+var RunnerStatusTransitions = map[RunnerStatus][]RunnerStatus{
+	RunnerPending: {
+		RunnerFailed,
+		RunnerInstalling,
+		RunnerTerminated,
+		RunnerPending,
+	},
+	RunnerInstalling: {
+		RunnerFailed,
+		RunnerIdle,
+		RunnerTerminated,
+		RunnerInstalling,
+	},
+	RunnerIdle: {
+		RunnerOffline,
+		RunnerActive,
+		RunnerTerminated,
+		RunnerIdle,
+	},
+	RunnerActive: {
+		RunnerTerminated,
+		RunnerActive,
+	},
+	RunnerFailed: {
+		RunnerTerminated,
+		RunnerFailed,
+	},
+	RunnerOffline: {
+		RunnerIdle,
+		RunnerActive,
+		RunnerTerminated,
+		RunnerOffline,
+	},
+	RunnerTerminated: {
+		RunnerTerminated,
+	},
+}
+
 // swagger:model StatusMessage
 type StatusMessage struct {
 	CreatedAt  time.Time  `json:"created_at,omitempty"`
