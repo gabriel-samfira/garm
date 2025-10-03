@@ -278,7 +278,7 @@ func (s *sqlDatabase) UpdateInstance(ctx context.Context, instanceName string, p
 				return runnerErrors.NewBadRequestError("agent ID mismatch")
 			}
 		}
-		if param.RunnerStatus != "" {
+		if param.RunnerStatus != "" && param.RunnerStatus != instance.RunnerStatus {
 			allowedTransitions, ok := params.RunnerStatusTransitions[instance.RunnerStatus]
 			if !ok {
 				return fmt.Errorf("Instance is in invalid state: %s", instance.RunnerStatus)
@@ -318,7 +318,23 @@ func (s *sqlDatabase) UpdateInstance(ctx context.Context, instanceName string, p
 			instance.Heartbeat = *param.Heartbeat
 		}
 
-		if string(param.Status) != "" {
+		if param.Status != "" && param.Status != instance.Status {
+			allowedTransitions, ok := params.InstanceStatusTransitions[instance.Status]
+			if !ok {
+				// we need a better way to handle this. Because if we err out here, we cannot recover
+				// unless the user manually updates the instance.
+				return fmt.Errorf("Instance is in invalid state: %s", instance.Status)
+			}
+			found := false
+			for _, val := range allowedTransitions {
+				if val == param.Status {
+					found = true
+					break
+				}
+			}
+			if !found {
+				return runnerErrors.NewBadRequestError("invalid instance status transition from %s to %s", instance.Status, param.Status)
+			}
 			instance.Status = param.Status
 		}
 		if param.CreateAttempt != 0 {

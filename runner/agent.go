@@ -7,6 +7,7 @@ import (
 	"time"
 
 	runnerErrors "github.com/cloudbase/garm-provider-common/errors"
+	commonParams "github.com/cloudbase/garm-provider-common/params"
 	"github.com/cloudbase/garm/auth"
 	"github.com/cloudbase/garm/params"
 )
@@ -25,6 +26,24 @@ func (r *Runner) RecordAgentHeartbeat(ctx context.Context) error {
 
 	if _, err := r.store.UpdateInstance(ctx, instance.Name, updateParams); err != nil {
 		return fmt.Errorf("failed to record heartbeat: %w", err)
+	}
+	return nil
+}
+
+func (r *Runner) SetInstanceToPendingDelete(ctx context.Context) error {
+	instance, err := auth.InstanceParams(ctx)
+	if err != nil {
+		slog.With(slog.Any("error", err)).ErrorContext(
+			ctx, "failed to get instance params")
+		return runnerErrors.ErrUnauthorized
+	}
+
+	updateParams := params.UpdateInstanceParams{
+		Status: commonParams.InstancePendingDelete,
+	}
+
+	if _, err := r.store.UpdateInstance(r.ctx, instance.ID, updateParams); err != nil {
+		return fmt.Errorf("failed to set instance to pending_delete: %w", err)
 	}
 	return nil
 }

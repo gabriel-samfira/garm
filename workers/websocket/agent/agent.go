@@ -212,6 +212,10 @@ func (a *Agent) agentReader() {
 		}
 
 		if err := a.messageHandler(data); err != nil {
+			if errors.Is(err, ErrShuttingDown) {
+				slog.InfoContext(a.ctx, "runner was terminated")
+				return
+			}
 			slog.ErrorContext(a.ctx, "error handling message", slog.Any("error", err))
 		}
 	}
@@ -273,7 +277,6 @@ func (a *Agent) messageHandler(msg []byte) (err error) {
 		if err != nil {
 			return fmt.Errorf("failed to unmarshal runner status message: %w", err)
 		}
-		// var status
 		slog.InfoContext(a.ctx, "got runner status update", "status", statusUpdate)
 		var status params.InstanceUpdateMessage
 		if err := json.Unmarshal(statusUpdate.Payload, &status); err != nil {
@@ -281,6 +284,14 @@ func (a *Agent) messageHandler(msg []byte) (err error) {
 		}
 		if err := a.agentStore.AddInstanceStatusMessage(a.ctx, status); err != nil {
 			return fmt.Errorf("failed to add status message: %w", err)
+		}
+
+		if status.Status == params.RunnerTerminated {
+			// mark the instance as pending_delete
+			if err := a.agentStore.SetInstanceToPendingDelete(a.ctx); err != nil {
+				return fmt.Errorf("failed to mark instance as pending_delete: %w", err)
+			}
+			return ErrShuttingDown
 		}
 	}
 	return err

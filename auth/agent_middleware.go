@@ -24,6 +24,7 @@ import (
 	jwt "github.com/golang-jwt/jwt/v5"
 
 	runnerErrors "github.com/cloudbase/garm-provider-common/errors"
+	commonParams "github.com/cloudbase/garm-provider-common/params"
 	"github.com/cloudbase/garm/config"
 	dbCommon "github.com/cloudbase/garm/database/common"
 	"github.com/cloudbase/garm/params"
@@ -171,6 +172,13 @@ func (amw *agentMiddleware) Middleware(next http.Handler) http.Handler {
 				"runner_name", InstanceName(ctx),
 				"token_create_attempt", claims.CreateAttempt,
 				"instance_create_attempt", instanceParams.CreateAttempt)
+			invalidAuthResponse(ctx, w)
+			return
+		}
+
+		// instance must be running. Anything else is either still creating or in the process
+		// of being deleted and shouldn't be trying to authenticate.
+		if instanceParams.Status != commonParams.InstanceRunning {
 			invalidAuthResponse(ctx, w)
 			return
 		}

@@ -173,6 +173,59 @@ const (
 	MessageTypeJobAvailable = "JobAvailable"
 )
 
+var InstanceStatusTransitions = map[commonParams.InstanceStatus][]commonParams.InstanceStatus{
+	commonParams.InstanceRunning: {
+		commonParams.InstancePendingDelete,
+		commonParams.InstancePendingForceDelete,
+		commonParams.InstanceStopped,
+		commonParams.InstanceStatusUnknown,
+	},
+	commonParams.InstanceStopped: {
+		commonParams.InstancePendingDelete,
+		commonParams.InstancePendingForceDelete,
+		commonParams.InstanceRunning,
+		commonParams.InstanceStatusUnknown,
+	},
+	commonParams.InstanceError: {
+		commonParams.InstancePendingDelete,
+		commonParams.InstancePendingForceDelete,
+		commonParams.InstanceStatusUnknown,
+		commonParams.InstanceDeleting,
+	},
+	commonParams.InstancePendingDelete: {
+		commonParams.InstanceDeleting,
+		commonParams.InstancePendingForceDelete,
+	},
+	commonParams.InstancePendingForceDelete: {
+		commonParams.InstanceDeleting,
+	},
+	commonParams.InstanceDeleting: {
+		commonParams.InstanceError,
+		commonParams.InstanceDeleted,
+	},
+	commonParams.InstanceDeleted: {}, // no further transitions possible
+	commonParams.InstancePendingCreate: {
+		commonParams.InstancePendingDelete,
+		commonParams.InstanceCreating,
+		commonParams.InstancePendingForceDelete,
+	},
+	commonParams.InstanceCreating: {
+		commonParams.InstanceError,
+		commonParams.InstanceRunning,
+	},
+	commonParams.InstanceStatusUnknown: {
+		commonParams.InstanceRunning,
+		commonParams.InstanceStopped,
+		commonParams.InstanceError,
+		commonParams.InstancePendingDelete,
+		commonParams.InstancePendingForceDelete,
+		commonParams.InstanceDeleting,
+		commonParams.InstanceDeleted,
+		commonParams.InstancePendingCreate,
+		commonParams.InstanceCreating,
+	},
+}
+
 var RunnerStatusTransitions = map[RunnerStatus][]RunnerStatus{
 	RunnerPending: {
 		RunnerFailed,

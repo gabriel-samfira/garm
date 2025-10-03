@@ -53,4 +53,5 @@ type PoolManagerController interface {
 type AgentStoreOps interface {
 	RecordAgentHeartbeat(ctx context.Context) error
 	AddInstanceStatusMessage(ctx context.Context, param params.InstanceUpdateMessage) error
+	SetInstanceToPendingDelete(ctx context.Context) error
 }
