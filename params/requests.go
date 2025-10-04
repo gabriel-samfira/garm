@@ -539,6 +539,7 @@ type UpdateControllerParams struct {
 	MetadataURL          *string `json:"metadata_url,omitempty"`
 	CallbackURL          *string `json:"callback_url,omitempty"`
 	WebhookURL           *string `json:"webhook_url,omitempty"`
+	AgentURL             *string `json:"agent_url,omitempty"`
 	MinimumJobAgeBackoff *uint   `json:"minimum_job_age_backoff,omitempty"`
 }
 
@@ -561,6 +562,13 @@ func (u UpdateControllerParams) Validate() error {
 		u, err := url.Parse(*u.WebhookURL)
 		if err != nil || u.Scheme == "" || u.Host == "" {
 			return runnerErrors.NewBadRequestError("invalid webhook_url")
+		}
+	}
+
+	if u.AgentURL != nil {
+		u, err := url.Parse(*u.AgentURL)
+		if err != nil || u.Scheme == "" || u.Host == "" {
+			return runnerErrors.NewBadRequestError("invalid agent_url")
 		}
 	}
 

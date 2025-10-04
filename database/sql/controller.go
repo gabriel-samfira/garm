@@ -40,6 +40,7 @@ func dbControllerToCommonController(dbInfo ControllerInfo) (params.ControllerInf
 		WebhookURL:           dbInfo.WebhookBaseURL,
 		ControllerWebhookURL: url,
 		CallbackURL:          dbInfo.CallbackURL,
+		AgentURL:             dbInfo.AgentURL,
 		MinimumJobAgeBackoff: dbInfo.MinimumJobAgeBackoff,
 		Version:              appdefaults.GetVersion(),
 	}, nil
@@ -118,6 +119,10 @@ func (s *sqlDatabase) UpdateController(info params.UpdateControllerParams) (para
 
 		if info.WebhookURL != nil {
 			dbInfo.WebhookBaseURL = *info.WebhookURL
+		}
+
+		if info.AgentURL != nil {
+			dbInfo.AgentURL = *info.AgentURL
 		}
 
 		if info.MinimumJobAgeBackoff != nil {

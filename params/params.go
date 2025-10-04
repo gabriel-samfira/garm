@@ -960,6 +960,9 @@ type ControllerInfo struct {
 	// Functionally it is the same as WebhookURL, but it allows us to safely manage webhooks
 	// from GARM without accidentally removing webhooks from other services or GARM controllers.
 	ControllerWebhookURL string `json:"controller_webhook_url,omitempty"`
+	// AgentURL is the URL where the GARM agent will connect. If set behind a reverse proxy, this
+	// URL must be configured to allow websocket connections.
+	AgentURL string `json:"agent_url,omitempty"`
 	// MinimumJobAgeBackoff is the minimum time in seconds that a job must be in queued state
 	// before GARM will attempt to allocate a runner for it. When set to a non zero value,
 	// GARM will ignore the job until the job's age is greater than this value. When using

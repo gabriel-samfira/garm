@@ -80,7 +80,7 @@ func WithAgentRouter(parentRouter *mux.Router, han *controllers.APIController, m
 		return nil
 	}
 
-	agentRouter := parentRouter.PathPrefix("/api/agent").Subrouter()
+	agentRouter := parentRouter.PathPrefix("/agent").Subrouter()
 	agentRouter.Use(middleware.Middleware)
 	agentRouter.Handle("/", http.HandlerFunc(han.AgentHandler)).Methods("GET")
 	agentRouter.Handle("", http.HandlerFunc(han.AgentHandler)).Methods("GET")

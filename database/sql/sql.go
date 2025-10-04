@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
+	"regexp"
 	"strings"
 
 	"gorm.io/driver/mysql"
@@ -638,6 +639,11 @@ func (s *sqlDatabase) migrateDB() error {
 		hasMinAgeField = true
 	}
 
+	hasAgentURL := false
+	if s.conn.Migrator().HasTable(&ControllerInfo{}) && s.conn.Migrator().HasColumn(&ControllerInfo{}, "agent_url") {
+		hasAgentURL = true
+	}
+
 	migrateTemplates := !s.conn.Migrator().HasTable(&Template{})
 
 	s.conn.Exec("PRAGMA foreign_keys = OFF")
@@ -672,14 +678,23 @@ func (s *sqlDatabase) migrateDB() error {
 
 	s.conn.Exec("PRAGMA foreign_keys = ON")
 
-	if !hasMinAgeField {
+	if !hasMinAgeField || !hasAgentURL {
 		var controller ControllerInfo
 		if err := s.conn.First(&controller).Error; err != nil {
 			if !errors.Is(err, gorm.ErrRecordNotFound) {
 				return fmt.Errorf("error updating controller info: %w", err)
 			}
 		} else {
-			controller.MinimumJobAgeBackoff = 30
+			if !hasMinAgeField {
+				controller.MinimumJobAgeBackoff = 30
+			}
+			if !hasAgentURL {
+				if controller.WebhookBaseURL != "" {
+					matchWehooksPath := regexp.MustCompile(`/webhooks(/)?$`)
+					agentURL := matchWehooksPath.ReplaceAllLiteralString(controller.WebhookBaseURL, `/agent`)
+					controller.AgentURL = agentURL
+				}
+			}
 			if err := s.conn.Save(&controller).Error; err != nil {
 				return fmt.Errorf("error updating controller info: %w", err)
 			}

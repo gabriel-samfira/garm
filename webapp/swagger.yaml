@@ -26,6 +26,12 @@ definitions:
         x-go-package: github.com/cloudbase/garm-provider-common/params
     ControllerInfo:
         properties:
+            agent_url:
+                description: |-
+                    AgentURL is the URL where the GARM agent will connect. If set behind a reverse proxy, this
+                    URL must be configured to allow websocket connections.
+                type: string
+                x-go-name: AgentURL
             callback_url:
                 description: |-
                     CallbackURL is the URL where instances can send updates back to the controller.
@@ -1538,6 +1544,9 @@ definitions:
         x-go-package: github.com/cloudbase/garm/params
     UpdateControllerParams:
         properties:
+            agent_url:
+                type: string
+                x-go-name: AgentURL
             callback_url:
                 type: string
                 x-go-name: CallbackURL
@@ -1840,7 +1849,7 @@ paths:
                         $ref: '#/definitions/APIErrorResponse'
             summary: Returns a JWT token that can be used by an agent to access the websocket handler.
             tags:
-                - metrics-token
+                - agent
     /auth/login:
         post:
             operationId: Login

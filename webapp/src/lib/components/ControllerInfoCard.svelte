@@ -20,6 +20,7 @@
 	let metadataUrl = '';
 	let callbackUrl = '';
 	let webhookUrl = '';
+	let agentUrl = '';
 	let minimumJobAgeBackoff: number | null = null;
 
 
@@ -28,6 +29,7 @@
 		metadataUrl = controllerInfo.metadata_url || '';
 		callbackUrl = controllerInfo.callback_url || '';
 		webhookUrl = controllerInfo.webhook_url || '';
+		agentUrl = controllerInfo.agent_url || '';
 		minimumJobAgeBackoff = controllerInfo.minimum_job_age_backoff || null;
 		
 		showSettingsModal = true;
@@ -48,6 +50,9 @@
 			}
 			if (webhookUrl.trim()) {
 				updateParams.webhook_url = webhookUrl.trim();
+			}
+			if (agentUrl.trim()) {
+				updateParams.agent_url = agentUrl.trim();
 			}
 			if (minimumJobAgeBackoff !== null && minimumJobAgeBackoff >= 0) {
 				updateParams.minimum_job_age_backoff = minimumJobAgeBackoff;
@@ -82,6 +87,7 @@
 		metadataUrl = '';
 		callbackUrl = '';
 		webhookUrl = '';
+		agentUrl = '';
 		minimumJobAgeBackoff = null;
 	}
 
@@ -100,6 +106,7 @@
 		isValidUrl(metadataUrl) &&
 		isValidUrl(callbackUrl) &&
 		isValidUrl(webhookUrl) &&
+		isValidUrl(agentUrl) &&
 		(minimumJobAgeBackoff === null || minimumJobAgeBackoff >= 0);
 </script>
 
@@ -237,8 +244,26 @@
 							</div>
 						{/if}
 
+						<!-- Agent URL -->
+						{#if controllerInfo.agent_url}
+							<div>
+								<div class="flex items-center">
+									<div class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide font-medium">Agent</div>
+									<div class="ml-2">
+										<Tooltip
+											title="Agent URL"
+											content="URL where GARM agents connect for communication. This URL must support websocket connections for real-time communication between the controller and agent instances. Usually accessible at /agent endpoint."
+										/>
+									</div>
+								</div>
+								<div class="mt-1 p-2 bg-gray-50 dark:bg-gray-700 rounded text-sm font-mono text-gray-600 dark:text-gray-300 break-all min-h-[38px] flex items-center">
+									{controllerInfo.agent_url}
+								</div>
+							</div>
+						{/if}
+
 						<!-- If no URLs configured -->
-						{#if !controllerInfo.metadata_url && !controllerInfo.callback_url && !controllerInfo.webhook_url}
+						{#if !controllerInfo.metadata_url && !controllerInfo.callback_url && !controllerInfo.webhook_url && !controllerInfo.agent_url}
 							<div class="text-center py-4">
 								<svg class="mx-auto h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
@@ -358,6 +383,27 @@
 					{/if}
 					<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
 						URL where GitHub/Gitea will send webhook events for job notifications
+					</p>
+				</div>
+
+				<!-- Agent URL -->
+				<div>
+					<label for="agentUrl" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+						Agent URL
+					</label>
+					<input
+						id="agentUrl"
+						type="url"
+						bind:value={agentUrl}
+						placeholder="https://garm.example.com/agent"
+						class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white sm:text-sm"
+						class:border-red-300={!isValidUrl(agentUrl)}
+					/>
+					{#if !isValidUrl(agentUrl)}
+						<p class="mt-1 text-sm text-red-600">Please enter a valid URL</p>
+					{/if}
+					<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+						URL where GARM agents connect. Must support websocket connections
 					</p>
 				</div>
 

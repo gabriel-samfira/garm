@@ -68,6 +68,12 @@ export interface Address {
  */
 export interface ControllerInfo {
     /**
+     * AgentURL is the URL where the GARM agent will connect. If set behind a reverse proxy, this URL must be configured to allow websocket connections.
+     * @type {string}
+     * @memberof ControllerInfo
+     */
+    'agent_url'?: string;
+    /**
      * CallbackURL is the URL where instances can send updates back to the controller. This URL is used by instances to send status updates back to the controller. The URL itself may be made available to instances via a reverse proxy or a load balancer. That means that the user is responsible for telling GARM what the public URL is, by setting this field.
      * @type {string}
      * @memberof ControllerInfo
@@ -2368,6 +2374,12 @@ export interface UpdateControllerParams {
      * @type {string}
      * @memberof UpdateControllerParams
      */
+    'agent_url'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof UpdateControllerParams
+     */
     'callback_url'?: string;
     /**
      * 
@@ -2842,6 +2854,117 @@ export interface User {
      */
     'username'?: string;
 }
+
+/**
+ * AgentApi - axios parameter creator
+ * @export
+ */
+export const AgentApiAxiosParamCreator = function (configuration?: Configuration) {
+    return {
+        /**
+         * 
+         * @summary Returns a JWT token that can be used by an agent to access the websocket handler.
+         * @param {string} agentName Runner Name.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getAgentJWTToken: async (agentName: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'agentName' is not null or undefined
+            assertParamExists('getAgentJWTToken', 'agentName', agentName)
+            const localVarPath = `/agent/{agentName}/token`
+                .replace(`{${"agentName"}}`, encodeURIComponent(String(agentName)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication Bearer required
+            await setApiKeyToObject(localVarHeaderParameter, "Authorization", configuration)
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+    }
+};
+
+/**
+ * AgentApi - functional programming interface
+ * @export
+ */
+export const AgentApiFp = function(configuration?: Configuration) {
+    const localVarAxiosParamCreator = AgentApiAxiosParamCreator(configuration)
+    return {
+        /**
+         * 
+         * @summary Returns a JWT token that can be used by an agent to access the websocket handler.
+         * @param {string} agentName Runner Name.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async getAgentJWTToken(agentName: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<JWTResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getAgentJWTToken(agentName, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['AgentApi.getAgentJWTToken']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+    }
+};
+
+/**
+ * AgentApi - factory interface
+ * @export
+ */
+export const AgentApiFactory = function (configuration?: Configuration, basePath?: string, axios?: AxiosInstance) {
+    const localVarFp = AgentApiFp(configuration)
+    return {
+        /**
+         * 
+         * @summary Returns a JWT token that can be used by an agent to access the websocket handler.
+         * @param {string} agentName Runner Name.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getAgentJWTToken(agentName: string, options?: RawAxiosRequestConfig): AxiosPromise<JWTResponse> {
+            return localVarFp.getAgentJWTToken(agentName, options).then((request) => request(axios, basePath));
+        },
+    };
+};
+
+/**
+ * AgentApi - object-oriented interface
+ * @export
+ * @class AgentApi
+ * @extends {BaseAPI}
+ */
+export class AgentApi extends BaseAPI {
+    /**
+     * 
+     * @summary Returns a JWT token that can be used by an agent to access the websocket handler.
+     * @param {string} agentName Runner Name.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof AgentApi
+     */
+    public getAgentJWTToken(agentName: string, options?: RawAxiosRequestConfig) {
+        return AgentApiFp(this.configuration).getAgentJWTToken(agentName, options).then((request) => request(this.axios, this.basePath));
+    }
+}
+
+
 
 /**
  * ControllerApi - axios parameter creator
@@ -7080,43 +7203,6 @@ export const MetricsTokenApiAxiosParamCreator = function (configuration?: Config
     return {
         /**
          * 
-         * @summary Returns a JWT token that can be used by an agent to access the websocket handler.
-         * @param {string} agentName Runner Name.
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        getAgentJWTToken: async (agentName: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'agentName' is not null or undefined
-            assertParamExists('getAgentJWTToken', 'agentName', agentName)
-            const localVarPath = `/agent/{agentName}/token`
-                .replace(`{${"agentName"}}`, encodeURIComponent(String(agentName)));
-            // use dummy base URL string because the URL constructor only accepts absolute URLs.
-            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
-            let baseOptions;
-            if (configuration) {
-                baseOptions = configuration.baseOptions;
-            }
-
-            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
-            const localVarHeaderParameter = {} as any;
-            const localVarQueryParameter = {} as any;
-
-            // authentication Bearer required
-            await setApiKeyToObject(localVarHeaderParameter, "Authorization", configuration)
-
-
-    
-            setSearchParams(localVarUrlObj, localVarQueryParameter);
-            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
-            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
-
-            return {
-                url: toPathString(localVarUrlObj),
-                options: localVarRequestOptions,
-            };
-        },
-        /**
-         * 
          * @summary Returns a JWT token that can be used to access the metrics endpoint.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -7160,19 +7246,6 @@ export const MetricsTokenApiFp = function(configuration?: Configuration) {
     return {
         /**
          * 
-         * @summary Returns a JWT token that can be used by an agent to access the websocket handler.
-         * @param {string} agentName Runner Name.
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        async getAgentJWTToken(agentName: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<JWTResponse>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.getAgentJWTToken(agentName, options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['MetricsTokenApi.getAgentJWTToken']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
-        },
-        /**
-         * 
          * @summary Returns a JWT token that can be used to access the metrics endpoint.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -7195,16 +7268,6 @@ export const MetricsTokenApiFactory = function (configuration?: Configuration, b
     return {
         /**
          * 
-         * @summary Returns a JWT token that can be used by an agent to access the websocket handler.
-         * @param {string} agentName Runner Name.
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        getAgentJWTToken(agentName: string, options?: RawAxiosRequestConfig): AxiosPromise<JWTResponse> {
-            return localVarFp.getAgentJWTToken(agentName, options).then((request) => request(axios, basePath));
-        },
-        /**
-         * 
          * @summary Returns a JWT token that can be used to access the metrics endpoint.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -7222,18 +7285,6 @@ export const MetricsTokenApiFactory = function (configuration?: Configuration, b
  * @extends {BaseAPI}
  */
 export class MetricsTokenApi extends BaseAPI {
-    /**
-     * 
-     * @summary Returns a JWT token that can be used by an agent to access the websocket handler.
-     * @param {string} agentName Runner Name.
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     * @memberof MetricsTokenApi
-     */
-    public getAgentJWTToken(agentName: string, options?: RawAxiosRequestConfig) {
-        return MetricsTokenApiFp(this.configuration).getAgentJWTToken(agentName, options).then((request) => request(this.axios, this.basePath));
-    }
-
     /**
      * 
      * @summary Returns a JWT token that can be used to access the metrics endpoint.

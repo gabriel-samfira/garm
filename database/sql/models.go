@@ -54,6 +54,7 @@ type ControllerInfo struct {
 	CallbackURL    string
 	MetadataURL    string
 	WebhookBaseURL string
+	AgentURL       string
 	// MinimumJobAgeBackoff is the minimum time that a job must be in the queue
 	// before GARM will attempt to allocate a runner to service it. This backoff
 	// is useful if you have idle runners in various pools that could potentially

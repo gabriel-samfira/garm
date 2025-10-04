@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net/url"
 	"os"
 	"sync"
 	"time"
@@ -486,7 +487,13 @@ retryConnecting:
 		case <-s.connected:
 			slog.InfoContext(s.ctx, "attempting to connect to GARM server", "server", s.cfg.ServerURL)
 			sleepTime = 5 * time.Second
-			cli, err := garmWs.NewReader(s.ctx, s.cfg.ServerURL, "/api/agent/", s.cfg.Token, s.handleMessage)
+			parsed, err := url.ParseRequestURI(s.cfg.ServerURL)
+			if err != nil {
+				slog.ErrorContext(s.ctx, "server url is invalid", "error", err)
+				return
+			}
+			baseURL := fmt.Sprintf("%s://%s", parsed.Scheme, parsed.Host)
+			cli, err := garmWs.NewReader(s.ctx, baseURL, parsed.Path, s.cfg.Token, s.handleMessage)
 			if err != nil {
 				slog.WarnContext(s.ctx, "failed to create websocket client", "error", err)
 				goto retryConnecting

@@ -72,6 +72,7 @@ as follows:
   * /webhooks - the base URL for the webhooks. Github needs to reach this URL.
   * /api/v1/metadata - the metadata URL. Your runners need to be able to reach this URL.
   * /api/v1/callbacks - the callback URL. Your runners need to be able to reach this URL.
+  * /agent - the agent URL. Your runners need to be able to reach this URL, when agent mode is used.
 
 You need to expose these endpoints to the interested parties (github or
 your runners), then you need to update the controller with the URLs you set up.
@@ -112,6 +113,9 @@ up the GARM controller URLs as:
 		}
 		if cmd.Flags().Changed("webhook-url") {
 			params.WebhookURL = &webhookURL
+		}
+		if cmd.Flags().Changed("agent-url") {
+			params.AgentURL = &agentURL
 		}
 
 		if cmd.Flags().Changed("minimum-job-age-backoff") {
@@ -159,6 +163,7 @@ func renderControllerInfoTable(info params.ControllerInfo) string {
 	t.AppendRow(table.Row{"Callback URL", info.CallbackURL})
 	t.AppendRow(table.Row{"Webhook Base URL", info.WebhookURL})
 	t.AppendRow(table.Row{"Controller Webhook URL", info.ControllerWebhookURL})
+	t.AppendRow(table.Row{"Agent URL", info.AgentURL})
 	t.AppendRow(table.Row{"Minimum Job Age Backoff", info.MinimumJobAgeBackoff})
 	t.AppendRow(table.Row{"Version", serverVersion})
 	return t.Render()
@@ -177,6 +182,7 @@ func init() {
 	controllerUpdateCmd.Flags().StringVarP(&metadataURL, "metadata-url", "m", "", "The metadata URL for the controller (ie. https://garm.example.com/api/v1/metadata)")
 	controllerUpdateCmd.Flags().StringVarP(&callbackURL, "callback-url", "c", "", "The callback URL for the controller (ie. https://garm.example.com/api/v1/callbacks)")
 	controllerUpdateCmd.Flags().StringVarP(&webhookURL, "webhook-url", "w", "", "The webhook URL for the controller (ie. https://garm.example.com/webhooks)")
+	controllerUpdateCmd.Flags().StringVarP(&agentURL, "agent-url", "w", "", "The agent URL for the controller (ie. https://garm.example.com/agent)")
 	controllerUpdateCmd.Flags().UintVarP(&minimumJobAgeBackoff, "minimum-job-age-backoff", "b", 0, "The minimum job age backoff for the controller")
 
 	controllerCmd.AddCommand(

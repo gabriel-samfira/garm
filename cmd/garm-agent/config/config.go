@@ -25,6 +25,8 @@ func NewConfig(cfgFile string) (*Agent, error) {
 }
 
 type Agent struct {
+	// ServerURL is the agent endpoint on the GARM server that the agent needs to connect to.
+	// Typically whis will be https://garm.example.com/agent.
 	ServerURL string `toml:"server_url"`
 	Token     string `toml:"token"`
 	// WorkDir is the folder in which the runner will execute workflows.
