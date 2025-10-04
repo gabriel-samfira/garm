@@ -234,8 +234,6 @@ func (a *Agent) messageHandler(msg []byte) (err error) {
 	case messaging.MessageTypeHeartbeat:
 		slog.DebugContext(a.ctx, "received heartbeat message from agent")
 		err = a.agentStore.RecordAgentHeartbeat(a.ctx)
-	case messaging.MessageTypeStatusMessage:
-		// record status message
 	case messaging.MessageTypeShellReady:
 		shellReady, err := messaging.Unmarshal[messaging.ShellReadyMessage](agentMsg)
 		if err != nil {
@@ -272,7 +270,7 @@ func (a *Agent) messageHandler(msg []byte) (err error) {
 		if err := session.Write(msg); err != nil {
 			return fmt.Errorf("failed to write message: %w", err)
 		}
-	case messaging.MessageTypeRunnerUpdate:
+	case messaging.MessageTypeStatusMessage:
 		statusUpdate, err := messaging.Unmarshal[messaging.RunnerUpdateMessage](agentMsg)
 		if err != nil {
 			return fmt.Errorf("failed to unmarshal runner status message: %w", err)

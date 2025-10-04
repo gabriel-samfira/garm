@@ -80,9 +80,10 @@ func WithAgentRouter(parentRouter *mux.Router, han *controllers.APIController, m
 		return nil
 	}
 
-	agentRouter := parentRouter.PathPrefix("/agent").Subrouter()
+	agentRouter := parentRouter.PathPrefix("/api/agent").Subrouter()
 	agentRouter.Use(middleware.Middleware)
 	agentRouter.Handle("/", http.HandlerFunc(han.AgentHandler)).Methods("GET")
+	agentRouter.Handle("", http.HandlerFunc(han.AgentHandler)).Methods("GET")
 	return parentRouter
 }
 
@@ -150,7 +151,6 @@ func NewAPIRouter(han *controllers.APIController, authMiddleware, initMiddleware
 
 	// Handles API calls
 	apiSubRouter := router.PathPrefix("/api/v1").Subrouter()
-
 	// FirstRunHandler
 	firstRunRouter := apiSubRouter.PathPrefix("/first-run").Subrouter()
 	firstRunRouter.Handle("/", http.HandlerFunc(han.FirstRunHandler)).Methods("POST", "OPTIONS")

@@ -152,6 +152,7 @@ func (amw *agentMiddleware) Middleware(next http.Handler) http.Handler {
 		case params.RunnerActive, params.RunnerTerminated, params.RunnerFailed:
 			// Once a job starts to run, we can no longer trust that the JWT token was not compromised.
 			// Any new auth requests using that token are not to be allowed.
+			slog.InfoContext(ctx, "invalid runner status", "status", runnerStatus)
 			invalidAuthResponse(ctx, w)
 			return
 		}
@@ -179,6 +180,7 @@ func (amw *agentMiddleware) Middleware(next http.Handler) http.Handler {
 		// instance must be running. Anything else is either still creating or in the process
 		// of being deleted and shouldn't be trying to authenticate.
 		if instanceParams.Status != commonParams.InstanceRunning {
+			slog.InfoContext(ctx, "invalid instance status", "status", instanceParams.Status)
 			invalidAuthResponse(ctx, w)
 			return
 		}

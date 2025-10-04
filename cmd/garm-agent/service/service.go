@@ -486,7 +486,7 @@ retryConnecting:
 		case <-s.connected:
 			slog.InfoContext(s.ctx, "attempting to connect to GARM server", "server", s.cfg.ServerURL)
 			sleepTime = 5 * time.Second
-			cli, err := garmWs.NewReader(s.ctx, s.cfg.ServerURL, "/agent/", s.cfg.Token, s.handleMessage)
+			cli, err := garmWs.NewReader(s.ctx, s.cfg.ServerURL, "/api/agent/", s.cfg.Token, s.handleMessage)
 			if err != nil {
 				slog.WarnContext(s.ctx, "failed to create websocket client", "error", err)
 				goto retryConnecting
