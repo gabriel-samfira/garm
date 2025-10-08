@@ -193,7 +193,7 @@ func init() {
 	initCmd.Flags().StringVarP(&metadataURL, "metadata-url", "m", "", "The metadata URL for the controller (ie. https://garm.example.com/api/v1/metadata)")
 	initCmd.Flags().StringVarP(&callbackURL, "callback-url", "c", "", "The callback URL for the controller (ie. https://garm.example.com/api/v1/callbacks)")
 	initCmd.Flags().StringVarP(&webhookURL, "webhook-url", "w", "", "The webhook URL for the controller (ie. https://garm.example.com/webhooks)")
-	initCmd.Flags().StringVarP(&agentURL, "agent-url", "w", "", "The agent URL for the controller (ie. https://garm.example.com/agent)")
+	initCmd.Flags().StringVarP(&agentURL, "agent-url", "g", "", "The agent URL for the controller (ie. https://garm.example.com/agent)")
 	initCmd.Flags().StringVarP(&loginFullName, "full-name", "f", "", "Full name of the user")
 	initCmd.Flags().StringVarP(&loginPassword, "password", "p", "", "The admin password")
 	initCmd.MarkFlagRequired("name") //nolint
