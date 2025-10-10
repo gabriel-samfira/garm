@@ -648,27 +648,20 @@ It is not meant to be used to serve files outside of the needs of GARM and it do
 	bind:searchTerm
 	searchPlaceholder="Search by name or tags..."
 	searchHelpText=""
-	showPagination={false}
+	showPagination={true}
+	paginationComponent={BackendPagination}
+	currentPage={currentPage}
+	totalPages={totalPages}
+	totalItems={totalObjects}
+	perPage={pageSize}
 	on:search={handleSearch}
+	on:pageChange={handlePageChange}
+	on:pageSizeChange={handlePageSizeChange}
+	on:prefetch={handlePrefetch}
 	on:edit={(e) => openUpdateModal(e.detail.item)}
 	on:delete={(e) => openDeleteModal(e.detail.item)}
 	on:action={(e) => e.detail.type === 'download' && handleDownload(e.detail.item)}
 />
-
-<!-- Pagination -->
-{#if !loading && !error && totalObjects > 0}
-	<BackendPagination
-		{currentPage}
-		{totalPages}
-		totalItems={totalObjects}
-		{pageSize}
-		{loading}
-		itemName="objects"
-		on:pageChange={handlePageChange}
-		on:pageSizeChange={handlePageSizeChange}
-		on:prefetch={handlePrefetch}
-	/>
-{/if}
 
 <!-- Upload Modal -->
 {#if showUploadModal}

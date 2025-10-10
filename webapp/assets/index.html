@@ -15,12 +15,12 @@
 				function applyTheme() {
 					const savedTheme = localStorage.getItem('theme');
 					const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-
+					
 					// Determine if we should use dark mode
-					const useDarkMode = savedTheme === 'dark' ||
-						(!savedTheme && prefersDark) ||
+					const useDarkMode = savedTheme === 'dark' || 
+						(!savedTheme && prefersDark) || 
 						(savedTheme === 'system' && prefersDark);
-
+					
 					// Apply the theme class to document
 					if (useDarkMode) {
 						document.documentElement.classList.add('dark');
@@ -28,26 +28,26 @@
 						document.documentElement.classList.remove('dark');
 					}
 				}
-
+				
 				function updateFavicon() {
 					const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 					const savedTheme = localStorage.getItem('theme');
-					const useDarkMode = savedTheme === 'dark' ||
-						(!savedTheme && prefersDark) ||
+					const useDarkMode = savedTheme === 'dark' || 
+						(!savedTheme && prefersDark) || 
 						(savedTheme === 'system' && prefersDark);
 					const fallbackIcon = document.getElementById('favicon-fallback');
-
+					
 					if (useDarkMode) {
 						fallbackIcon.href = '/ui/favicon-dark.png';
 					} else {
 						fallbackIcon.href = '/ui/favicon-light.png';
 					}
 				}
-
+				
 				// Apply theme and favicon on load
 				applyTheme();
 				updateFavicon();
-
+				
 				// Listen for system theme changes
 				if (window.matchMedia) {
 					const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -59,7 +59,7 @@
 							updateFavicon();
 						}
 					};
-
+					
 					// Modern browsers
 					if (mediaQuery.addEventListener) {
 						mediaQuery.addEventListener('change', handleChange);
@@ -70,79 +70,12 @@
 				}
 			})();
 		</script>
-<<<<<<< HEAD
-
-		<link rel="modulepreload" href="/ui/_app/immutable/entry/start.STBCHZlH.js">
-		<link rel="modulepreload" href="/ui/_app/immutable/chunks/DeKGyprh.js">
-		<link rel="modulepreload" href="/ui/_app/immutable/chunks/DniTuB_0.js">
-		<link rel="modulepreload" href="/ui/_app/immutable/chunks/BSR16q_V.js">
-		<link rel="modulepreload" href="/ui/_app/immutable/entry/app.ckt_VgS1.js">
-=======
 		
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-		<link rel="modulepreload" href="/ui/_app/immutable/entry/start.CdwmD_c4.js">
-		<link rel="modulepreload" href="/ui/_app/immutable/chunks/Cd9JE2ql.js">
-		<link rel="modulepreload" href="/ui/_app/immutable/chunks/DniTuB_0.js">
-<<<<<<< HEAD
-<<<<<<< HEAD
-		<link rel="modulepreload" href="/ui/_app/immutable/chunks/BARlMp4U.js">
-		<link rel="modulepreload" href="/ui/_app/immutable/entry/app.BA9Z4IHF.js">
->>>>>>> 4b2fa148 (Add BaseURL to ExtraContext)
-=======
-		<link rel="modulepreload" href="/ui/_app/immutable/chunks/yYZYcSjM.js">
-		<link rel="modulepreload" href="/ui/_app/immutable/entry/app.Cdnk0f6y.js">
->>>>>>> d28b4c18 (Web UI shell improvements and keep runner alive)
-=======
-		<link rel="modulepreload" href="/ui/_app/immutable/chunks/BKcu1vUL.js">
-		<link rel="modulepreload" href="/ui/_app/immutable/entry/app.lPqRU81I.js">
->>>>>>> 8df89b11 (Fix tabs on web code editor)
-=======
-		<link rel="modulepreload" href="/ui/_app/immutable/entry/start.DyYa4cvP.js">
-		<link rel="modulepreload" href="/ui/_app/immutable/chunks/BTh_PCDv.js">
+		<link rel="modulepreload" href="/ui/_app/immutable/entry/start.I9TFd2Ux.js">
+		<link rel="modulepreload" href="/ui/_app/immutable/chunks/C4Yye4QB.js">
 		<link rel="modulepreload" href="/ui/_app/immutable/chunks/BIqNNOMq.js">
-		<link rel="modulepreload" href="/ui/_app/immutable/chunks/B33u5Min.js">
-		<link rel="modulepreload" href="/ui/_app/immutable/entry/app.D5Vd-8XY.js">
->>>>>>> 237ef1e2 (Fix web terminal tab view)
-=======
-		<link rel="modulepreload" href="/ui/_app/immutable/entry/start.BFsPL_gv.js">
-		<link rel="modulepreload" href="/ui/_app/immutable/chunks/DuAF6eok.js">
-		<link rel="modulepreload" href="/ui/_app/immutable/chunks/BIqNNOMq.js">
-		<link rel="modulepreload" href="/ui/_app/immutable/chunks/DrHiTyaT.js">
-		<link rel="modulepreload" href="/ui/_app/immutable/entry/app.C5c-z1AP.js">
->>>>>>> fe5e4ea5 (Limit tabs to 5, set min width to fit tabs)
-=======
-		<link rel="modulepreload" href="/ui/_app/immutable/entry/start.paiGgJsG.js">
-		<link rel="modulepreload" href="/ui/_app/immutable/chunks/DK_lg_qg.js">
-		<link rel="modulepreload" href="/ui/_app/immutable/chunks/BIqNNOMq.js">
-		<link rel="modulepreload" href="/ui/_app/immutable/chunks/B94Cz6FP.js">
-		<link rel="modulepreload" href="/ui/_app/immutable/entry/app.BD8pNe-W.js">
->>>>>>> 60852c9d (UI improvements and windows fixes)
-=======
-		<link rel="modulepreload" href="/ui/_app/immutable/entry/start.B0hdfcyx.js">
-		<link rel="modulepreload" href="/ui/_app/immutable/chunks/r6It2p9J.js">
-		<link rel="modulepreload" href="/ui/_app/immutable/chunks/BIqNNOMq.js">
-		<link rel="modulepreload" href="/ui/_app/immutable/chunks/vpkAl9wn.js">
-		<link rel="modulepreload" href="/ui/_app/immutable/entry/app.VI_1Dfkg.js">
->>>>>>> feb3ac69 (WiP)
-=======
-		<link rel="modulepreload" href="/ui/_app/immutable/entry/start.CkDnxlQw.js">
-		<link rel="modulepreload" href="/ui/_app/immutable/chunks/DV4-0Bq8.js">
-		<link rel="modulepreload" href="/ui/_app/immutable/chunks/BIqNNOMq.js">
-		<link rel="modulepreload" href="/ui/_app/immutable/chunks/DrPnkNA0.js">
-		<link rel="modulepreload" href="/ui/_app/immutable/entry/app.1gYLFc59.js">
->>>>>>> 0fc5b2ae (WiP)
-=======
-		<link rel="modulepreload" href="/ui/_app/immutable/entry/start.CLqvtPCe.js">
-		<link rel="modulepreload" href="/ui/_app/immutable/chunks/BCGLYHxq.js">
-		<link rel="modulepreload" href="/ui/_app/immutable/chunks/BIqNNOMq.js">
-		<link rel="modulepreload" href="/ui/_app/immutable/chunks/DJz2Uiqi.js">
-		<link rel="modulepreload" href="/ui/_app/immutable/entry/app.B1qFYvZb.js">
->>>>>>> b58ea77a (Add AgentURL to controller info)
+		<link rel="modulepreload" href="/ui/_app/immutable/chunks/DL8JUDDa.js">
+		<link rel="modulepreload" href="/ui/_app/immutable/entry/app.Bmzh5KDv.js">
 		<link rel="modulepreload" href="/ui/_app/immutable/chunks/DsnmJJEf.js">
 		<link rel="modulepreload" href="/ui/_app/immutable/chunks/CfI2BFUj.js">
 		<link rel="modulepreload" href="/ui/_app/immutable/chunks/D4ORNjyB.js">
@@ -152,43 +85,7 @@
 		<div style="display: contents">
 			<script>
 				{
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-					__sveltekit_mlwef0 = {
-=======
-					__sveltekit_ek2o0i = {
->>>>>>> 4b2fa148 (Add BaseURL to ExtraContext)
-=======
-					__sveltekit_1rvi9wf = {
->>>>>>> d28b4c18 (Web UI shell improvements and keep runner alive)
-=======
-					__sveltekit_5vqnx4 = {
->>>>>>> 8df89b11 (Fix tabs on web code editor)
-=======
-					__sveltekit_hie5ir = {
->>>>>>> 237ef1e2 (Fix web terminal tab view)
-=======
-					__sveltekit_1l6z8du = {
->>>>>>> fe5e4ea5 (Limit tabs to 5, set min width to fit tabs)
-=======
-					__sveltekit_1iihmpj = {
->>>>>>> 60852c9d (UI improvements and windows fixes)
-=======
-					__sveltekit_19klj3y = {
->>>>>>> feb3ac69 (WiP)
-=======
-					__sveltekit_ffmmaf = {
->>>>>>> 0fc5b2ae (WiP)
-=======
-					__sveltekit_fthxo7 = {
->>>>>>> b58ea77a (Add AgentURL to controller info)
+					__sveltekit_1dz5ejj = {
 						base: "/ui",
 						assets: "/ui"
 					};
@@ -196,53 +93,8 @@
 					const element = document.currentScript.parentElement;
 
 					Promise.all([
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-						import("/ui/_app/immutable/entry/start.STBCHZlH.js"),
-						import("/ui/_app/immutable/entry/app.ckt_VgS1.js")
-=======
-						import("/ui/_app/immutable/entry/start.D8yp5fyC.js"),
-						import("/ui/_app/immutable/entry/app.BA9Z4IHF.js")
->>>>>>> 4b2fa148 (Add BaseURL to ExtraContext)
-=======
-						import("/ui/_app/immutable/entry/start.DBlanYqK.js"),
-						import("/ui/_app/immutable/entry/app.Cdnk0f6y.js")
->>>>>>> d28b4c18 (Web UI shell improvements and keep runner alive)
-=======
-						import("/ui/_app/immutable/entry/start.CdwmD_c4.js"),
-						import("/ui/_app/immutable/entry/app.lPqRU81I.js")
->>>>>>> 8df89b11 (Fix tabs on web code editor)
-=======
-						import("/ui/_app/immutable/entry/start.DyYa4cvP.js"),
-						import("/ui/_app/immutable/entry/app.D5Vd-8XY.js")
->>>>>>> 237ef1e2 (Fix web terminal tab view)
-=======
-						import("/ui/_app/immutable/entry/start.BFsPL_gv.js"),
-						import("/ui/_app/immutable/entry/app.C5c-z1AP.js")
->>>>>>> fe5e4ea5 (Limit tabs to 5, set min width to fit tabs)
-=======
-						import("/ui/_app/immutable/entry/start.paiGgJsG.js"),
-						import("/ui/_app/immutable/entry/app.BD8pNe-W.js")
->>>>>>> 60852c9d (UI improvements and windows fixes)
-=======
-						import("/ui/_app/immutable/entry/start.B0hdfcyx.js"),
-						import("/ui/_app/immutable/entry/app.VI_1Dfkg.js")
->>>>>>> feb3ac69 (WiP)
-=======
-						import("/ui/_app/immutable/entry/start.CkDnxlQw.js"),
-						import("/ui/_app/immutable/entry/app.1gYLFc59.js")
->>>>>>> 0fc5b2ae (WiP)
-=======
-						import("/ui/_app/immutable/entry/start.CLqvtPCe.js"),
-						import("/ui/_app/immutable/entry/app.B1qFYvZb.js")
->>>>>>> b58ea77a (Add AgentURL to controller info)
+						import("/ui/_app/immutable/entry/start.I9TFd2Ux.js"),
+						import("/ui/_app/immutable/entry/app.Bmzh5KDv.js")
 					]).then(([kit, app]) => {
 						kit.start(app, element);
 					});

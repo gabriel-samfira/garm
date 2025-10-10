@@ -51,18 +51,11 @@
 		{@const buttonAction = action.action === 'clone' ? 'copy' : (action.action || (action.type === 'edit' ? 'edit' : action.type === 'delete' ? 'delete' : action.type === 'copy' ? 'copy' : action.type === 'shell' ? 'shell' : 'view'))}
 		{@const buttonTitle = isDisabled && action.disabledTitle ? action.disabledTitle : (action.title || (action.type === 'edit' ? 'Edit' : action.type === 'delete' ? 'Delete' : action.type === 'copy' ? 'Clone' : action.type === 'shell' ? 'Shell' : action.label))}
 		<ActionButton
-<<<<<<< HEAD
-			action={action.action === 'clone' ? 'copy' : (action.action || (action.type === 'edit' ? 'edit' : action.type === 'delete' ? 'delete' : action.type === 'copy' ? 'copy' : 'view'))}
-			title={action.title || (action.type === 'edit' ? 'Edit' : action.type === 'delete' ? 'Delete' : action.type === 'copy' ? 'Clone' : action.label)}
-			ariaLabel={action.ariaLabel || (action.type === 'edit' ? 'Edit item' : action.type === 'delete' ? 'Delete item' : action.type === 'copy' ? 'Clone item' : action.label)}
-			on:click={() => handleAction(action.type, action.action)}
-=======
 			action={buttonAction}
 			title={buttonTitle}
 			ariaLabel={action.ariaLabel || (action.type === 'edit' ? 'Edit item' : action.type === 'delete' ? 'Delete item' : action.type === 'copy' ? 'Clone item' : action.type === 'shell' ? 'Open shell' : action.label)}
 			disabled={isDisabled}
-			on:click={() => handleAction(action.type)}
->>>>>>> 60852c9d (UI improvements and windows fixes)
+			on:click={() => handleAction(action.type, action.action)}
 		/>
 	{/each}
 </div>

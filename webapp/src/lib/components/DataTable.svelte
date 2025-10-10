@@ -7,6 +7,7 @@
 	import BackendSearchBar from './BackendSearchBar.svelte';
 	import TablePagination from './TablePagination.svelte';
 	import MobileCard from './MobileCard.svelte';
+	import type { ComponentType } from 'svelte';
 	
 	// Table configuration
 	export let columns: Array<{
@@ -40,6 +41,8 @@
 	export let totalPages: number = 1;
 	export let showPagination: boolean = true;
 	export let showPerPageSelector: boolean = true;
+	export let paginationComponent: ComponentType | null = null; // Custom pagination component
+	export let paginationProps: Record<string, any> = {}; // Props to pass to custom pagination component
 	
 	// Empty state configuration
 	export let emptyTitle: string = 'No items found';
@@ -58,6 +61,8 @@
 		search: { term: string };
 		pageChange: { page: number };
 		perPageChange: { perPage: number };
+		pageSizeChange: { pageSize: number };
+		prefetch: { page: number };
 		retry: void;
 		rowClick: { item: any; index: number };
 		cellClick: { item: any; column: any; value: any };
@@ -122,7 +127,7 @@
 	}
 	
 	function getCellClass(column: any): string {
-		const baseClass = 'px-6 py-4 text-sm'; 
+		const baseClass = 'px-6 py-4 text-sm';
 		const alignClass = column.align === 'right' ? 'text-right' : column.align === 'center' ? 'text-center' : 'text-left';
 		const colorClass = column.key === 'actions' ? 'font-medium' : 'text-gray-900 dark:text-white';
 		// Add min-w-0 for flexible columns to ensure proper truncation
@@ -212,7 +217,7 @@
 			{/if}
 
 			<!-- Desktop view - Grid layout -->
-			<div class="hidden sm:block overflow-hidden bg-white dark:bg-gray-800 rounded-lg shadow">
+			<div class="hidden sm:block overflow-x-auto bg-white dark:bg-gray-800 rounded-lg shadow">
 				<div 
 					class="grid gap-0"
 					style="grid-template-columns: {getGridTemplate()}"
@@ -252,14 +257,30 @@
 		{/if}
 		
 		{#if showPagination && !loading && !error && data.length > 0}
-			<TablePagination
-				{currentPage}
-				{totalPages}
-				{perPage}
-				{totalItems}
-				{itemName}
-				on:pageChange={handlePageChange}
-			/>
+			{#if paginationComponent}
+				<svelte:component
+					this={paginationComponent}
+					{currentPage}
+					{totalPages}
+					{totalItems}
+					pageSize={perPage}
+					{loading}
+					{itemName}
+					{...paginationProps}
+					on:pageChange={handlePageChange}
+					on:pageSizeChange={handlePerPageChange}
+					on:prefetch
+				/>
+			{:else}
+				<TablePagination
+					{currentPage}
+					{totalPages}
+					{perPage}
+					{totalItems}
+					{itemName}
+					on:pageChange={handlePageChange}
+				/>
+			{/if}
 		{/if}
 	</div>
 </div>
