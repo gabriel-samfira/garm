@@ -32,9 +32,10 @@ type Agent struct {
 	// WorkDir is the folder in which the runner will execute workflows.
 	// In the case of github, it is expected that the WorkDir is also the installation
 	// dir of the runner.
-	WorkDir string `toml:"work_dir"`
-	LogFile string `toml:"log_file"`
-	Shell   string `toml:"shell"`
+	WorkDir     string `toml:"work_dir"`
+	LogFile     string `toml:"log_file"`
+	Shell       string `toml:"shell"`
+	EnableShell bool   `toml:"enable_shell"`
 	// RunnerExecArgs is a list of command line parameters needed to launch the runner.
 	// This must include the executable as the first arg and any needed subsequent parametes.
 	// If the runner is started via a wrapper script, the fist argument must be the proper interpreter

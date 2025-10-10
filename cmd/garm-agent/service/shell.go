@@ -17,6 +17,7 @@ type PTY interface {
 	Write([]byte) (int, error)
 	Resize(cols, rows uint16) error
 	Close() error
+	HasPTY() bool
 }
 
 func NewShellSession(ctx context.Context, shellMsg messaging.CreateShellMessage, msgWriter messageWriter, cfg *config.Agent) (*ShellSession, error) {

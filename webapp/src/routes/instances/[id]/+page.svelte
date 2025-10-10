@@ -23,15 +23,21 @@
 
 
 	$: instanceName = decodeURIComponent($page.params.id || '');
-	
-	// Check if heartbeat is stale (older than 60 seconds)
-	$: isHeartbeatStale = (instance?.agent_id) ? 
+
+	// Current time for heartbeat staleness check - updates every second
+	let currentTime = Date.now();
+	let heartbeatCheckInterval: ReturnType<typeof setInterval> | null = null;
+
+	// Check if shell should be disabled (heartbeat stale or instance stopped)
+	$: isHeartbeatStale = (instance?.agent_id) ?
 		(() => {
+			// Disable if instance status is "stopped"
+			if (instance.status === 'stopped') return true;
+
 			const lastHeartbeat = instance.heartbeat;
 			if (!lastHeartbeat) return true;
-			const now = new Date();
 			const heartbeatTime = new Date(lastHeartbeat);
-			return (now.getTime() - heartbeatTime.getTime()) > 60000; // 60 seconds
+			return (currentTime - heartbeatTime.getTime()) > 60000; // 60 seconds
 		})() : true;
 
 	async function loadInstance() {
@@ -97,13 +103,18 @@
 				}, 100);
 			}
 		});
-		
+
 		// Subscribe to real-time instance events
 		unsubscribeWebsocket = websocketStore.subscribeToEntity(
 			'instance',
 			['update', 'delete'],
 			handleInstanceEvent
 		);
+
+		// Update current time every second for heartbeat staleness check
+		heartbeatCheckInterval = setInterval(() => {
+			currentTime = Date.now();
+		}, 1000);
 	});
 
 	onDestroy(() => {
@@ -111,6 +122,12 @@
 		if (unsubscribeWebsocket) {
 			unsubscribeWebsocket();
 			unsubscribeWebsocket = null;
+		}
+
+		// Clean up heartbeat check interval
+		if (heartbeatCheckInterval) {
+			clearInterval(heartbeatCheckInterval);
+			heartbeatCheckInterval = null;
 		}
 	});
 </script>
@@ -174,7 +191,7 @@
 							on:click={() => showShellModal = true}
 							disabled={isHeartbeatStale}
 							class="px-4 py-2 {isHeartbeatStale ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 cursor-pointer'} text-white rounded-lg font-medium text-sm flex items-center space-x-2"
-							title={isHeartbeatStale ? "Shell unavailable - Agent heartbeat is stale" : "Open Shell"}
+							title={isHeartbeatStale ? (instance?.status === 'stopped' ? "Shell unavailable - Instance is stopped" : "Shell unavailable - Agent heartbeat is stale") : "Open Shell"}
 						>
 							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z"></path>

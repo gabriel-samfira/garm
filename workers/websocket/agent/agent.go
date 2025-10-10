@@ -55,16 +55,18 @@ func NewAgent(ctx context.Context, conn *websocket.Conn, instance params.Instanc
 		done:          closed,
 		consumerID:    consumerID,
 		shellSessions: make(map[string]*ClientSession),
+		capabilities:  make(map[string]bool),
 	}, nil
 }
 
 type Agent struct {
-	ctx        context.Context
-	instance   params.Instance
-	mux        sync.Mutex
-	writeMux   sync.Mutex
-	conn       *websocket.Conn
-	agentStore runner.AgentStoreOps
+	ctx          context.Context
+	instance     params.Instance
+	mux          sync.Mutex
+	writeMux     sync.Mutex
+	conn         *websocket.Conn
+	agentStore   runner.AgentStoreOps
+	capabilities map[string]bool
 
 	consumerID string
 	consumer   common.Consumer
@@ -90,6 +92,15 @@ func (a *Agent) CreateShellSession(ctx context.Context, sessionID uuid.UUID, cli
 
 	if err := sess.Start(); err != nil {
 		return nil, fmt.Errorf("failed to start client session: %w", err)
+	}
+
+	if available, ok := a.capabilities["shell"]; !ok || !available {
+		shellDisabled := messaging.ShellDisabledMessage{
+			SessionID: sessionID,
+		}
+		sess.safeWrite(websocket.BinaryMessage, shellDisabled.Marshal())
+		sess.Stop()
+		return nil, fmt.Errorf("agent shell is disabled")
 	}
 	a.shellSessions[sessionID.String()] = sess
 	return sess, nil
@@ -233,7 +244,17 @@ func (a *Agent) messageHandler(msg []byte) (err error) {
 	switch agentMsg.Type {
 	case messaging.MessageTypeHeartbeat:
 		slog.DebugContext(a.ctx, "received heartbeat message from agent")
+		heartbeatMsg, err := messaging.Unmarshal[messaging.RunnerHeartbetMessage](agentMsg)
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal shell disabled message: %w", err)
+		}
 		err = a.agentStore.RecordAgentHeartbeat(a.ctx)
+		if err != nil {
+			return fmt.Errorf("failed to record heartbeat: %w", err)
+		}
+		if a.instance.AgentID != int64(heartbeatMsg.AgentID) {
+			slog.WarnContext(a.ctx, "missmatching agent ID", "instance_agent_id", a.instance.AgentID, "status_update_agent_id", heartbeatMsg.AgentID)
+		}
 	case messaging.MessageTypeShellReady:
 		shellReady, err := messaging.Unmarshal[messaging.ShellReadyMessage](agentMsg)
 		if err != nil {
@@ -258,6 +279,23 @@ func (a *Agent) messageHandler(msg []byte) (err error) {
 		if err := a.RemoveClientSession(session.sessionID, false); err != nil {
 			return fmt.Errorf("failed to remove session: %w", err)
 		}
+	case messaging.MessageTypeShellDisabled:
+		shellDisabled, err := messaging.Unmarshal[messaging.ShellDisabledMessage](agentMsg)
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal shell disabled message: %w", err)
+		}
+		session, ok := a.shellSessions[shellDisabled.ID()]
+		if !ok {
+			return nil
+		}
+		// Let the client know that the shell feature is disabled.
+		if err := session.Write(msg); err != nil {
+			return fmt.Errorf("failed to write message: %w", err)
+		}
+		// Remove the session.
+		if err := a.RemoveClientSession(session.sessionID, false); err != nil {
+			return fmt.Errorf("failed to remove session: %w", err)
+		}
 	case messaging.MessageTypeShellData:
 		shellData, err := messaging.Unmarshal[messaging.ShellDataMessage](agentMsg)
 		if err != nil {
@@ -276,6 +314,9 @@ func (a *Agent) messageHandler(msg []byte) (err error) {
 			return fmt.Errorf("failed to unmarshal runner status message: %w", err)
 		}
 		slog.InfoContext(a.ctx, "got runner status update", "status", statusUpdate)
+		if a.instance.AgentID != int64(statusUpdate.AgentID) {
+			slog.WarnContext(a.ctx, "missmatching agent ID", "instance_agent_id", a.instance.AgentID, "status_update_agent_id", statusUpdate.AgentID)
+		}
 		var status params.InstanceUpdateMessage
 		if err := json.Unmarshal(statusUpdate.Payload, &status); err != nil {
 			return fmt.Errorf("failed to unmarshal instance update: %w", err)
@@ -292,7 +333,7 @@ func (a *Agent) messageHandler(msg []byte) (err error) {
 			return ErrShuttingDown
 		}
 	}
-	return err
+	return nil
 }
 
 func (a *Agent) loop() {

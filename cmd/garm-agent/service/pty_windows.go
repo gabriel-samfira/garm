@@ -17,6 +17,11 @@ import (
 
 var _ PTY = &sessionPTY{}
 
+var (
+	modkernel32             = syscall.NewLazyDLL("kernel32.dll")
+	procCreatePseudoConsole = modkernel32.NewProc("CreatePseudoConsole")
+)
+
 const CREATE_SUSPENDED = 0x00000004
 
 func NewSessionPTY(cfg *config.Agent) (PTY, error) {
@@ -155,6 +160,10 @@ func (p *sessionPTY) Close() error {
 	})
 
 	return err
+}
+
+func (p *sessionPTY) HasPTY() bool {
+	return procCreatePseudoConsole.Find() == nil
 }
 
 func DefaultShell() (string, error) {

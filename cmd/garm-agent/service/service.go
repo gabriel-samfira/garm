@@ -369,9 +369,8 @@ func (s *Service) SetJobFinished() {
 }
 
 func (s *Service) sendHeartbeat() error {
-	msg := messaging.AgentMessage{
-		Type: messaging.MessageTypeHeartbeat,
-		Data: []byte{},
+	msg := messaging.RunnerHeartbetMessage{
+		AgentID: uint64(s.runnerCmd.AgentID()),
 	}
 
 	cli, err := s.getClient()

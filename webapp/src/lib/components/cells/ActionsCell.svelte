@@ -18,7 +18,7 @@
 		ariaLabel?: string;
 		action?: 'edit' | 'delete' | 'view' | 'copy' | 'clone' | 'download' | 'shell';
 		isDisabled?: (item: any) => boolean;
-		disabledTitle?: string;
+		disabledTitle?: string | ((item: any) => string);
 	}> = [
 		{ type: 'edit', title: 'Edit', ariaLabel: 'Edit item', action: 'edit' },
 		{ type: 'delete', title: 'Delete', ariaLabel: 'Delete item', action: 'delete' }
@@ -49,7 +49,8 @@
 	{#each actions as action}
 		{@const isDisabled = action.isDisabled ? action.isDisabled(item) : false}
 		{@const buttonAction = action.action === 'clone' ? 'copy' : (action.action || (action.type === 'edit' ? 'edit' : action.type === 'delete' ? 'delete' : action.type === 'copy' ? 'copy' : action.type === 'shell' ? 'shell' : 'view'))}
-		{@const buttonTitle = isDisabled && action.disabledTitle ? action.disabledTitle : (action.title || (action.type === 'edit' ? 'Edit' : action.type === 'delete' ? 'Delete' : action.type === 'copy' ? 'Clone' : action.type === 'shell' ? 'Shell' : action.label))}
+		{@const disabledTitleText = typeof action.disabledTitle === 'function' ? action.disabledTitle(item) : action.disabledTitle}
+		{@const buttonTitle = isDisabled && disabledTitleText ? disabledTitleText : (action.title || (action.type === 'edit' ? 'Edit' : action.type === 'delete' ? 'Delete' : action.type === 'copy' ? 'Clone' : action.type === 'shell' ? 'Shell' : action.label))}
 		<ActionButton
 			action={buttonAction}
 			title={buttonTitle}

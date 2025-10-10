@@ -17,6 +17,10 @@
 	let statusFilter = '';
 	let unsubscribeWebsocket: (() => void) | null = null;
 
+	// Current time for heartbeat staleness check - updates every second
+	let currentTime = Date.now();
+	let heartbeatCheckInterval: ReturnType<typeof setInterval> | null = null;
+
 
 	// Pagination
 	let currentPage = 1;
@@ -70,14 +74,17 @@
 		showShellModal = true;
 	}
 
-	// Check if heartbeat is stale (older than 60 seconds)
+	// Check if shell should be disabled (heartbeat stale or instance stopped)
 	function isHeartbeatStale(instance: Instance): boolean {
 		if (!instance.agent_id) return true;
+
+		// Disable if instance status is "stopped"
+		if (instance.status === 'stopped') return true;
+
 		const lastHeartbeat = instance.heartbeat;
 		if (!lastHeartbeat) return true;
-		const now = new Date();
 		const heartbeatTime = new Date(lastHeartbeat);
-		return (now.getTime() - heartbeatTime.getTime()) > 60000; // 60 seconds
+		return (currentTime - heartbeatTime.getTime()) > 60000; // 60 seconds
 	}
 
 	async function confirmDelete() {
@@ -143,13 +150,13 @@
 			cellComponent: ActionsCell,
 			cellProps: { 
 				actions: [
-					{ 
-						type: 'shell', 
-						title: 'Shell', 
-						ariaLabel: 'Open shell', 
+					{
+						type: 'shell',
+						title: 'Shell',
+						ariaLabel: 'Open shell',
 						action: 'shell',
 						isDisabled: (item: Instance) => isHeartbeatStale(item),
-						disabledTitle: 'Shell unavailable - Agent heartbeat is stale'
+						disabledTitle: (item: Instance) => item.status === 'stopped' ? 'Shell unavailable - Instance is stopped' : 'Shell unavailable - Agent heartbeat is stale'
 					},
 					{ type: 'delete', title: 'Delete', ariaLabel: 'Delete instance', action: 'delete' }
 				]
@@ -244,13 +251,18 @@
 	onMount(() => {
 		// Initial load
 		loadInstances();
-		
+
 		// Subscribe to real-time instance events - correct entity type is 'instance'
 		unsubscribeWebsocket = websocketStore.subscribeToEntity(
 			'instance',
 			['create', 'update', 'delete'],
 			handleInstanceEvent
 		);
+
+		// Update current time every second for heartbeat staleness check
+		heartbeatCheckInterval = setInterval(() => {
+			currentTime = Date.now();
+		}, 1000);
 	});
 
 	onDestroy(() => {
@@ -258,6 +270,12 @@
 		if (unsubscribeWebsocket) {
 			unsubscribeWebsocket();
 			unsubscribeWebsocket = null;
+		}
+
+		// Clean up heartbeat check interval
+		if (heartbeatCheckInterval) {
+			clearInterval(heartbeatCheckInterval);
+			heartbeatCheckInterval = null;
 		}
 	});
 </script>
