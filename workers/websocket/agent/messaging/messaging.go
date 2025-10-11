@@ -20,7 +20,6 @@ const (
 	MessageTypeShellResize       byte = 0x07
 	MessageTypeShellExit         byte = 0x08
 	MessageTypeClientShellClosed byte = 0x09
-	MessageTypeShellDisabled     byte = 0x10
 )
 
 type AgentMessage struct {
@@ -139,37 +138,6 @@ func (c *ShellReadyMessage) UnmarshalFromAgentMessage(data []byte) error {
 		c.Message = make([]byte, len(data)-17)
 		copy(c.Message, data[17:])
 	}
-	return nil
-}
-
-type ShellDisabledMessage struct {
-	SessionID [16]byte
-}
-
-func (c *ShellDisabledMessage) ID() string {
-	uuid, err := uuid.FromBytes(c.SessionID[:])
-	if err != nil {
-		return ""
-	}
-
-	return uuid.String()
-}
-
-func (c ShellDisabledMessage) Marshal() []byte {
-	msg := AgentMessage{
-		Type: MessageTypeShellDisabled,
-		Data: make([]byte, 16),
-	}
-
-	copy(msg.Data, c.SessionID[:])
-	return msg.Marshal()
-}
-
-func (c *ShellDisabledMessage) UnmarshalFromAgentMessage(data []byte) error {
-	if len(data) < 16 {
-		return fmt.Errorf("invalid ShellDisabledMessage data length: %d", len(data))
-	}
-	copy(c.SessionID[:], data[:16])
 	return nil
 }
 

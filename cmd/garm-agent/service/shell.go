@@ -100,10 +100,11 @@ func (s *ShellSession) sendExitMessage() error {
 	return s.writer(exitMsg.Marshal())
 }
 
-func (s *ShellSession) sendReadyMessage(isError byte) error {
+func (s *ShellSession) sendReadyMessage(isError byte, message []byte) error {
 	readyMsg := messaging.ShellReadyMessage{
 		SessionID: s.SessionID,
 		IsError:   isError,
+		Message:   message,
 	}
 
 	return s.writer(readyMsg.Marshal())
@@ -113,7 +114,7 @@ func (s *ShellSession) handlePTYOutput() {
 	defer func() {
 		s.Stop()
 	}()
-	if err := s.sendReadyMessage(0); err != nil {
+	if err := s.sendReadyMessage(0, nil); err != nil {
 		slog.ErrorContext(s.ctx, "failed to signal shell readyness", "error", err)
 		return
 	}

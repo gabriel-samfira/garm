@@ -116,12 +116,16 @@ var agentShellCmd = &cobra.Command{
 						handlerErr.Close()
 					}
 					sessionID = shellReady.SessionID
+					if shellReady.IsError == 1 {
+						if len(shellReady.Message) > 0 {
+							os.Stderr.Write(fmt.Appendf(shellReady.Message, "\r\n"))
+						}
+						handlerErr.Close()
+						return nil
+					}
 					if w, h, err := term.GetSize(int(os.Stdin.Fd())); err == nil {
 						resizeCh <- [2]int{w, h}
 					}
-				case messaging.MessageTypeShellDisabled:
-					os.Stderr.Write([]byte("shell is disabled on the agent\r\n"))
-					handlerErr.Close()
 				case messaging.MessageTypeShellExit:
 					handlerErr.Close()
 				case messaging.MessageTypeShellData:

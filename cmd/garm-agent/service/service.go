@@ -46,6 +46,7 @@ func NewService(ctx context.Context, cfg *config.Agent) (*Service, error) {
 		connected:  closed,
 		forgeType:  forgeType,
 		sessions:   make(map[string]*ShellSession),
+		hasShell:   cfg.EnableShell && HasPTY(),
 		agentState: agentState,
 	}, nil
 }
@@ -57,6 +58,7 @@ type Service struct {
 	agentState  *state.Manager
 	runnerAlive bool
 	runnerCmd   runner.Worker
+	hasShell    bool
 
 	forgeType params.EndpointType
 
@@ -98,6 +100,16 @@ func (s *Service) writeMessage(msg []byte) error {
 	return nil
 }
 
+func (s *Service) sendReadyMessage(sessionID [16]byte, isError byte, message []byte) error {
+	readyMsg := messaging.ShellReadyMessage{
+		SessionID: sessionID,
+		IsError:   isError,
+		Message:   message,
+	}
+
+	return s.writeMessage(readyMsg.Marshal())
+}
+
 func (s *Service) handleMessage(msgType int, msg []byte) (err error) {
 	if msgType != websocket.BinaryMessage && msgType != websocket.TextMessage {
 		slog.InfoContext(s.ctx, "ignoring invalid message type", "message_type", msgType)
@@ -119,12 +131,8 @@ func (s *Service) handleMessage(msgType int, msg []byte) (err error) {
 		slog.InfoContext(s.ctx, "handling create shell message", "session_id", createShell.ID())
 		defer func() {
 			if err != nil {
-				shellReadyMsg := messaging.ShellReadyMessage{
-					SessionID: createShell.SessionID,
-					IsError:   1,
-					Message:   []byte(fmt.Sprintf("failed to create shell: %q", err)),
-				}
-				if innerErr := s.writeMessage(shellReadyMsg.Marshal()); innerErr != nil {
+				errMsg := fmt.Appendf(nil, "failed to create shell: %q", err)
+				if innerErr := s.sendReadyMessage(createShell.SessionID, 1, errMsg); innerErr != nil {
 					slog.ErrorContext(s.ctx, "failed to send error message", "error", innerErr)
 				}
 			}
@@ -132,20 +140,24 @@ func (s *Service) handleMessage(msgType int, msg []byte) (err error) {
 
 		sessionID := createShell.ID()
 		if sessionID == "" {
+			s.sendReadyMessage(createShell.SessionID, 1, []byte("failed to parse session ID"))
 			return fmt.Errorf("failed to parse session ID")
 		}
 		s.mux.Lock()
 		if _, ok := s.sessions[sessionID]; ok {
 			s.mux.Unlock()
+			s.sendReadyMessage(createShell.SessionID, 1, fmt.Appendf(nil, "session ID %s already exists", sessionID))
 			return fmt.Errorf("session ID %s already exists", sessionID)
 		}
 		session, err := NewShellSession(s.ctx, createShell, s.writeMessage, s.cfg)
 		if err != nil {
 			s.mux.Unlock()
+			s.sendReadyMessage(createShell.SessionID, 1, fmt.Appendf(nil, "failed to create session: %s", err))
 			return fmt.Errorf("failed to create session: %w", err)
 		}
 		if err := session.Start(); err != nil {
 			s.mux.Unlock()
+			s.sendReadyMessage(createShell.SessionID, 1, fmt.Appendf(nil, "failed to start session: %s", err))
 			return fmt.Errorf("failed to start session: %w", err)
 		}
 		s.sessions[sessionID] = session
@@ -165,6 +177,10 @@ func (s *Service) handleMessage(msgType int, msg []byte) (err error) {
 		if err != nil {
 			return fmt.Errorf("failed to unmarshall shell resize message: %w", err)
 		}
+		if !s.hasShell {
+			s.sendReadyMessage(resizeMsg.SessionID, 1, []byte("shell is disabled"))
+			return nil
+		}
 
 		s.mux.Lock()
 		session, ok := s.sessions[resizeMsg.ID()]
@@ -182,6 +198,11 @@ func (s *Service) handleMessage(msgType int, msg []byte) (err error) {
 		if err != nil {
 			return fmt.Errorf("failed to unmarshall shell closed message: %w", err)
 		}
+		if !s.hasShell {
+			s.sendReadyMessage(closedMsg.SessionID, 1, []byte("shell is disabled"))
+			return nil
+		}
+
 		slog.InfoContext(s.ctx, "handling close shell message", "session_id", closedMsg.ID())
 		s.mux.Lock()
 		session, ok := s.sessions[closedMsg.ID()]
@@ -199,6 +220,11 @@ func (s *Service) handleMessage(msgType int, msg []byte) (err error) {
 		if err != nil {
 			return fmt.Errorf("failed to unmarshall shell data message: %w", err)
 		}
+		if !s.hasShell {
+			s.sendReadyMessage(shellData.SessionID, 1, []byte("shell is disabled"))
+			return nil
+		}
+
 		s.mux.Lock()
 		session, ok := s.sessions[shellData.ID()]
 		if !ok {
@@ -373,9 +399,8 @@ func (s *Service) sendHeartbeat() error {
 		AgentID: uint64(s.runnerCmd.AgentID()),
 	}
 
-	hasShell := s.cfg.EnableShell && HasPTY()
 	agentCap := params.AgentCapabilities{
-		Shell: hasShell,
+		Shell: s.hasShell,
 	}
 	asJs, err := json.Marshal(agentCap)
 	if err != nil {

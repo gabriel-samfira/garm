@@ -93,8 +93,10 @@ func (a *Agent) CreateShellSession(ctx context.Context, sessionID uuid.UUID, cli
 	}
 
 	if !a.instance.Capabilities.Shell {
-		shellDisabled := messaging.ShellDisabledMessage{
+		shellDisabled := messaging.ShellReadyMessage{
 			SessionID: sessionID,
+			IsError:   1,
+			Message:   []byte("agent shell is disabled"),
 		}
 		sess.safeWrite(websocket.BinaryMessage, shellDisabled.Marshal())
 		sess.Stop()
@@ -285,23 +287,6 @@ func (a *Agent) messageHandler(msg []byte) (err error) {
 		if !ok {
 			return nil
 		}
-		if err := a.RemoveClientSession(session.sessionID, false); err != nil {
-			return fmt.Errorf("failed to remove session: %w", err)
-		}
-	case messaging.MessageTypeShellDisabled:
-		shellDisabled, err := messaging.Unmarshal[messaging.ShellDisabledMessage](agentMsg)
-		if err != nil {
-			return fmt.Errorf("failed to unmarshal shell disabled message: %w", err)
-		}
-		session, ok := a.shellSessions[shellDisabled.ID()]
-		if !ok {
-			return nil
-		}
-		// Let the client know that the shell feature is disabled.
-		if err := session.Write(msg); err != nil {
-			return fmt.Errorf("failed to write message: %w", err)
-		}
-		// Remove the session.
 		if err := a.RemoveClientSession(session.sessionID, false); err != nil {
 			return fmt.Errorf("failed to remove session: %w", err)
 		}

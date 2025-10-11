@@ -161,10 +161,10 @@ export function createShellConnection(
                 const view = new DataView(payload);
                 const receivedSessionId = payload.slice(0, 16);
                 const isError = view.getUint8(16);
-                const message = payload.byteLength > 17 
-                  ? new TextDecoder().decode(payload.slice(17))
+                const message = payload.byteLength > 17
+                  ? new TextDecoder('utf-8').decode(payload.slice(17))
                   : '';
-                
+
                 if (isError) {
                   onError(message || 'Shell initialization failed');
                 } else {
