@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/google/uuid"
 	"gorm.io/datatypes"
@@ -74,6 +75,15 @@ func (s *sqlDatabase) sqlToParamsInstance(instance Instance) (params.Instance, e
 		GitHubRunnerGroup: instance.GitHubRunnerGroup,
 		AditionalLabels:   labels,
 		Heartbeat:         instance.Heartbeat,
+	}
+
+	if len(instance.Capabilities) > 0 {
+		var caps params.AgentCapabilities
+		if err := json.Unmarshal(instance.Capabilities, &caps); err == nil {
+			ret.Capabilities = caps
+		} else {
+			slog.ErrorContext(s.ctx, "failed to unmarshal capabilities", "instance_name", instance.Name, "error", err)
+		}
 	}
 
 	if instance.ScaleSetFkID != nil {

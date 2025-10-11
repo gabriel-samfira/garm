@@ -73,11 +73,19 @@ func NewRunnerCommand(ctx context.Context, cmdParams []string, workdir string, f
 
 	// #nosec G204 - cmdParams validated above for security
 	command := exec.Command(cmdParams[0], cmdParams[1:]...)
+
+	// Set up platform-specific process management
+	executor, err := setupCommand(command)
+	if err != nil {
+		return nil, fmt.Errorf("failed to setup command: %w", err)
+	}
+
 	ret := &runnerCmd{
 		ctx:       ctx,
 		forgeType: forgeType,
 		workdir:   workdir,
 		cmd:       command,
+		executor:  executor,
 		runnerCfg: runCfg,
 		done:      doneChan,
 		st:        st,
@@ -93,9 +101,10 @@ type runnerCmd struct {
 	runnerCfg Config
 	st        StateManager
 
-	done    chan struct{}
-	running bool
-	mux     sync.Mutex
+	done     chan struct{}
+	running  bool
+	mux      sync.Mutex
+	executor *platformExecutor
 
 	cmd    *exec.Cmd
 	cmdErr error
@@ -133,18 +142,20 @@ func (r *runnerCmd) Stop() error {
 	r.mux.Lock()
 	defer r.mux.Unlock()
 
+	slog.Info("stopping runner command")
 	if !r.running {
+		slog.Info("runner command not started; returning")
 		return nil
 	}
 
 	close(r.done)
 	r.running = false
 
-	// Kill the command if it's running
-	if r.cmd != nil && r.cmd.Process != nil {
-		if err := r.cmd.Process.Kill(); err != nil {
-			slog.ErrorContext(r.ctx, "failed to kill process", "error", err)
-		}
+	// Use platform-specific cleanup to terminate all child processes
+	slog.Info("cleaning up processes")
+	if err := r.executor.cleanup(); err != nil {
+		slog.ErrorContext(r.ctx, "failed to cleanup process group/job", "error", err)
+		return err
 	}
 
 	return nil
@@ -237,7 +248,8 @@ func (r *runnerCmd) executeCommand() {
 		}
 	}()
 
-	err = r.cmd.Start()
+	// Start the command with platform-specific process management
+	err = r.executor.startCommand()
 	if err != nil {
 		slog.ErrorContext(r.ctx, "failed to start command", "error", err)
 		return

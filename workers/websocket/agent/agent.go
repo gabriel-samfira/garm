@@ -55,18 +55,16 @@ func NewAgent(ctx context.Context, conn *websocket.Conn, instance params.Instanc
 		done:          closed,
 		consumerID:    consumerID,
 		shellSessions: make(map[string]*ClientSession),
-		capabilities:  make(map[string]bool),
 	}, nil
 }
 
 type Agent struct {
-	ctx          context.Context
-	instance     params.Instance
-	mux          sync.Mutex
-	writeMux     sync.Mutex
-	conn         *websocket.Conn
-	agentStore   runner.AgentStoreOps
-	capabilities map[string]bool
+	ctx        context.Context
+	instance   params.Instance
+	mux        sync.Mutex
+	writeMux   sync.Mutex
+	conn       *websocket.Conn
+	agentStore runner.AgentStoreOps
 
 	consumerID string
 	consumer   common.Consumer
@@ -94,7 +92,7 @@ func (a *Agent) CreateShellSession(ctx context.Context, sessionID uuid.UUID, cli
 		return nil, fmt.Errorf("failed to start client session: %w", err)
 	}
 
-	if available, ok := a.capabilities["shell"]; !ok || !available {
+	if !a.instance.Capabilities.Shell {
 		shellDisabled := messaging.ShellDisabledMessage{
 			SessionID: sessionID,
 		}
@@ -255,6 +253,17 @@ func (a *Agent) messageHandler(msg []byte) (err error) {
 		if a.instance.AgentID != int64(heartbeatMsg.AgentID) {
 			slog.WarnContext(a.ctx, "missmatching agent ID", "instance_agent_id", a.instance.AgentID, "status_update_agent_id", heartbeatMsg.AgentID)
 		}
+		if len(heartbeatMsg.Payload) > 0 {
+			var caps params.AgentCapabilities
+			if err := json.Unmarshal(heartbeatMsg.Payload, &caps); err != nil {
+				return fmt.Errorf("failed to unmarshal capabilities: %w", err)
+			}
+			if caps.Shell != a.instance.Capabilities.Shell {
+				if err := a.agentStore.SetInstanceCapabilities(a.ctx, caps); err != nil {
+					return fmt.Errorf("failed to set agent capabilities: %w", err)
+				}
+			}
+		}
 	case messaging.MessageTypeShellReady:
 		shellReady, err := messaging.Unmarshal[messaging.ShellReadyMessage](agentMsg)
 		if err != nil {
@@ -313,7 +322,7 @@ func (a *Agent) messageHandler(msg []byte) (err error) {
 		if err != nil {
 			return fmt.Errorf("failed to unmarshal runner status message: %w", err)
 		}
-		slog.InfoContext(a.ctx, "got runner status update", "status", statusUpdate)
+		slog.InfoContext(a.ctx, "got runner status update", "status", string(statusUpdate.Payload))
 		if a.instance.AgentID != int64(statusUpdate.AgentID) {
 			slog.WarnContext(a.ctx, "missmatching agent ID", "instance_agent_id", a.instance.AgentID, "status_update_agent_id", statusUpdate.AgentID)
 		}

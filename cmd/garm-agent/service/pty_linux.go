@@ -102,7 +102,7 @@ func (p *sessionPTY) Close() error {
 	return ptyErr
 }
 
-func (p *sessionPTY) HasPTY() bool {
+func HasPTY() bool {
 	fd, err := unix.Open("/dev/ptmx", unix.O_RDWR|unix.O_CLOEXEC, 0)
 	if err != nil {
 		return false

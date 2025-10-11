@@ -316,6 +316,7 @@ type Instance struct {
 	JitConfiguration  []byte `gorm:"type:longblob"`
 	GitHubRunnerGroup string
 	AditionalLabels   datatypes.JSON
+	Capabilities      datatypes.JSON
 
 	PoolID *uuid.UUID
 	Pool   Pool `gorm:"foreignKey:PoolID"`

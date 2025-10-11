@@ -30,6 +30,24 @@ func (r *Runner) RecordAgentHeartbeat(ctx context.Context) error {
 	return nil
 }
 
+func (r *Runner) SetInstanceCapabilities(ctx context.Context, caps params.AgentCapabilities) error {
+	instance, err := auth.InstanceParams(ctx)
+	if err != nil {
+		slog.With(slog.Any("error", err)).ErrorContext(
+			ctx, "failed to get instance params")
+		return runnerErrors.ErrUnauthorized
+	}
+
+	updateParams := params.UpdateInstanceParams{
+		Capabilities: &caps,
+	}
+
+	if _, err := r.store.UpdateInstance(ctx, instance.ID, updateParams); err != nil {
+		return fmt.Errorf("failed to update capabilities: %w", err)
+	}
+	return nil
+}
+
 func (r *Runner) SetInstanceToPendingDelete(ctx context.Context) error {
 	instance, err := auth.InstanceParams(ctx)
 	if err != nil {

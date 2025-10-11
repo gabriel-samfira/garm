@@ -24,6 +24,13 @@ definitions:
     AddressType:
         type: string
         x-go-package: github.com/cloudbase/garm-provider-common/params
+    AgentCapabilities:
+        properties:
+            has_shell:
+                type: boolean
+                x-go-name: Shell
+        type: object
+        x-go-package: github.com/cloudbase/garm/params
     ControllerInfo:
         properties:
             agent_url:
@@ -731,6 +738,112 @@ definitions:
     ForgeEntityType:
         type: string
         x-go-package: github.com/cloudbase/garm/params
+    GARMAgentTool:
+        properties:
+            created_at:
+                format: date-time
+                type: string
+                x-go-name: CreatedAt
+            description:
+                type: string
+                x-go-name: Description
+            file_type:
+                type: string
+                x-go-name: FileType
+            id:
+                format: uint64
+                type: integer
+                x-go-name: ID
+            name:
+                type: string
+                x-go-name: Name
+            os_arch:
+                $ref: '#/definitions/OSArch'
+            os_type:
+                $ref: '#/definitions/OSType'
+            sha256sum:
+                type: string
+                x-go-name: SHA256SUM
+            size:
+                format: int64
+                type: integer
+                x-go-name: Size
+            updated_at:
+                format: date-time
+                type: string
+                x-go-name: UpdatedAt
+            version:
+                type: string
+                x-go-name: Version
+        type: object
+        x-go-package: github.com/cloudbase/garm/params
+    GARMAgentToolsPaginatedResponse:
+        properties:
+            current_page:
+                format: uint64
+                type: integer
+                x-go-name: CurrentPage
+            next_page:
+                format: uint64
+                type: integer
+                x-go-name: NextPage
+            pages:
+                format: uint64
+                type: integer
+                x-go-name: Pages
+            previous_page:
+                format: uint64
+                type: integer
+                x-go-name: PreviousPage
+            results:
+                items:
+                    properties:
+                        created_at:
+                            format: date-time
+                            type: string
+                            x-go-name: CreatedAt
+                        description:
+                            type: string
+                            x-go-name: Description
+                        file_type:
+                            type: string
+                            x-go-name: FileType
+                        id:
+                            format: uint64
+                            type: integer
+                            x-go-name: ID
+                        name:
+                            type: string
+                            x-go-name: Name
+                        os_arch:
+                            type: string
+                            x-go-name: OSArch
+                        os_type:
+                            type: string
+                            x-go-name: OSType
+                        sha256sum:
+                            type: string
+                            x-go-name: SHA256SUM
+                        size:
+                            format: int64
+                            type: integer
+                            x-go-name: Size
+                        updated_at:
+                            format: date-time
+                            type: string
+                            x-go-name: UpdatedAt
+                        version:
+                            type: string
+                            x-go-name: Version
+                    type: object
+                type: array
+                x-go-name: Results
+            total_count:
+                format: uint64
+                type: integer
+                x-go-name: TotalCount
+        type: object
+        x-go-package: github.com/cloudbase/garm/params
     GithubApp:
         properties:
             app_id:
@@ -822,6 +935,8 @@ definitions:
                 format: int64
                 type: integer
                 x-go-name: AgentID
+            capabilities:
+                $ref: '#/definitions/AgentCapabilities'
             created_at:
                 description: CreatedAt is the timestamp of the creation of this runner.
                 format: date-time
@@ -912,6 +1027,52 @@ definitions:
                 format: date-time
                 type: string
                 x-go-name: UpdatedAt
+        type: object
+        x-go-package: github.com/cloudbase/garm/params
+    InstanceMetadata:
+        properties:
+            ca_bundles:
+                additionalProperties:
+                    items:
+                        format: uint8
+                        type: integer
+                    type: array
+                type: object
+                x-go-name: CABundle
+            extra_specs:
+                additionalProperties: {}
+                description: |-
+                    ExtraSpecs represents the extra specs set on the pool or scale set. No secrets should
+                    be set in extra specs.
+                    Also, the instance metadata should never be saved to disk, and the metadata URL is only
+                    accessible during setup of the runner. The API returns unauthorized once the runner
+                    transitions to failed/idle.
+                type: object
+                x-go-name: ExtraSpecs
+            forge_type:
+                $ref: '#/definitions/EndpointType'
+            jit_enabled:
+                type: boolean
+                x-go-name: JITEnabled
+            metadata_access:
+                $ref: '#/definitions/MetadataServiceAccessDetails'
+            runner_labels:
+                items:
+                    type: string
+                type: array
+                x-go-name: RunnerLabels
+            runner_name:
+                type: string
+                x-go-name: RunnerName
+            runner_registration_url:
+                description: |-
+                    RunnerRegistrationURL is the URL the runner needs to configure itself
+                    against. This can be a repository, organization, enterprise (github)
+                    or system (gitea)
+                type: string
+                x-go-name: RunnerRegistrationURL
+            runner_tools:
+                $ref: '#/definitions/RunnerApplicationDownload'
         type: object
         x-go-package: github.com/cloudbase/garm/params
     InstanceStatus:
@@ -1048,6 +1209,16 @@ definitions:
         items:
             $ref: '#/definitions/Job'
         type: array
+        x-go-package: github.com/cloudbase/garm/params
+    MetadataServiceAccessDetails:
+        properties:
+            callback_url:
+                type: string
+                x-go-name: CallbackURL
+            metadata_url:
+                type: string
+                x-go-name: MetadataURL
+        type: object
         x-go-package: github.com/cloudbase/garm/params
     NewUserParams:
         description: |-
@@ -1339,6 +1510,32 @@ definitions:
                 x-go-name: UpdatedAt
         type: object
         x-go-package: github.com/cloudbase/garm/params
+    RunnerApplicationDownload:
+        description: |-
+            This is copied from the go-github package. It does not make sense to create a dependency on go-github just
+            for this struct.
+        properties:
+            architecture:
+                type: string
+                x-go-name: Architecture
+            download_url:
+                type: string
+                x-go-name: DownloadURL
+            filename:
+                type: string
+                x-go-name: Filename
+            os:
+                type: string
+                x-go-name: OS
+            sha256_checksum:
+                type: string
+                x-go-name: SHA256Checksum
+            temp_download_token:
+                type: string
+                x-go-name: TempDownloadToken
+        title: RunnerApplicationDownload represents a binary for the self-hosted runner application that can be downloaded.
+        type: object
+        x-go-package: github.com/cloudbase/garm-provider-common/params
     RunnerPrefix:
         properties:
             runner_prefix:

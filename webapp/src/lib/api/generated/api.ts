@@ -64,6 +64,19 @@ export interface Address {
 /**
  * 
  * @export
+ * @interface AgentCapabilities
+ */
+export interface AgentCapabilities {
+    /**
+     * 
+     * @type {boolean}
+     * @memberof AgentCapabilities
+     */
+    'has_shell'?: boolean;
+}
+/**
+ * 
+ * @export
  * @interface ControllerInfo
  */
 export interface ControllerInfo {
@@ -1200,6 +1213,195 @@ export interface ForgeEntity {
 /**
  * 
  * @export
+ * @interface GARMAgentTool
+ */
+export interface GARMAgentTool {
+    /**
+     * 
+     * @type {string}
+     * @memberof GARMAgentTool
+     */
+    'created_at'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof GARMAgentTool
+     */
+    'description'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof GARMAgentTool
+     */
+    'file_type'?: string;
+    /**
+     * 
+     * @type {number}
+     * @memberof GARMAgentTool
+     */
+    'id'?: number;
+    /**
+     * 
+     * @type {string}
+     * @memberof GARMAgentTool
+     */
+    'name'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof GARMAgentTool
+     */
+    'os_arch'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof GARMAgentTool
+     */
+    'os_type'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof GARMAgentTool
+     */
+    'sha256sum'?: string;
+    /**
+     * 
+     * @type {number}
+     * @memberof GARMAgentTool
+     */
+    'size'?: number;
+    /**
+     * 
+     * @type {string}
+     * @memberof GARMAgentTool
+     */
+    'updated_at'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof GARMAgentTool
+     */
+    'version'?: string;
+}
+/**
+ * 
+ * @export
+ * @interface GARMAgentToolsPaginatedResponse
+ */
+export interface GARMAgentToolsPaginatedResponse {
+    /**
+     * 
+     * @type {number}
+     * @memberof GARMAgentToolsPaginatedResponse
+     */
+    'current_page'?: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof GARMAgentToolsPaginatedResponse
+     */
+    'next_page'?: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof GARMAgentToolsPaginatedResponse
+     */
+    'pages'?: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof GARMAgentToolsPaginatedResponse
+     */
+    'previous_page'?: number;
+    /**
+     * 
+     * @type {Array<GARMAgentToolsPaginatedResponseResultsInner>}
+     * @memberof GARMAgentToolsPaginatedResponse
+     */
+    'results'?: Array<GARMAgentToolsPaginatedResponseResultsInner>;
+    /**
+     * 
+     * @type {number}
+     * @memberof GARMAgentToolsPaginatedResponse
+     */
+    'total_count'?: number;
+}
+/**
+ * 
+ * @export
+ * @interface GARMAgentToolsPaginatedResponseResultsInner
+ */
+export interface GARMAgentToolsPaginatedResponseResultsInner {
+    /**
+     * 
+     * @type {string}
+     * @memberof GARMAgentToolsPaginatedResponseResultsInner
+     */
+    'created_at'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof GARMAgentToolsPaginatedResponseResultsInner
+     */
+    'description'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof GARMAgentToolsPaginatedResponseResultsInner
+     */
+    'file_type'?: string;
+    /**
+     * 
+     * @type {number}
+     * @memberof GARMAgentToolsPaginatedResponseResultsInner
+     */
+    'id'?: number;
+    /**
+     * 
+     * @type {string}
+     * @memberof GARMAgentToolsPaginatedResponseResultsInner
+     */
+    'name'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof GARMAgentToolsPaginatedResponseResultsInner
+     */
+    'os_arch'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof GARMAgentToolsPaginatedResponseResultsInner
+     */
+    'os_type'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof GARMAgentToolsPaginatedResponseResultsInner
+     */
+    'sha256sum'?: string;
+    /**
+     * 
+     * @type {number}
+     * @memberof GARMAgentToolsPaginatedResponseResultsInner
+     */
+    'size'?: number;
+    /**
+     * 
+     * @type {string}
+     * @memberof GARMAgentToolsPaginatedResponseResultsInner
+     */
+    'updated_at'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof GARMAgentToolsPaginatedResponseResultsInner
+     */
+    'version'?: string;
+}
+/**
+ * 
+ * @export
  * @interface GithubApp
  */
 export interface GithubApp {
@@ -1341,6 +1543,12 @@ export interface Instance {
      */
     'agent_id'?: number;
     /**
+     * 
+     * @type {AgentCapabilities}
+     * @memberof Instance
+     */
+    'capabilities'?: AgentCapabilities;
+    /**
      * CreatedAt is the timestamp of the creation of this runner.
      * @type {string}
      * @memberof Instance
@@ -1454,6 +1662,67 @@ export interface Instance {
      * @memberof Instance
      */
     'updated_at'?: string;
+}
+/**
+ * 
+ * @export
+ * @interface InstanceMetadata
+ */
+export interface InstanceMetadata {
+    /**
+     * 
+     * @type {{ [key: string]: Array<number>; }}
+     * @memberof InstanceMetadata
+     */
+    'ca_bundles'?: { [key: string]: Array<number>; };
+    /**
+     * ExtraSpecs represents the extra specs set on the pool or scale set. No secrets should be set in extra specs. Also, the instance metadata should never be saved to disk, and the metadata URL is only accessible during setup of the runner. The API returns unauthorized once the runner transitions to failed/idle.
+     * @type {{ [key: string]: object; }}
+     * @memberof InstanceMetadata
+     */
+    'extra_specs'?: { [key: string]: object; };
+    /**
+     * 
+     * @type {string}
+     * @memberof InstanceMetadata
+     */
+    'forge_type'?: string;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof InstanceMetadata
+     */
+    'jit_enabled'?: boolean;
+    /**
+     * 
+     * @type {MetadataServiceAccessDetails}
+     * @memberof InstanceMetadata
+     */
+    'metadata_access'?: MetadataServiceAccessDetails;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof InstanceMetadata
+     */
+    'runner_labels'?: Array<string>;
+    /**
+     * 
+     * @type {string}
+     * @memberof InstanceMetadata
+     */
+    'runner_name'?: string;
+    /**
+     * RunnerRegistrationURL is the URL the runner needs to configure itself against. This can be a repository, organization, enterprise (github) or system (gitea)
+     * @type {string}
+     * @memberof InstanceMetadata
+     */
+    'runner_registration_url'?: string;
+    /**
+     * 
+     * @type {RunnerApplicationDownload}
+     * @memberof InstanceMetadata
+     */
+    'runner_tools'?: RunnerApplicationDownload;
 }
 /**
  * JWTResponse holds the JWT token returned as a result of a successful auth
@@ -1612,6 +1881,25 @@ export interface Job {
      * @memberof Job
      */
     'workflow_job_id'?: number;
+}
+/**
+ * 
+ * @export
+ * @interface MetadataServiceAccessDetails
+ */
+export interface MetadataServiceAccessDetails {
+    /**
+     * 
+     * @type {string}
+     * @memberof MetadataServiceAccessDetails
+     */
+    'callback_url'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof MetadataServiceAccessDetails
+     */
+    'metadata_url'?: string;
 }
 /**
  * NewUserParams holds the needed information to create a new user
@@ -2039,6 +2327,49 @@ export interface Repository {
      * @memberof Repository
      */
     'updated_at'?: string;
+}
+/**
+ * This is copied from the go-github package. It does not make sense to create a dependency on go-github just for this struct.
+ * @export
+ * @interface RunnerApplicationDownload
+ */
+export interface RunnerApplicationDownload {
+    /**
+     * 
+     * @type {string}
+     * @memberof RunnerApplicationDownload
+     */
+    'architecture'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof RunnerApplicationDownload
+     */
+    'download_url'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof RunnerApplicationDownload
+     */
+    'filename'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof RunnerApplicationDownload
+     */
+    'os'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof RunnerApplicationDownload
+     */
+    'sha256_checksum'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof RunnerApplicationDownload
+     */
+    'temp_download_token'?: string;
 }
 /**
  * 

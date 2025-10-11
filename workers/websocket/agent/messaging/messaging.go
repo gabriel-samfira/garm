@@ -157,7 +157,7 @@ func (c *ShellDisabledMessage) ID() string {
 
 func (c ShellDisabledMessage) Marshal() []byte {
 	msg := AgentMessage{
-		Type: MessageTypeShellExit,
+		Type: MessageTypeShellDisabled,
 		Data: make([]byte, 16),
 	}
 
@@ -340,7 +340,7 @@ type RunnerHeartbetMessage struct {
 
 func (s RunnerHeartbetMessage) Marshal() []byte {
 	msg := AgentMessage{
-		Type: MessageTypeStatusMessage,
+		Type: MessageTypeHeartbeat,
 	}
 
 	msg.Data = make([]byte, 8+len(s.Payload))

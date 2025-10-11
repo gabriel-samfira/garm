@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 
 	"github.com/google/uuid"
@@ -66,6 +67,15 @@ var agentTokenCreateCmd = &cobra.Command{
 	},
 }
 
+type handlerErr struct {
+	done chan struct{}
+	once sync.Once
+}
+
+func (h *handlerErr) Close() {
+	h.once.Do(func() { close(h.done) })
+}
+
 var agentShellCmd = &cobra.Command{
 	Use:          "shell",
 	Short:        "Execute an interactive shell",
@@ -82,38 +92,43 @@ var agentShellCmd = &cobra.Command{
 
 		var sessionID uuid.UUID
 
-		handlerErr := make(chan struct{})
+		handlerErr := handlerErr{
+			done: make(chan struct{}),
+		}
 		resizeCh := make(chan [2]int, 1)
 		defer close(resizeCh)
 		handler := func(msgType int, msg []byte) error {
 			switch msgType {
 			case websocket.CloseAbnormalClosure, websocket.CloseGoingAway, websocket.CloseMessage:
 				os.Stderr.Write([]byte("remote server closed the connection"))
-				close(handlerErr)
+				handlerErr.Close()
 			case websocket.BinaryMessage, websocket.TextMessage:
 				agentMsg, err := messaging.UnmarshalAgentMessage(msg)
 				if err != nil {
 					os.Stderr.Write([]byte("failed to unmarshal message"))
-					close(handlerErr)
+					handlerErr.Close()
 				}
 				switch agentMsg.Type {
 				case messaging.MessageTypeShellReady:
 					shellReady, err := messaging.Unmarshal[messaging.ShellReadyMessage](agentMsg)
 					if err != nil {
 						os.Stderr.Write(fmt.Appendf(nil, "failed to unmarshal shell ready: %q", err))
-						close(handlerErr)
+						handlerErr.Close()
 					}
 					sessionID = shellReady.SessionID
 					if w, h, err := term.GetSize(int(os.Stdin.Fd())); err == nil {
 						resizeCh <- [2]int{w, h}
 					}
+				case messaging.MessageTypeShellDisabled:
+					os.Stderr.Write([]byte("shell is disabled on the agent\r\n"))
+					handlerErr.Close()
 				case messaging.MessageTypeShellExit:
-					close(handlerErr)
+					handlerErr.Close()
 				case messaging.MessageTypeShellData:
 					shellData, err := messaging.Unmarshal[messaging.ShellDataMessage](agentMsg)
 					if err != nil {
 						os.Stderr.Write([]byte("failed to unmarshal shell data message"))
-						close(handlerErr)
+						handlerErr.Close()
 					}
 					os.Stdout.Write(shellData.Data)
 				default:
@@ -153,7 +168,7 @@ var agentShellCmd = &cobra.Command{
 				n, err := os.Stdin.Read(buf)
 				if err != nil {
 					os.Stderr.Write(fmt.Appendf(nil, "failed to write message: %q", err))
-					close(handlerErr)
+					handlerErr.Close()
 					return
 				}
 
@@ -164,7 +179,7 @@ var agentShellCmd = &cobra.Command{
 					}
 					if err := reader.WriteMessage(websocket.BinaryMessage, msg.Marshal()); err != nil {
 						os.Stderr.Write(fmt.Appendf(nil, "failed to write message: %q", err))
-						close(handlerErr)
+						handlerErr.Close()
 						return
 					}
 				}
@@ -192,7 +207,7 @@ var agentShellCmd = &cobra.Command{
 					return
 				case <-reader.Done():
 					return
-				case <-handlerErr:
+				case <-handlerErr.done:
 					return
 				}
 			}
@@ -201,7 +216,7 @@ var agentShellCmd = &cobra.Command{
 		select {
 		case <-ctx.Done():
 		case <-reader.Done():
-		case <-handlerErr:
+		case <-handlerErr.done:
 		}
 		return nil
 	},

@@ -373,6 +373,16 @@ func (s *Service) sendHeartbeat() error {
 		AgentID: uint64(s.runnerCmd.AgentID()),
 	}
 
+	hasShell := s.cfg.EnableShell && HasPTY()
+	agentCap := params.AgentCapabilities{
+		Shell: hasShell,
+	}
+	asJs, err := json.Marshal(agentCap)
+	if err != nil {
+		return fmt.Errorf("failed to marshal capabilities: %w", err)
+	}
+	msg.Payload = asJs
+
 	cli, err := s.getClient()
 	if err != nil {
 		return err
@@ -415,7 +425,15 @@ retryCreate:
 	s.mux.Lock()
 	s.runnerCmd = runnerCommand
 	s.mux.Unlock()
-	defer s.runnerCmd.Stop()
+	defer func() {
+		s.runnerCmd.Stop()
+		select {
+		case <-time.After(2 * time.Second):
+			return
+		case <-s.runnerCmd.Wait():
+			return
+		}
+	}()
 
 	retryCount := 0
 

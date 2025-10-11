@@ -283,6 +283,8 @@ func formatSingleInstance(instance params.Instance) {
 	t.AppendRow(table.Row{"OS Version", instance.OSVersion}, table.RowConfig{AutoMerge: false})
 	t.AppendRow(table.Row{"Status", instance.Status}, table.RowConfig{AutoMerge: false})
 	t.AppendRow(table.Row{"Runner Status", instance.RunnerStatus}, table.RowConfig{AutoMerge: false})
+	t.AppendRow(table.Row{"Capabilities", fmt.Sprintf("Shell: %v", instance.Capabilities.Shell)}, table.RowConfig{AutoMerge: true})
+
 	if instance.PoolID != "" {
 		t.AppendRow(table.Row{"Pool ID", instance.PoolID}, table.RowConfig{AutoMerge: false})
 	} else if instance.ScaleSetID != 0 {

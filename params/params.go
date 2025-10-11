@@ -356,7 +356,8 @@ type Instance struct {
 	Job *Job `json:"job,omitempty"`
 
 	// Heartbeat is the last recorded heartbeat from the runner
-	Heartbeat time.Time `json:"heartbeat"`
+	Heartbeat    time.Time         `json:"heartbeat"`
+	Capabilities AgentCapabilities `json:"capabilities"`
 
 	// Do not serialize sensitive info.
 	CallbackURL      string            `json:"-"`
@@ -1473,4 +1474,9 @@ type InstanceMetadata struct {
 	ExtraSpecs  map[string]any                         `json:"extra_specs,omitempty"`
 	JITEnabled  bool                                   `json:"jit_enabled"`
 	RunnerTools commonParams.RunnerApplicationDownload `json:"runner_tools"`
+}
+
+// swagger:model AgentCapabilities
+type AgentCapabilities struct {
+	Shell bool `json:"has_shell"`
 }

@@ -263,6 +263,7 @@ type UpdateInstanceParams struct {
 	CreateAttempt    int                         `json:"-"`
 	TokenFetched     *bool                       `json:"-"`
 	JitConfiguration map[string]string           `json:"-"`
+	Capabilities     *AgentCapabilities          `json:"-"`
 }
 
 type UpdateUserParams struct {

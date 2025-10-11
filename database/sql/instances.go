@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"slices"
 
 	"github.com/google/uuid"
 	"gorm.io/datatypes"
@@ -283,16 +284,17 @@ func (s *sqlDatabase) UpdateInstance(ctx context.Context, instanceName string, p
 			if !ok {
 				return fmt.Errorf("Instance is in invalid state: %s", instance.RunnerStatus)
 			}
-			found := false
-			for _, val := range allowedTransitions {
-				if val == param.RunnerStatus {
-					found = true
-					break
-				}
-			}
+			found := slices.Contains(allowedTransitions, param.RunnerStatus)
 			if !found {
 				return runnerErrors.NewBadRequestError("invalid runner status transition from %s to %s", instance.RunnerStatus, param.RunnerStatus)
 			}
+		}
+		if param.Capabilities != nil {
+			asJs, err := json.Marshal(*param.Capabilities)
+			if err != nil {
+				return runnerErrors.NewBadRequestError("invalid capabilities: %s", err)
+			}
+			instance.Capabilities = asJs
 		}
 		if param.AgentID != 0 {
 			instance.AgentID = param.AgentID

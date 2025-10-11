@@ -78,6 +78,9 @@
 	function isHeartbeatStale(instance: Instance): boolean {
 		if (!instance.agent_id) return true;
 
+		// Disable if instance doesn't have shell capability
+		if (!instance.capabilities?.has_shell) return true;
+
 		// Disable if instance status is "stopped"
 		if (instance.status === 'stopped') return true;
 
@@ -156,7 +159,11 @@
 						ariaLabel: 'Open shell',
 						action: 'shell',
 						isDisabled: (item: Instance) => isHeartbeatStale(item),
-						disabledTitle: (item: Instance) => item.status === 'stopped' ? 'Shell unavailable - Instance is stopped' : 'Shell unavailable - Agent heartbeat is stale'
+						disabledTitle: (item: Instance) => {
+							if (!item.capabilities?.has_shell) return 'Shell unavailable - Agent does not support shell';
+							if (item.status === 'stopped') return 'Shell unavailable - Instance is stopped';
+							return 'Shell unavailable - Agent heartbeat is stale';
+						}
 					},
 					{ type: 'delete', title: 'Delete', ariaLabel: 'Delete instance', action: 'delete' }
 				]

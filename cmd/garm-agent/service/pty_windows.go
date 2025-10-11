@@ -162,7 +162,7 @@ func (p *sessionPTY) Close() error {
 	return err
 }
 
-func (p *sessionPTY) HasPTY() bool {
+func HasPTY() bool {
 	return procCreatePseudoConsole.Find() == nil
 }
 
