@@ -574,10 +574,6 @@ func (s *InstancesTestSuite) TestAddInstanceEventDBUpdateErr() {
 		WillReturnRows(sqlmock.NewRows([]string{"message", "instance_id"}).AddRow("instance sample message", instance.ID))
 	s.Fixtures.SQLMock.ExpectBegin()
 	s.Fixtures.SQLMock.
-		ExpectExec(regexp.QuoteMeta("UPDATE `instances` SET `updated_at`=? WHERE `instances`.`deleted_at` IS NULL AND `id` = ?")).
-		WithArgs(sqlmock.AnyArg(), instance.ID).
-		WillReturnResult(sqlmock.NewResult(1, 1))
-	s.Fixtures.SQLMock.
 		ExpectExec(regexp.QuoteMeta("INSERT INTO `instance_status_updates`")).
 		WillReturnError(fmt.Errorf("mocked add status message error"))
 	s.Fixtures.SQLMock.ExpectRollback()
@@ -609,7 +605,8 @@ func (s *InstancesTestSuite) TestUpdateInstanceDBUpdateInstanceErr() {
 	s.Fixtures.SQLMock.
 		ExpectQuery(regexp.QuoteMeta("SELECT * FROM `instances` WHERE name = ? AND `instances`.`deleted_at` IS NULL ORDER BY `instances`.`id` LIMIT ?")).
 		WithArgs(instance.Name, 1).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "runner_status", "agent_id"}).AddRow(instance.ID, instance.Name, params.RunnerIdle, 0))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at", "deleted_at", "provider_id", "name", "agent_id", "os_type", "os_arch", "os_name", "os_version", "status", "runner_status", "heartbeat", "callback_url", "metadata_url", "provider_fault", "create_attempt", "token_fetched", "jit_configuration", "git_hub_runner_group", "aditional_labels", "capabilities", "pool_id", "scale_set_fk_id"}).
+			AddRow(instance.ID, instance.CreatedAt, instance.UpdatedAt, nil, nil, instance.Name, 0, "linux", "amd64", "", "", "running", "idle", instance.Heartbeat, "", "", nil, 0, false, nil, "", nil, nil, nil, nil))
 	s.Fixtures.SQLMock.
 		ExpectQuery(regexp.QuoteMeta("SELECT * FROM `addresses` WHERE `addresses`.`instance_id` = ? AND `addresses`.`deleted_at` IS NULL")).
 		WithArgs(instance.ID).
@@ -641,7 +638,8 @@ func (s *InstancesTestSuite) TestUpdateInstanceDBUpdateAddressErr() {
 	s.Fixtures.SQLMock.
 		ExpectQuery(regexp.QuoteMeta("SELECT * FROM `instances` WHERE name = ? AND `instances`.`deleted_at` IS NULL ORDER BY `instances`.`id` LIMIT ?")).
 		WithArgs(instance.Name, 1).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "runner_status", "agent_id"}).AddRow(instance.ID, instance.Name, params.RunnerIdle, 0))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at", "deleted_at", "provider_id", "name", "agent_id", "os_type", "os_arch", "os_name", "os_version", "status", "runner_status", "heartbeat", "callback_url", "metadata_url", "provider_fault", "create_attempt", "token_fetched", "jit_configuration", "git_hub_runner_group", "aditional_labels", "capabilities", "pool_id", "scale_set_fk_id"}).
+			AddRow(instance.ID, instance.CreatedAt, instance.UpdatedAt, nil, nil, instance.Name, 0, "linux", "amd64", "", "", "running", "idle", instance.Heartbeat, "", "", nil, 0, false, nil, "", nil, nil, nil, nil))
 	s.Fixtures.SQLMock.
 		ExpectQuery(regexp.QuoteMeta("SELECT * FROM `addresses` WHERE `addresses`.`instance_id` = ? AND `addresses`.`deleted_at` IS NULL")).
 		WithArgs(instance.ID).

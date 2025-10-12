@@ -110,6 +110,134 @@ func (s *Service) sendReadyMessage(sessionID [16]byte, isError byte, message []b
 	return s.writeMessage(readyMsg.Marshal())
 }
 
+func (s *Service) handleCreateShell(agentMsg messaging.AgentMessage) (err error) {
+	createShell, err := messaging.Unmarshal[messaging.CreateShellMessage](agentMsg)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshall create shell message: %w", err)
+	}
+	slog.InfoContext(s.ctx, "handling create shell message", "session_id", createShell.ID())
+	defer func() {
+		if err != nil {
+			errMsg := fmt.Appendf(nil, "failed to create shell: %q", err)
+			if innerErr := s.sendReadyMessage(createShell.SessionID, 1, errMsg); innerErr != nil {
+				slog.ErrorContext(s.ctx, "failed to send error message", "error", innerErr)
+			}
+		}
+	}()
+
+	sessionID := createShell.ID()
+	if sessionID == "" {
+		s.sendReadyMessage(createShell.SessionID, 1, []byte("failed to parse session ID"))
+		return fmt.Errorf("failed to parse session ID")
+	}
+	s.mux.Lock()
+	if _, ok := s.sessions[sessionID]; ok {
+		s.mux.Unlock()
+		s.sendReadyMessage(createShell.SessionID, 1, fmt.Appendf(nil, "session ID %s already exists", sessionID))
+		return fmt.Errorf("session ID %s already exists", sessionID)
+	}
+	session, err := NewShellSession(s.ctx, createShell, s.writeMessage, s.cfg)
+	if err != nil {
+		s.mux.Unlock()
+		s.sendReadyMessage(createShell.SessionID, 1, fmt.Appendf(nil, "failed to create session: %s", err))
+		return fmt.Errorf("failed to create session: %w", err)
+	}
+	if err := session.Start(); err != nil {
+		s.mux.Unlock()
+		s.sendReadyMessage(createShell.SessionID, 1, fmt.Appendf(nil, "failed to start session: %s", err))
+		return fmt.Errorf("failed to start session: %w", err)
+	}
+	s.sessions[sessionID] = session
+	go func(sessionID string) {
+		select {
+		case <-s.ctx.Done():
+		case <-s.done:
+		case <-session.Done():
+		}
+		s.mux.Lock()
+		delete(s.sessions, sessionID)
+		s.mux.Unlock()
+	}(sessionID)
+	s.mux.Unlock()
+	return nil
+}
+
+func (s *Service) handleShellResize(agentMsg messaging.AgentMessage) error {
+	resizeMsg, err := messaging.Unmarshal[messaging.ShellResizeMessage](agentMsg)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshall shell resize message: %w", err)
+	}
+	if !s.hasShell {
+		s.sendReadyMessage(resizeMsg.SessionID, 1, []byte("shell is disabled"))
+		return nil
+	}
+
+	s.mux.Lock()
+	session, ok := s.sessions[resizeMsg.ID()]
+	if !ok {
+		s.mux.Unlock()
+		return nil
+	}
+	if err := session.shell.Resize(resizeMsg.Cols, resizeMsg.Rows); err != nil {
+		s.mux.Unlock()
+		return fmt.Errorf("failed to resize shell: %w", err)
+	}
+	s.mux.Unlock()
+	return nil
+}
+
+func (s *Service) handleClientShellClosed(agentMsg messaging.AgentMessage) error {
+	closedMsg, err := messaging.Unmarshal[messaging.ClientShellClosedMessage](agentMsg)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshall shell closed message: %w", err)
+	}
+	if !s.hasShell {
+		s.sendReadyMessage(closedMsg.SessionID, 1, []byte("shell is disabled"))
+		return nil
+	}
+
+	slog.InfoContext(s.ctx, "handling close shell message", "session_id", closedMsg.ID())
+	s.mux.Lock()
+	session, ok := s.sessions[closedMsg.ID()]
+	if !ok {
+		s.mux.Unlock()
+		return nil
+	}
+	if err := session.Stop(); err != nil {
+		s.mux.Unlock()
+		return fmt.Errorf("failed to close session: %w", err)
+	}
+	s.mux.Unlock()
+	return nil
+}
+
+func (s *Service) handleShellData(agentMsg messaging.AgentMessage) error {
+	shellData, err := messaging.Unmarshal[messaging.ShellDataMessage](agentMsg)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshall shell data message: %w", err)
+	}
+	if !s.hasShell {
+		s.sendReadyMessage(shellData.SessionID, 1, []byte("shell is disabled"))
+		return nil
+	}
+
+	s.mux.Lock()
+	session, ok := s.sessions[shellData.ID()]
+	if !ok {
+		s.mux.Unlock()
+		return nil
+	}
+	if _, err := session.shell.Write(shellData.Data); err != nil {
+		slog.ErrorContext(s.ctx, "failed to write shell data; stopping session", "error", err, "session_id", shellData.ID())
+		if err := session.Stop(); err != nil {
+			s.mux.Unlock()
+			return fmt.Errorf("failed to stop session %s", shellData.ID())
+		}
+	}
+	s.mux.Unlock()
+	return nil
+}
+
 func (s *Service) handleMessage(msgType int, msg []byte) (err error) {
 	if msgType != websocket.BinaryMessage && msgType != websocket.TextMessage {
 		slog.InfoContext(s.ctx, "ignoring invalid message type", "message_type", msgType)
@@ -124,121 +252,13 @@ func (s *Service) handleMessage(msgType int, msg []byte) (err error) {
 
 	switch agentMsg.Type {
 	case messaging.MessageTypeCreateShell:
-		createShell, err := messaging.Unmarshal[messaging.CreateShellMessage](agentMsg)
-		if err != nil {
-			return fmt.Errorf("failed to unmarshall create shell message: %w", err)
-		}
-		slog.InfoContext(s.ctx, "handling create shell message", "session_id", createShell.ID())
-		defer func() {
-			if err != nil {
-				errMsg := fmt.Appendf(nil, "failed to create shell: %q", err)
-				if innerErr := s.sendReadyMessage(createShell.SessionID, 1, errMsg); innerErr != nil {
-					slog.ErrorContext(s.ctx, "failed to send error message", "error", innerErr)
-				}
-			}
-		}()
-
-		sessionID := createShell.ID()
-		if sessionID == "" {
-			s.sendReadyMessage(createShell.SessionID, 1, []byte("failed to parse session ID"))
-			return fmt.Errorf("failed to parse session ID")
-		}
-		s.mux.Lock()
-		if _, ok := s.sessions[sessionID]; ok {
-			s.mux.Unlock()
-			s.sendReadyMessage(createShell.SessionID, 1, fmt.Appendf(nil, "session ID %s already exists", sessionID))
-			return fmt.Errorf("session ID %s already exists", sessionID)
-		}
-		session, err := NewShellSession(s.ctx, createShell, s.writeMessage, s.cfg)
-		if err != nil {
-			s.mux.Unlock()
-			s.sendReadyMessage(createShell.SessionID, 1, fmt.Appendf(nil, "failed to create session: %s", err))
-			return fmt.Errorf("failed to create session: %w", err)
-		}
-		if err := session.Start(); err != nil {
-			s.mux.Unlock()
-			s.sendReadyMessage(createShell.SessionID, 1, fmt.Appendf(nil, "failed to start session: %s", err))
-			return fmt.Errorf("failed to start session: %w", err)
-		}
-		s.sessions[sessionID] = session
-		go func(sessionID string) {
-			select {
-			case <-s.ctx.Done():
-			case <-s.done:
-			case <-session.Done():
-			}
-			s.mux.Lock()
-			delete(s.sessions, sessionID)
-			s.mux.Unlock()
-		}(sessionID)
-		s.mux.Unlock()
+		return s.handleCreateShell(agentMsg)
 	case messaging.MessageTypeShellResize:
-		resizeMsg, err := messaging.Unmarshal[messaging.ShellResizeMessage](agentMsg)
-		if err != nil {
-			return fmt.Errorf("failed to unmarshall shell resize message: %w", err)
-		}
-		if !s.hasShell {
-			s.sendReadyMessage(resizeMsg.SessionID, 1, []byte("shell is disabled"))
-			return nil
-		}
-
-		s.mux.Lock()
-		session, ok := s.sessions[resizeMsg.ID()]
-		if !ok {
-			s.mux.Unlock()
-			return nil
-		}
-		if err := session.shell.Resize(resizeMsg.Cols, resizeMsg.Rows); err != nil {
-			s.mux.Unlock()
-			return fmt.Errorf("failed to resize shell: %w", err)
-		}
-		s.mux.Unlock()
+		return s.handleShellResize(agentMsg)
 	case messaging.MessageTypeClientShellClosed:
-		closedMsg, err := messaging.Unmarshal[messaging.ClientShellClosedMessage](agentMsg)
-		if err != nil {
-			return fmt.Errorf("failed to unmarshall shell closed message: %w", err)
-		}
-		if !s.hasShell {
-			s.sendReadyMessage(closedMsg.SessionID, 1, []byte("shell is disabled"))
-			return nil
-		}
-
-		slog.InfoContext(s.ctx, "handling close shell message", "session_id", closedMsg.ID())
-		s.mux.Lock()
-		session, ok := s.sessions[closedMsg.ID()]
-		if !ok {
-			s.mux.Unlock()
-			return nil
-		}
-		if err := session.Stop(); err != nil {
-			s.mux.Unlock()
-			return fmt.Errorf("failed to close session: %w", err)
-		}
-		s.mux.Unlock()
+		return s.handleClientShellClosed(agentMsg)
 	case messaging.MessageTypeShellData:
-		shellData, err := messaging.Unmarshal[messaging.ShellDataMessage](agentMsg)
-		if err != nil {
-			return fmt.Errorf("failed to unmarshall shell data message: %w", err)
-		}
-		if !s.hasShell {
-			s.sendReadyMessage(shellData.SessionID, 1, []byte("shell is disabled"))
-			return nil
-		}
-
-		s.mux.Lock()
-		session, ok := s.sessions[shellData.ID()]
-		if !ok {
-			s.mux.Unlock()
-			return nil
-		}
-		if _, err := session.shell.Write(shellData.Data); err != nil {
-			slog.ErrorContext(s.ctx, "failed to write shell data; stopping session", "error", err, "session_id", shellData.ID())
-			if err := session.Stop(); err != nil {
-				s.mux.Unlock()
-				return fmt.Errorf("failed to stop session %s", shellData.ID())
-			}
-		}
-		s.mux.Unlock()
+		return s.handleShellData(agentMsg)
 	}
 	return nil
 }

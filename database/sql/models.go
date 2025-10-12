@@ -81,6 +81,9 @@ type Template struct {
 	OSType      commonParams.OSType `gorm:"type:varchar(32);index:idx_tpl_os_type"`
 	ForgeType   params.EndpointType `gorm:"type:varchar(32);index:idx_tpl_forge_type"`
 	Data        []byte              `gorm:"type:longblob"`
+	// AgentMode marks a template as being compatible with agent mode.
+	// Templates marked as agent mode compatible, must install the GARM agent.
+	AgentMode bool
 
 	ScaleSets []ScaleSet `gorm:"foreignKey:TemplateID"`
 	Pools     []Pool     `gorm:"foreignKey:TemplateID"`
@@ -204,6 +207,7 @@ type Repository struct {
 	ScaleSets        []ScaleSet              `gorm:"foreignKey:RepoID"`
 	Jobs             []WorkflowJob           `gorm:"foreignKey:RepoID;constraint:OnDelete:SET NULL"`
 	PoolBalancerType params.PoolBalancerType `gorm:"type:varchar(64)"`
+	AgentMode        bool
 
 	EndpointName *string        `gorm:"index:idx_owner_nocase,unique,collate:nocase"`
 	Endpoint     GithubEndpoint `gorm:"foreignKey:EndpointName;constraint:OnDelete:SET NULL"`
@@ -236,6 +240,7 @@ type Organization struct {
 	ScaleSet         []ScaleSet              `gorm:"foreignKey:OrgID"`
 	Jobs             []WorkflowJob           `gorm:"foreignKey:OrgID;constraint:OnDelete:SET NULL"`
 	PoolBalancerType params.PoolBalancerType `gorm:"type:varchar(64)"`
+	AgentMode        bool
 
 	EndpointName *string        `gorm:"index:idx_org_name_nocase,collate:nocase"`
 	Endpoint     GithubEndpoint `gorm:"foreignKey:EndpointName;constraint:OnDelete:SET NULL"`
@@ -266,6 +271,7 @@ type Enterprise struct {
 	ScaleSet         []ScaleSet              `gorm:"foreignKey:EnterpriseID"`
 	Jobs             []WorkflowJob           `gorm:"foreignKey:EnterpriseID;constraint:OnDelete:SET NULL"`
 	PoolBalancerType params.PoolBalancerType `gorm:"type:varchar(64)"`
+	AgentMode        bool
 
 	EndpointName *string        `gorm:"index:idx_ent_name_nocase,collate:nocase"`
 	Endpoint     GithubEndpoint `gorm:"foreignKey:EndpointName;constraint:OnDelete:SET NULL"`

@@ -706,6 +706,12 @@ export interface CreateTemplateParams {
 export interface Enterprise {
     /**
      * 
+     * @type {boolean}
+     * @memberof Enterprise
+     */
+    'agent_mode'?: boolean;
+    /**
+     * 
      * @type {string}
      * @memberof Enterprise
      */
@@ -1163,6 +1169,12 @@ export interface ForgeEndpoint {
 export interface ForgeEntity {
     /**
      * 
+     * @type {boolean}
+     * @memberof ForgeEntity
+     */
+    'agent_mode'?: boolean;
+    /**
+     * 
      * @type {string}
      * @memberof ForgeEntity
      */
@@ -1228,6 +1240,12 @@ export interface GARMAgentTool {
      * @memberof GARMAgentTool
      */
     'description'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof GARMAgentTool
+     */
+    'download_url'?: string;
     /**
      * 
      * @type {string}
@@ -1344,6 +1362,12 @@ export interface GARMAgentToolsPaginatedResponseResultsInner {
      * @memberof GARMAgentToolsPaginatedResponseResultsInner
      */
     'description'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof GARMAgentToolsPaginatedResponseResultsInner
+     */
+    'download_url'?: string;
     /**
      * 
      * @type {string}
@@ -1670,6 +1694,18 @@ export interface Instance {
  */
 export interface InstanceMetadata {
     /**
+     * Agent mode indicates whether or not we need to install the GARM agent on the runner.
+     * @type {boolean}
+     * @memberof InstanceMetadata
+     */
+    'agent_mode'?: boolean;
+    /**
+     * 
+     * @type {GARMAgentTool}
+     * @memberof InstanceMetadata
+     */
+    'agent_tools'?: GARMAgentTool;
+    /**
      * 
      * @type {{ [key: string]: Array<number>; }}
      * @memberof InstanceMetadata
@@ -1938,6 +1974,12 @@ export interface NewUserParams {
  * @interface Organization
  */
 export interface Organization {
+    /**
+     * 
+     * @type {boolean}
+     * @memberof Organization
+     */
+    'agent_mode'?: boolean;
     /**
      * 
      * @type {string}
@@ -2249,6 +2291,12 @@ export interface Provider {
  * @interface Repository
  */
 export interface Repository {
+    /**
+     * 
+     * @type {boolean}
+     * @memberof Repository
+     */
+    'agent_mode'?: boolean;
     /**
      * 
      * @type {string}
@@ -2639,6 +2687,12 @@ export interface Tag {
  * @interface Template
  */
 export interface Template {
+    /**
+     * 
+     * @type {boolean}
+     * @memberof Template
+     */
+    'agent_mode'?: boolean;
     /**
      * 
      * @type {string}

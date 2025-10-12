@@ -583,69 +583,138 @@ func (s *sqlDatabase) ensureTemplates(migrateTemplates bool) error {
 	return nil
 }
 
+// dropIndexIfExists drops an index if it exists
+func (s *sqlDatabase) dropIndexIfExists(model interface{}, indexName string) {
+	if s.conn.Migrator().HasIndex(model, indexName) {
+		if err := s.conn.Migrator().DropIndex(model, indexName); err != nil {
+			slog.With(slog.Any("error", err)).
+				Error(fmt.Sprintf("failed to drop index %s", indexName))
+		}
+	}
+}
+
+// migratePoolNullIDs updates pools to set null IDs instead of zero UUIDs
+func (s *sqlDatabase) migratePoolNullIDs() error {
+	if !s.conn.Migrator().HasTable(&Pool{}) {
+		return nil
+	}
+
+	zeroUUID := "00000000-0000-0000-0000-000000000000"
+	updates := []struct {
+		column string
+		query  string
+	}{
+		{"repo_id", fmt.Sprintf("update pools set repo_id=NULL where repo_id='%s'", zeroUUID)},
+		{"org_id", fmt.Sprintf("update pools set org_id=NULL where org_id='%s'", zeroUUID)},
+		{"enterprise_id", fmt.Sprintf("update pools set enterprise_id=NULL where enterprise_id='%s'", zeroUUID)},
+	}
+
+	for _, update := range updates {
+		if err := s.conn.Exec(update.query).Error; err != nil {
+			return fmt.Errorf("error updating pools %s: %w", update.column, err)
+		}
+	}
+	return nil
+}
+
+// migrateGithubEndpointType adds and initializes endpoint_type column
+func (s *sqlDatabase) migrateGithubEndpointType() error {
+	if !s.conn.Migrator().HasTable(&GithubEndpoint{}) {
+		return nil
+	}
+
+	if s.conn.Migrator().HasColumn(&GithubEndpoint{}, "endpoint_type") {
+		return nil
+	}
+
+	if err := s.conn.Migrator().AutoMigrate(&GithubEndpoint{}); err != nil {
+		return fmt.Errorf("error migrating github endpoints: %w", err)
+	}
+
+	if err := s.conn.Exec("update github_endpoints set endpoint_type = 'github' where endpoint_type is null").Error; err != nil {
+		return fmt.Errorf("error updating github endpoints: %w", err)
+	}
+
+	return nil
+}
+
+// migrateControllerInfo updates controller info with new fields
+func (s *sqlDatabase) migrateControllerInfo(hasMinAgeField, hasAgentURL bool) error {
+	if hasMinAgeField && hasAgentURL {
+		return nil
+	}
+
+	var controller ControllerInfo
+	if err := s.conn.First(&controller).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil
+		}
+		return fmt.Errorf("error fetching controller info: %w", err)
+	}
+
+	if !hasMinAgeField {
+		controller.MinimumJobAgeBackoff = 30
+	}
+
+	if !hasAgentURL && controller.WebhookBaseURL != "" {
+		matchWebhooksPath := regexp.MustCompile(`/webhooks(/)?$`)
+		controller.AgentURL = matchWebhooksPath.ReplaceAllLiteralString(controller.WebhookBaseURL, `/agent`)
+	}
+
+	if err := s.conn.Save(&controller).Error; err != nil {
+		return fmt.Errorf("error updating controller info: %w", err)
+	}
+
+	return nil
+}
+
+// preMigrationChecks performs checks before running migrations
+func (s *sqlDatabase) preMigrationChecks() (needsCredentialMigration, migrateTemplates, hasMinAgeField, hasAgentURL bool) {
+	// Check if credentials need migration
+	needsCredentialMigration = !s.conn.Migrator().HasTable(&GithubCredentials{}) ||
+		!s.conn.Migrator().HasTable(&GithubEndpoint{})
+
+	// Check if templates need migration
+	migrateTemplates = !s.conn.Migrator().HasTable(&Template{})
+
+	// Check for controller info fields
+	if s.conn.Migrator().HasTable(&ControllerInfo{}) {
+		hasMinAgeField = s.conn.Migrator().HasColumn(&ControllerInfo{}, "minimum_job_age_backoff")
+		hasAgentURL = s.conn.Migrator().HasColumn(&ControllerInfo{}, "agent_url")
+	}
+
+	return
+}
+
 func (s *sqlDatabase) migrateDB() error {
-	if s.conn.Migrator().HasIndex(&Organization{}, "idx_organizations_name") {
-		if err := s.conn.Migrator().DropIndex(&Organization{}, "idx_organizations_name"); err != nil {
-			slog.With(slog.Any("error", err)).Error("failed to drop index idx_organizations_name")
-		}
-	}
+	// Drop obsolete indexes
+	s.dropIndexIfExists(&Organization{}, "idx_organizations_name")
+	s.dropIndexIfExists(&Repository{}, "idx_owner")
 
-	if s.conn.Migrator().HasIndex(&Repository{}, "idx_owner") {
-		if err := s.conn.Migrator().DropIndex(&Repository{}, "idx_owner"); err != nil {
-			slog.With(slog.Any("error", err)).Error("failed to drop index idx_owner")
-		}
-	}
-
+	// Run cascade migration
 	if err := s.cascadeMigration(); err != nil {
 		return fmt.Errorf("error running cascade migration: %w", err)
 	}
 
-	if s.conn.Migrator().HasTable(&Pool{}) {
-		if err := s.conn.Exec("update pools set repo_id=NULL where repo_id='00000000-0000-0000-0000-000000000000'").Error; err != nil {
-			return fmt.Errorf("error updating pools %w", err)
-		}
-
-		if err := s.conn.Exec("update pools set org_id=NULL where org_id='00000000-0000-0000-0000-000000000000'").Error; err != nil {
-			return fmt.Errorf("error updating pools: %w", err)
-		}
-
-		if err := s.conn.Exec("update pools set enterprise_id=NULL where enterprise_id='00000000-0000-0000-0000-000000000000'").Error; err != nil {
-			return fmt.Errorf("error updating pools: %w", err)
-		}
+	// Migrate pool null IDs
+	if err := s.migratePoolNullIDs(); err != nil {
+		return err
 	}
 
+	// Migrate workflows
 	if err := s.migrateWorkflow(); err != nil {
 		return fmt.Errorf("error migrating workflows: %w", err)
 	}
 
-	if s.conn.Migrator().HasTable(&GithubEndpoint{}) {
-		if !s.conn.Migrator().HasColumn(&GithubEndpoint{}, "endpoint_type") {
-			if err := s.conn.Migrator().AutoMigrate(&GithubEndpoint{}); err != nil {
-				return fmt.Errorf("error migrating github endpoints: %w", err)
-			}
-			if err := s.conn.Exec("update github_endpoints set endpoint_type = 'github' where endpoint_type is null").Error; err != nil {
-				return fmt.Errorf("error updating github endpoints: %w", err)
-			}
-		}
+	// Migrate GitHub endpoint type
+	if err := s.migrateGithubEndpointType(); err != nil {
+		return err
 	}
 
-	var needsCredentialMigration bool
-	if !s.conn.Migrator().HasTable(&GithubCredentials{}) || !s.conn.Migrator().HasTable(&GithubEndpoint{}) {
-		needsCredentialMigration = true
-	}
+	// Check if we need to migrate credentials and templates
+	needsCredentialMigration, migrateTemplates, hasMinAgeField, hasAgentURL := s.preMigrationChecks()
 
-	var hasMinAgeField bool
-	if s.conn.Migrator().HasTable(&ControllerInfo{}) && s.conn.Migrator().HasColumn(&ControllerInfo{}, "minimum_job_age_backoff") {
-		hasMinAgeField = true
-	}
-
-	hasAgentURL := false
-	if s.conn.Migrator().HasTable(&ControllerInfo{}) && s.conn.Migrator().HasColumn(&ControllerInfo{}, "agent_url") {
-		hasAgentURL = true
-	}
-
-	migrateTemplates := !s.conn.Migrator().HasTable(&Template{})
-
+	// Run main schema migration
 	s.conn.Exec("PRAGMA foreign_keys = OFF")
 	if err := s.conn.AutoMigrate(
 		&User{},
@@ -678,39 +747,24 @@ func (s *sqlDatabase) migrateDB() error {
 
 	s.conn.Exec("PRAGMA foreign_keys = ON")
 
-	if !hasMinAgeField || !hasAgentURL {
-		var controller ControllerInfo
-		if err := s.conn.First(&controller).Error; err != nil {
-			if !errors.Is(err, gorm.ErrRecordNotFound) {
-				return fmt.Errorf("error updating controller info: %w", err)
-			}
-		} else {
-			if !hasMinAgeField {
-				controller.MinimumJobAgeBackoff = 30
-			}
-			if !hasAgentURL {
-				if controller.WebhookBaseURL != "" {
-					matchWehooksPath := regexp.MustCompile(`/webhooks(/)?$`)
-					agentURL := matchWehooksPath.ReplaceAllLiteralString(controller.WebhookBaseURL, `/agent`)
-					controller.AgentURL = agentURL
-				}
-			}
-			if err := s.conn.Save(&controller).Error; err != nil {
-				return fmt.Errorf("error updating controller info: %w", err)
-			}
-		}
+	// Migrate controller info if needed
+	if err := s.migrateControllerInfo(hasMinAgeField, hasAgentURL); err != nil {
+		return err
 	}
 
+	// Ensure github endpoint exists
 	if err := s.ensureGithubEndpoint(); err != nil {
 		return fmt.Errorf("error ensuring github endpoint: %w", err)
 	}
 
+	// Migrate credentials if needed
 	if needsCredentialMigration {
 		if err := s.migrateCredentialsToDB(); err != nil {
 			return fmt.Errorf("error migrating credentials: %w", err)
 		}
 	}
 
+	// Ensure templates exist
 	if err := s.ensureTemplates(migrateTemplates); err != nil {
 		return fmt.Errorf("failed to create default templates: %w", err)
 	}

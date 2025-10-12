@@ -422,6 +422,9 @@ definitions:
         x-go-package: github.com/cloudbase/garm/params
     Enterprise:
         properties:
+            agent_mode:
+                type: boolean
+                x-go-name: AgentMode
             created_at:
                 format: date-time
                 type: string
@@ -710,6 +713,9 @@ definitions:
         x-go-package: github.com/cloudbase/garm/params
     ForgeEntity:
         properties:
+            agent_mode:
+                type: boolean
+                x-go-name: AgentMode
             created_at:
                 format: date-time
                 type: string
@@ -747,6 +753,9 @@ definitions:
             description:
                 type: string
                 x-go-name: Description
+            download_url:
+                type: string
+                x-go-name: DownloadURL
             file_type:
                 type: string
                 x-go-name: FileType
@@ -805,6 +814,9 @@ definitions:
                         description:
                             type: string
                             x-go-name: Description
+                        download_url:
+                            type: string
+                            x-go-name: DownloadURL
                         file_type:
                             type: string
                             x-go-name: FileType
@@ -1031,6 +1043,12 @@ definitions:
         x-go-package: github.com/cloudbase/garm/params
     InstanceMetadata:
         properties:
+            agent_mode:
+                description: Agent mode indicates whether or not we need to install the GARM agent on the runner.
+                type: boolean
+                x-go-name: AgentMode
+            agent_tools:
+                $ref: '#/definitions/GARMAgentTool'
             ca_bundles:
                 additionalProperties:
                     items:
@@ -1247,6 +1265,9 @@ definitions:
         x-go-package: github.com/cloudbase/garm-provider-common/params
     Organization:
         properties:
+            agent_mode:
+                type: boolean
+                x-go-name: AgentMode
             created_at:
                 format: date-time
                 type: string
@@ -1462,6 +1483,9 @@ definitions:
         x-go-package: github.com/cloudbase/garm/params
     Repository:
         properties:
+            agent_mode:
+                type: boolean
+                x-go-name: AgentMode
             created_at:
                 format: date-time
                 type: string
@@ -1700,6 +1724,9 @@ definitions:
         x-go-package: github.com/cloudbase/garm/params
     Template:
         properties:
+            agent_mode:
+                type: boolean
+                x-go-name: AgentMode
             created_at:
                 format: date-time
                 type: string

@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"html/template"
 	"log/slog"
+	"net/url"
 	"strings"
 
 	"github.com/cloudbase/garm-provider-common/cloudconfig"
@@ -224,6 +225,18 @@ func (r *Runner) GetInstanceMetadata(ctx context.Context) (params.InstanceMetada
 		},
 		ForgeType:  dbEntity.Credentials.ForgeType,
 		JITEnabled: len(instance.JitConfiguration) > 0,
+		AgentMode:  dbEntity.AgentMode,
+	}
+
+	if dbEntity.AgentMode {
+		agentTools, err := r.GetGARMTools(ctx, 0, 25)
+		if err != nil {
+			return params.InstanceMetadata{}, fmt.Errorf("failed to find garm agent tools: %w", err)
+		}
+		if agentTools.TotalCount == 0 {
+			return params.InstanceMetadata{}, runnerErrors.NewConflictError("agent mode is enabled, but agent tools not available")
+		}
+		ret.AgentTools = agentTools.Results[0]
 	}
 
 	if len(dbEntity.Credentials.Endpoint.CACertBundle) > 0 {
@@ -536,6 +549,11 @@ func (r *Runner) GetGARMTools(ctx context.Context, page, pageSize uint64) (param
 				osType = val[8:]
 			}
 		}
+		agentIDAsString := fmt.Sprintf("%d", val.ID)
+		downloadURL, err := url.JoinPath(instance.MetadataURL, "tools/garm-agent", agentIDAsString, "download")
+		if err != nil {
+			return params.GARMAgentToolsPaginatedResponse{}, fmt.Errorf("failed to construct agent tools download URL: %w", err)
+		}
 		res := params.GARMAgentTool{
 			ID:          val.ID,
 			Name:        val.Name,
@@ -547,6 +565,7 @@ func (r *Runner) GetGARMTools(ctx context.Context, page, pageSize uint64) (param
 			FileType:    val.FileType,
 			OSType:      commonParams.OSType(osType),
 			OSArch:      commonParams.OSArch(osArch),
+			DownloadURL: downloadURL,
 		}
 		if version != "" {
 			res.Version = version

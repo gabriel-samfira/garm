@@ -161,6 +161,7 @@ func (s *sqlDatabase) sqlToCommonOrganization(org Organization, detailed bool) (
 		Endpoint:         endpoint,
 		CreatedAt:        org.CreatedAt,
 		UpdatedAt:        org.UpdatedAt,
+		AgentMode:        org.AgentMode,
 	}
 
 	var forgeCreds params.ForgeCredentials
@@ -233,6 +234,7 @@ func (s *sqlDatabase) sqlToCommonEnterprise(enterprise Enterprise, detailed bool
 		CreatedAt:        enterprise.CreatedAt,
 		UpdatedAt:        enterprise.UpdatedAt,
 		Endpoint:         endpoint,
+		AgentMode:        enterprise.AgentMode,
 	}
 
 	if enterprise.CredentialsID != nil {
@@ -446,6 +448,7 @@ func (s *sqlDatabase) sqlToCommonRepository(repo Repository, detailed bool) (par
 		CreatedAt:        repo.CreatedAt,
 		UpdatedAt:        repo.UpdatedAt,
 		Endpoint:         endpoint,
+		AgentMode:        repo.AgentMode,
 	}
 
 	if repo.CredentialsID != nil && repo.GiteaCredentialsID != nil {
@@ -748,23 +751,35 @@ func (s *sqlDatabase) addRepositoryEvent(ctx context.Context, repoID string, eve
 		Message:    statusMessage,
 		EventType:  event,
 		EventLevel: eventLevel,
+		RepoID:     repo.ID,
 	}
 
-	if err := s.conn.Model(&repo).Association("Events").Append(&msg); err != nil {
+	// Use Create instead of Association.Append to avoid loading all existing events
+	if err := s.conn.Create(&msg).Error; err != nil {
 		return fmt.Errorf("error adding status message: %w", err)
 	}
 
 	if maxEvents > 0 {
-		var latestEvents []RepositoryEvent
-		q := s.conn.Model(&RepositoryEvent{}).
-			Limit(maxEvents).Order("id desc").
-			Where("repo_id = ?", repo.ID).Find(&latestEvents)
-		if q.Error != nil {
-			return fmt.Errorf("error fetching latest events: %w", q.Error)
+		var count int64
+		if err := s.conn.Model(&RepositoryEvent{}).Where("repo_id = ?", repo.ID).Count(&count).Error; err != nil {
+			return fmt.Errorf("error counting events: %w", err)
 		}
-		if len(latestEvents) == maxEvents {
-			lastInList := latestEvents[len(latestEvents)-1]
-			if err := s.conn.Where("repo_id = ? and id < ?", repo.ID, lastInList.ID).Unscoped().Delete(&RepositoryEvent{}).Error; err != nil {
+
+		if count > int64(maxEvents) {
+			// Get the ID of the Nth most recent event
+			var cutoffEvent RepositoryEvent
+			if err := s.conn.Model(&RepositoryEvent{}).
+				Select("id").
+				Where("repo_id = ?", repo.ID).
+				Order("id desc").
+				Offset(maxEvents - 1).
+				Limit(1).
+				First(&cutoffEvent).Error; err != nil {
+				return fmt.Errorf("error finding cutoff event: %w", err)
+			}
+
+			// Delete all events older than the cutoff
+			if err := s.conn.Where("repo_id = ? and id < ?", repo.ID, cutoffEvent.ID).Unscoped().Delete(&RepositoryEvent{}).Error; err != nil {
 				return fmt.Errorf("error deleting old events: %w", err)
 			}
 		}
@@ -782,23 +797,35 @@ func (s *sqlDatabase) addOrgEvent(ctx context.Context, orgID string, event param
 		Message:    statusMessage,
 		EventType:  event,
 		EventLevel: eventLevel,
+		OrgID:      org.ID,
 	}
 
-	if err := s.conn.Model(&org).Association("Events").Append(&msg); err != nil {
+	// Use Create instead of Association.Append to avoid loading all existing events
+	if err := s.conn.Create(&msg).Error; err != nil {
 		return fmt.Errorf("error adding status message: %w", err)
 	}
 
 	if maxEvents > 0 {
-		var latestEvents []OrganizationEvent
-		q := s.conn.Model(&OrganizationEvent{}).
-			Limit(maxEvents).Order("id desc").
-			Where("org_id = ?", org.ID).Find(&latestEvents)
-		if q.Error != nil {
-			return fmt.Errorf("error fetching latest events: %w", q.Error)
+		var count int64
+		if err := s.conn.Model(&OrganizationEvent{}).Where("org_id = ?", org.ID).Count(&count).Error; err != nil {
+			return fmt.Errorf("error counting events: %w", err)
 		}
-		if len(latestEvents) == maxEvents {
-			lastInList := latestEvents[len(latestEvents)-1]
-			if err := s.conn.Where("org_id = ? and id < ?", org.ID, lastInList.ID).Unscoped().Delete(&OrganizationEvent{}).Error; err != nil {
+
+		if count > int64(maxEvents) {
+			// Get the ID of the Nth most recent event
+			var cutoffEvent OrganizationEvent
+			if err := s.conn.Model(&OrganizationEvent{}).
+				Select("id").
+				Where("org_id = ?", org.ID).
+				Order("id desc").
+				Offset(maxEvents - 1).
+				Limit(1).
+				First(&cutoffEvent).Error; err != nil {
+				return fmt.Errorf("error finding cutoff event: %w", err)
+			}
+
+			// Delete all events older than the cutoff
+			if err := s.conn.Where("org_id = ? and id < ?", org.ID, cutoffEvent.ID).Unscoped().Delete(&OrganizationEvent{}).Error; err != nil {
 				return fmt.Errorf("error deleting old events: %w", err)
 			}
 		}
@@ -813,26 +840,38 @@ func (s *sqlDatabase) addEnterpriseEvent(ctx context.Context, entID string, even
 	}
 
 	msg := EnterpriseEvent{
-		Message:    statusMessage,
-		EventType:  event,
-		EventLevel: eventLevel,
+		Message:      statusMessage,
+		EventType:    event,
+		EventLevel:   eventLevel,
+		EnterpriseID: ent.ID,
 	}
 
-	if err := s.conn.Model(&ent).Association("Events").Append(&msg); err != nil {
+	// Use Create instead of Association.Append to avoid loading all existing events
+	if err := s.conn.Create(&msg).Error; err != nil {
 		return fmt.Errorf("error adding status message: %w", err)
 	}
 
 	if maxEvents > 0 {
-		var latestEvents []EnterpriseEvent
-		q := s.conn.Model(&EnterpriseEvent{}).
-			Limit(maxEvents).Order("id desc").
-			Where("enterprise_id = ?", ent.ID).Find(&latestEvents)
-		if q.Error != nil {
-			return fmt.Errorf("error fetching latest events: %w", q.Error)
+		var count int64
+		if err := s.conn.Model(&EnterpriseEvent{}).Where("enterprise_id = ?", ent.ID).Count(&count).Error; err != nil {
+			return fmt.Errorf("error counting events: %w", err)
 		}
-		if len(latestEvents) == maxEvents {
-			lastInList := latestEvents[len(latestEvents)-1]
-			if err := s.conn.Where("enterprise_id = ? and id < ?", ent.ID, lastInList.ID).Unscoped().Delete(&EnterpriseEvent{}).Error; err != nil {
+
+		if count > int64(maxEvents) {
+			// Get the ID of the Nth most recent event
+			var cutoffEvent EnterpriseEvent
+			if err := s.conn.Model(&EnterpriseEvent{}).
+				Select("id").
+				Where("enterprise_id = ?", ent.ID).
+				Order("id desc").
+				Offset(maxEvents - 1).
+				Limit(1).
+				First(&cutoffEvent).Error; err != nil {
+				return fmt.Errorf("error finding cutoff event: %w", err)
+			}
+
+			// Delete all events older than the cutoff
+			if err := s.conn.Where("enterprise_id = ? and id < ?", ent.ID, cutoffEvent.ID).Unscoped().Delete(&EnterpriseEvent{}).Error; err != nil {
 				return fmt.Errorf("error deleting old events: %w", err)
 			}
 		}
@@ -1021,5 +1060,6 @@ func (s *sqlDatabase) sqlToParamTemplate(template Template) (params.Template, er
 		ForgeType:   template.ForgeType,
 		Owner:       owner,
 		OSType:      template.OSType,
+		AgentMode:   template.AgentMode,
 	}, nil
 }

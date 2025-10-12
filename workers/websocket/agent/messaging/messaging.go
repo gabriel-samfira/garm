@@ -287,7 +287,7 @@ func (s RunnerUpdateMessage) Marshal() []byte {
 
 	msg.Data = make([]byte, 8+len(s.Payload))
 	binary.BigEndian.PutUint64(msg.Data[0:8], s.AgentID)
-	copy(msg.Data[8:], s.Payload[:])
+	copy(msg.Data[8:], s.Payload)
 	return msg.Marshal()
 }
 
@@ -313,7 +313,7 @@ func (s RunnerHeartbetMessage) Marshal() []byte {
 
 	msg.Data = make([]byte, 8+len(s.Payload))
 	binary.BigEndian.PutUint64(msg.Data[0:8], s.AgentID)
-	copy(msg.Data[8:], s.Payload[:])
+	copy(msg.Data[8:], s.Payload)
 	return msg.Marshal()
 }
 

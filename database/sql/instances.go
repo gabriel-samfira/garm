@@ -29,6 +29,7 @@ import (
 	"gorm.io/gorm/clause"
 
 	runnerErrors "github.com/cloudbase/garm-provider-common/errors"
+	commonParams "github.com/cloudbase/garm-provider-common/params"
 	"github.com/cloudbase/garm/database/common"
 	"github.com/cloudbase/garm/params"
 )
@@ -262,9 +263,134 @@ func (s *sqlDatabase) AddInstanceEvent(ctx context.Context, instanceName string,
 		EventLevel: eventLevel,
 	}
 
-	if err := s.conn.Model(&instance).Association("StatusMessages").Append(&msg); err != nil {
+	// Use Create instead of Association.Append to avoid loading all existing messages
+	msg.InstanceID = instance.ID
+	if err := s.conn.Create(&msg).Error; err != nil {
 		return fmt.Errorf("error adding status message: %w", err)
 	}
+
+	// Keep only the latest 30 status messages to prevent database bloat
+	const maxStatusMessages = 30
+	var count int64
+	if err := s.conn.Model(&InstanceStatusUpdate{}).Where("instance_id = ?", instance.ID).Count(&count).Error; err != nil {
+		return fmt.Errorf("error counting status messages: %w", err)
+	}
+
+	if count > maxStatusMessages {
+		// Get the ID of the 30th most recent message
+		var cutoffMsg InstanceStatusUpdate
+		if err := s.conn.Model(&InstanceStatusUpdate{}).
+			Select("id").
+			Where("instance_id = ?", instance.ID).
+			Order("id desc").
+			Offset(maxStatusMessages - 1).
+			Limit(1).
+			First(&cutoffMsg).Error; err != nil {
+			return fmt.Errorf("error finding cutoff message: %w", err)
+		}
+
+		// Delete all messages older than the cutoff
+		if err := s.conn.Where("instance_id = ? and id < ?", instance.ID, cutoffMsg.ID).Unscoped().Delete(&InstanceStatusUpdate{}).Error; err != nil {
+			return fmt.Errorf("error deleting old status messages: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// validateAgentID checks agent ID consistency
+func (s *sqlDatabase) validateAgentID(currentAgentID, newAgentID int64) error {
+	if currentAgentID != 0 && newAgentID != 0 && currentAgentID != newAgentID {
+		return runnerErrors.NewBadRequestError("agent ID mismatch")
+	}
+	return nil
+}
+
+// validateRunnerStatusTransition validates runner status state transition
+func (s *sqlDatabase) validateRunnerStatusTransition(current, newStatus params.RunnerStatus) error {
+	if newStatus == "" || newStatus == current {
+		return nil
+	}
+
+	allowedTransitions, ok := params.RunnerStatusTransitions[current]
+	if !ok {
+		return fmt.Errorf("Instance is in invalid state: %s", current)
+	}
+
+	if !slices.Contains(allowedTransitions, newStatus) {
+		return runnerErrors.NewBadRequestError("invalid runner status transition from %s to %s", current, newStatus)
+	}
+	return nil
+}
+
+// validateInstanceStatusTransition validates instance status state transition
+func (s *sqlDatabase) validateInstanceStatusTransition(current, newStatus commonParams.InstanceStatus) error {
+	if newStatus == "" || newStatus == current {
+		return nil
+	}
+
+	allowedTransitions, ok := params.InstanceStatusTransitions[current]
+	if !ok {
+		// we need a better way to handle this. Because if we err out here, we cannot recover
+		// unless the user manually updates the instance.
+		return fmt.Errorf("Instance is in invalid state: %s", current)
+	}
+
+	if !slices.Contains(allowedTransitions, newStatus) {
+		return runnerErrors.NewBadRequestError("invalid instance status transition from %s to %s", current, newStatus)
+	}
+	return nil
+}
+
+// applyInstanceUpdates applies parameter updates to the instance
+func (s *sqlDatabase) applyInstanceUpdates(instance *Instance, param params.UpdateInstanceParams) error {
+	// Simple field updates
+	if param.AgentID != 0 {
+		instance.AgentID = param.AgentID
+	}
+	if param.ProviderID != "" {
+		instance.ProviderID = &param.ProviderID
+	}
+	if param.OSName != "" {
+		instance.OSName = param.OSName
+	}
+	if param.OSVersion != "" {
+		instance.OSVersion = param.OSVersion
+	}
+	if string(param.RunnerStatus) != "" {
+		instance.RunnerStatus = param.RunnerStatus
+	}
+	if param.Heartbeat != nil {
+		instance.Heartbeat = *param.Heartbeat
+	}
+	if param.Status != "" {
+		instance.Status = param.Status
+	}
+	if param.CreateAttempt != 0 {
+		instance.CreateAttempt = param.CreateAttempt
+	}
+	if param.TokenFetched != nil {
+		instance.TokenFetched = *param.TokenFetched
+	}
+
+	// Complex field updates
+	if param.Capabilities != nil {
+		asJs, err := json.Marshal(*param.Capabilities)
+		if err != nil {
+			return runnerErrors.NewBadRequestError("invalid capabilities: %s", err)
+		}
+		instance.Capabilities = asJs
+	}
+
+	if param.JitConfiguration != nil {
+		secret, err := s.marshalAndSeal(param.JitConfiguration)
+		if err != nil {
+			return fmt.Errorf("error marshalling jit config: %w", err)
+		}
+		instance.JitConfiguration = secret
+	}
+
+	instance.ProviderFault = param.ProviderFault
 	return nil
 }
 
@@ -274,95 +400,31 @@ func (s *sqlDatabase) UpdateInstance(ctx context.Context, instanceName string, p
 		if err != nil {
 			return fmt.Errorf("error updating instance: %w", err)
 		}
-		if instance.AgentID != 0 && param.AgentID != 0 {
-			if instance.AgentID != param.AgentID {
-				return runnerErrors.NewBadRequestError("agent ID mismatch")
-			}
+
+		// Validate transitions
+		if err := s.validateAgentID(instance.AgentID, param.AgentID); err != nil {
+			return err
 		}
-		if param.RunnerStatus != "" && param.RunnerStatus != instance.RunnerStatus {
-			allowedTransitions, ok := params.RunnerStatusTransitions[instance.RunnerStatus]
-			if !ok {
-				return fmt.Errorf("Instance is in invalid state: %s", instance.RunnerStatus)
-			}
-			found := slices.Contains(allowedTransitions, param.RunnerStatus)
-			if !found {
-				return runnerErrors.NewBadRequestError("invalid runner status transition from %s to %s", instance.RunnerStatus, param.RunnerStatus)
-			}
+		if err := s.validateRunnerStatusTransition(instance.RunnerStatus, param.RunnerStatus); err != nil {
+			return err
 		}
-		if param.Capabilities != nil {
-			asJs, err := json.Marshal(*param.Capabilities)
-			if err != nil {
-				return runnerErrors.NewBadRequestError("invalid capabilities: %s", err)
-			}
-			instance.Capabilities = asJs
-		}
-		if param.AgentID != 0 {
-			instance.AgentID = param.AgentID
+		if err := s.validateInstanceStatusTransition(instance.Status, param.Status); err != nil {
+			return err
 		}
 
-		if param.ProviderID != "" {
-			instance.ProviderID = &param.ProviderID
+		// Apply updates
+		if err := s.applyInstanceUpdates(&instance, param); err != nil {
+			return err
 		}
 
-		if param.OSName != "" {
-			instance.OSName = param.OSName
+		// Save instance
+		if err := tx.Save(&instance).Error; err != nil {
+			return fmt.Errorf("error updating instance: %w", err)
 		}
 
-		if param.OSVersion != "" {
-			instance.OSVersion = param.OSVersion
-		}
-
-		if string(param.RunnerStatus) != "" {
-			instance.RunnerStatus = param.RunnerStatus
-		}
-
-		if param.Heartbeat != nil {
-			instance.Heartbeat = *param.Heartbeat
-		}
-
-		if param.Status != "" && param.Status != instance.Status {
-			allowedTransitions, ok := params.InstanceStatusTransitions[instance.Status]
-			if !ok {
-				// we need a better way to handle this. Because if we err out here, we cannot recover
-				// unless the user manually updates the instance.
-				return fmt.Errorf("Instance is in invalid state: %s", instance.Status)
-			}
-			found := false
-			for _, val := range allowedTransitions {
-				if val == param.Status {
-					found = true
-					break
-				}
-			}
-			if !found {
-				return runnerErrors.NewBadRequestError("invalid instance status transition from %s to %s", instance.Status, param.Status)
-			}
-			instance.Status = param.Status
-		}
-		if param.CreateAttempt != 0 {
-			instance.CreateAttempt = param.CreateAttempt
-		}
-
-		if param.TokenFetched != nil {
-			instance.TokenFetched = *param.TokenFetched
-		}
-
-		if param.JitConfiguration != nil {
-			secret, err := s.marshalAndSeal(param.JitConfiguration)
-			if err != nil {
-				return fmt.Errorf("error marshalling jit config: %w", err)
-			}
-			instance.JitConfiguration = secret
-		}
-
-		instance.ProviderFault = param.ProviderFault
-
-		q := tx.Save(&instance)
-		if q.Error != nil {
-			return fmt.Errorf("error updating instance: %w", q.Error)
-		}
+		// Update addresses if provided
 		if len(param.Addresses) > 0 {
-			addrs := []Address{}
+			addrs := make([]Address, 0, len(param.Addresses))
 			for _, addr := range param.Addresses {
 				addrs = append(addrs, Address{
 					Address: addr.Address,

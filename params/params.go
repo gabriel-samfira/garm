@@ -722,6 +722,7 @@ type Repository struct {
 
 	CredentialsID uint             `json:"credentials_id,omitempty"`
 	Credentials   ForgeCredentials `json:"credentials,omitempty"`
+	AgentMode     bool             `json:"agent_mode"`
 
 	PoolManagerStatus PoolManagerStatus `json:"pool_manager_status,omitempty"`
 	PoolBalancerType  PoolBalancerType  `json:"pool_balancing_type,omitempty"`
@@ -758,6 +759,7 @@ func (r Repository) GetEntity() (ForgeEntity, error) {
 		WebhookSecret:    r.WebhookSecret,
 		CreatedAt:        r.CreatedAt,
 		UpdatedAt:        r.UpdatedAt,
+		AgentMode:        r.AgentMode,
 	}, nil
 }
 
@@ -801,6 +803,7 @@ type Organization struct {
 	CreatedAt         time.Time         `json:"created_at,omitempty"`
 	UpdatedAt         time.Time         `json:"updated_at,omitempty"`
 	Events            []EntityEvent     `json:"events,omitempty"`
+	AgentMode         bool              `json:"agent_mode"`
 	// Do not serialize sensitive info.
 	WebhookSecret string `json:"-"`
 }
@@ -822,6 +825,7 @@ func (o Organization) GetEntity() (ForgeEntity, error) {
 		Credentials:      o.Credentials,
 		CreatedAt:        o.CreatedAt,
 		UpdatedAt:        o.UpdatedAt,
+		AgentMode:        o.AgentMode,
 	}, nil
 }
 
@@ -861,6 +865,7 @@ type Enterprise struct {
 	CreatedAt         time.Time         `json:"created_at,omitempty"`
 	UpdatedAt         time.Time         `json:"updated_at,omitempty"`
 	Events            []EntityEvent     `json:"events,omitempty"`
+	AgentMode         bool              `json:"agent_mode"`
 	// Do not serialize sensitive info.
 	WebhookSecret string `json:"-"`
 }
@@ -882,6 +887,7 @@ func (e Enterprise) GetEntity() (ForgeEntity, error) {
 		Credentials:      e.Credentials,
 		CreatedAt:        e.CreatedAt,
 		UpdatedAt:        e.UpdatedAt,
+		AgentMode:        e.AgentMode,
 	}, nil
 }
 
@@ -1278,6 +1284,7 @@ type ForgeEntity struct {
 	PoolBalancerType PoolBalancerType `json:"pool_balancing_type,omitempty"`
 	CreatedAt        time.Time        `json:"created_at,omitempty"`
 	UpdatedAt        time.Time        `json:"updated_at,omitempty"`
+	AgentMode        bool             `json:"agent_mode"`
 
 	WebhookSecret string `json:"-"`
 }
@@ -1400,6 +1407,7 @@ type Template struct {
 	ForgeType   EndpointType        `json:"forge_type,omitempty"`
 	Data        []byte              `json:"data"`
 	Owner       string              `json:"owner_id,omitempty"`
+	AgentMode   bool                `json:"agent_mode"`
 }
 
 // used by swagger client generated code
@@ -1444,6 +1452,7 @@ type GARMAgentTool struct {
 	Version     string              `json:"version"`
 	OSType      commonParams.OSType `json:"os_type"`
 	OSArch      commonParams.OSArch `json:"os_arch"`
+	DownloadURL string              `json:"download_url"`
 }
 
 // swagger:model GARMAgentToolsPaginatedResponse
@@ -1471,7 +1480,11 @@ type InstanceMetadata struct {
 	// Also, the instance metadata should never be saved to disk, and the metadata URL is only
 	// accessible during setup of the runner. The API returns unauthorized once the runner
 	// transitions to failed/idle.
-	ExtraSpecs  map[string]any                         `json:"extra_specs,omitempty"`
+	ExtraSpecs map[string]any `json:"extra_specs,omitempty"`
+	// Agent mode indicates whether or not we need to install the GARM agent on the runner.
+	AgentMode bool `json:"agent_mode"`
+	// AgentTools represents the garm agent download details.
+	AgentTools  GARMAgentTool                          `json:"agent_tools,omitempty"`
 	JITEnabled  bool                                   `json:"jit_enabled"`
 	RunnerTools commonParams.RunnerApplicationDownload `json:"runner_tools"`
 }
