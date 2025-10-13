@@ -188,13 +188,13 @@ func NewAPIRouter(han *controllers.APIController, authMiddleware, initMiddleware
 	metadataRouter.Handle("/system/cert-bundle", http.HandlerFunc(han.RootCertificateBundleHandler)).Methods("GET", "OPTIONS")
 	// List garm agent downloads
 	metadataRouter.Handle("/tools/garm-agent/", http.HandlerFunc(han.InstanceGARMToolsHandler)).Methods("GET", "OPTIONS")
-	metadataRouter.Handle("/tools/garm-agentgarm", http.HandlerFunc(han.InstanceGARMToolsHandler)).Methods("GET", "OPTIONS")
+	metadataRouter.Handle("/tools/garm-agent", http.HandlerFunc(han.InstanceGARMToolsHandler)).Methods("GET", "OPTIONS")
 	// Show details of a particular garm agent
-	metadataRouter.Handle("/tools/garm-agent/{objectID}/", http.HandlerFunc(han.InstanceGARMToolsHandler)).Methods("GET", "OPTIONS")
-	metadataRouter.Handle("/tools/garm-agent/{objectID}", http.HandlerFunc(han.InstanceGARMToolsHandler)).Methods("GET", "OPTIONS")
+	metadataRouter.Handle("/tools/garm-agent/{objectID}/", http.HandlerFunc(han.InstanceShowGARMToolHandler)).Methods("GET", "OPTIONS")
+	metadataRouter.Handle("/tools/garm-agent/{objectID}", http.HandlerFunc(han.InstanceShowGARMToolHandler)).Methods("GET", "OPTIONS")
 	// Download garm agent
-	metadataRouter.Handle("/tools/garm-agent/{objectID}/download/", http.HandlerFunc(han.InstanceGARMToolsHandler)).Methods("GET", "OPTIONS")
-	metadataRouter.Handle("/tools/garm-agent/{objectID}/download", http.HandlerFunc(han.InstanceGARMToolsHandler)).Methods("GET", "OPTIONS")
+	metadataRouter.Handle("/tools/garm-agent/{objectID}/download/", http.HandlerFunc(han.InstanceGARMToolDownloadHandler)).Methods("GET", "OPTIONS")
+	metadataRouter.Handle("/tools/garm-agent/{objectID}/download", http.HandlerFunc(han.InstanceGARMToolDownloadHandler)).Methods("GET", "OPTIONS")
 	// install script
 	metadataRouter.Handle("/install-script/", http.HandlerFunc(han.RunnerInstallScriptHandler)).Methods("GET", "OPTIONS")
 	metadataRouter.Handle("/install-script", http.HandlerFunc(han.RunnerInstallScriptHandler)).Methods("GET", "OPTIONS")

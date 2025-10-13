@@ -143,6 +143,12 @@ export interface ControllerInfo {
 export interface CreateEnterpriseParams {
     /**
      * 
+     * @type {boolean}
+     * @memberof CreateEnterpriseParams
+     */
+    'agent_mode'?: boolean;
+    /**
+     * 
      * @type {string}
      * @memberof CreateEnterpriseParams
      */
@@ -383,6 +389,12 @@ export interface CreateGithubEndpointParams {
 export interface CreateOrgParams {
     /**
      * 
+     * @type {boolean}
+     * @memberof CreateOrgParams
+     */
+    'agent_mode'?: boolean;
+    /**
+     * 
      * @type {string}
      * @memberof CreateOrgParams
      */
@@ -418,6 +430,12 @@ export interface CreateOrgParams {
  * @interface CreatePoolParams
  */
 export interface CreatePoolParams {
+    /**
+     * 
+     * @type {boolean}
+     * @memberof CreatePoolParams
+     */
+    'enable_shell'?: boolean;
     /**
      * 
      * @type {boolean}
@@ -517,6 +535,12 @@ export interface CreatePoolParams {
 export interface CreateRepoParams {
     /**
      * 
+     * @type {boolean}
+     * @memberof CreateRepoParams
+     */
+    'agent_mode'?: boolean;
+    /**
+     * 
      * @type {string}
      * @memberof CreateRepoParams
      */
@@ -564,6 +588,12 @@ export interface CreateScaleSetParams {
      * @memberof CreateScaleSetParams
      */
     'disable_update'?: boolean;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof CreateScaleSetParams
+     */
+    'enable_shell'?: boolean;
     /**
      * 
      * @type {boolean}
@@ -1701,6 +1731,18 @@ export interface InstanceMetadata {
     'agent_mode'?: boolean;
     /**
      * 
+     * @type {boolean}
+     * @memberof InstanceMetadata
+     */
+    'agent_shell_enabled'?: boolean;
+    /**
+     * 
+     * @type {string}
+     * @memberof InstanceMetadata
+     */
+    'agent_token'?: string;
+    /**
+     * 
      * @type {GARMAgentTool}
      * @memberof InstanceMetadata
      */
@@ -1929,6 +1971,12 @@ export interface MetadataServiceAccessDetails {
      * @type {string}
      * @memberof MetadataServiceAccessDetails
      */
+    'agent_url'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof MetadataServiceAccessDetails
+     */
     'callback_url'?: string;
     /**
      * 
@@ -2084,6 +2132,12 @@ export interface Pool {
      * @memberof Pool
      */
     'created_at'?: string;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof Pool
+     */
+    'enable_shell'?: boolean;
     /**
      * 
      * @type {boolean}
@@ -2461,6 +2515,12 @@ export interface ScaleSet {
      * @type {boolean}
      * @memberof ScaleSet
      */
+    'enable_shell'?: boolean;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof ScaleSet
+     */
     'enabled'?: boolean;
     /**
      * 
@@ -2793,6 +2853,12 @@ export interface UpdateControllerParams {
 export interface UpdateEntityParams {
     /**
      * 
+     * @type {boolean}
+     * @memberof UpdateEntityParams
+     */
+    'agent_mode'?: boolean;
+    /**
+     * 
      * @type {string}
      * @memberof UpdateEntityParams
      */
@@ -2982,6 +3048,12 @@ export interface UpdatePoolParams {
      * @type {boolean}
      * @memberof UpdatePoolParams
      */
+    'enable_shell'?: boolean;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof UpdatePoolParams
+     */
     'enabled'?: boolean;
     /**
      * 
@@ -3068,6 +3140,12 @@ export interface UpdatePoolParams {
  * @interface UpdateScaleSetParams
  */
 export interface UpdateScaleSetParams {
+    /**
+     * 
+     * @type {boolean}
+     * @memberof UpdateScaleSetParams
+     */
+    'enable_shell'?: boolean;
     /**
      * 
      * @type {boolean}

@@ -46,6 +46,7 @@ type CreateRepoParams struct {
 	WebhookSecret    string           `json:"webhook_secret,omitempty"`
 	PoolBalancerType PoolBalancerType `json:"pool_balancer_type,omitempty"`
 	ForgeType        EndpointType     `json:"forge_type,omitempty"`
+	AgentMode        bool             `json:"agent_mode,omitempty"`
 }
 
 func (c *CreateRepoParams) Validate() error {
@@ -87,6 +88,7 @@ type CreateOrgParams struct {
 	WebhookSecret    string           `json:"webhook_secret,omitempty"`
 	PoolBalancerType PoolBalancerType `json:"pool_balancer_type,omitempty"`
 	ForgeType        EndpointType     `json:"forge_type,omitempty"`
+	AgentMode        bool             `json:"agent_mode,omitempty"`
 }
 
 func (c *CreateOrgParams) Validate() error {
@@ -122,6 +124,7 @@ type CreateEnterpriseParams struct {
 	CredentialsName  string           `json:"credentials_name,omitempty"`
 	WebhookSecret    string           `json:"webhook_secret,omitempty"`
 	PoolBalancerType PoolBalancerType `json:"pool_balancer_type,omitempty"`
+	AgentMode        bool             `json:"agent_mode,omitempty"`
 }
 
 func (c *CreateEnterpriseParams) Validate() error {
@@ -169,6 +172,7 @@ type UpdatePoolParams struct {
 	OSType                 commonParams.OSType `json:"os_type,omitempty"`
 	OSArch                 commonParams.OSArch `json:"os_arch,omitempty"`
 	ExtraSpecs             json.RawMessage     `json:"extra_specs,omitempty"`
+	EnableShell            *bool               `json:"enable_shell"`
 	// GithubRunnerGroup is the github runner group in which the runners of this
 	// pool will be added to.
 	// The runner group must be created by someone with access to the enterprise.
@@ -209,6 +213,7 @@ type CreatePoolParams struct {
 	Enabled                bool                `json:"enabled,omitempty"`
 	RunnerBootstrapTimeout uint                `json:"runner_bootstrap_timeout,omitempty"`
 	ExtraSpecs             json.RawMessage     `json:"extra_specs,omitempty"`
+	EnableShell            bool                `json:"enable_shell"`
 	// GithubRunnerGroup is the github runner group in which the runners of this
 	// pool will be added to.
 	// The runner group must be created by someone with access to the enterprise.
@@ -294,6 +299,7 @@ type UpdateEntityParams struct {
 	CredentialsName  string           `json:"credentials_name,omitempty"`
 	WebhookSecret    string           `json:"webhook_secret,omitempty"`
 	PoolBalancerType PoolBalancerType `json:"pool_balancer_type,omitempty"`
+	AgentMode        *bool            `json:"agent_mode,omitempty"`
 }
 
 type InstanceUpdateMessage struct {
@@ -595,6 +601,7 @@ type CreateScaleSetParams struct {
 	Enabled                bool                `json:"enabled,omitempty"`
 	RunnerBootstrapTimeout uint                `json:"runner_bootstrap_timeout,omitempty"`
 	ExtraSpecs             json.RawMessage     `json:"extra_specs,omitempty"`
+	EnableShell            bool                `json:"enable_shell"`
 	// GithubRunnerGroup is the github runner group in which the runners of this
 	// pool will be added to.
 	// The runner group must be created by someone with access to the enterprise.
@@ -644,6 +651,7 @@ type UpdateScaleSetParams struct {
 	OSType                 commonParams.OSType `json:"os_type,omitempty"`
 	OSArch                 commonParams.OSArch `json:"os_arch,omitempty"`
 	ExtraSpecs             json.RawMessage     `json:"extra_specs,omitempty"`
+	EnableShell            *bool               `json:"enable_shell"`
 	// GithubRunnerGroup is the github runner group in which the runners of this
 	// pool will be added to.
 	// The runner group must be created by someone with access to the enterprise.

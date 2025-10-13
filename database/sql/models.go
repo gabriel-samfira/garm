@@ -108,6 +108,7 @@ type Pool struct {
 	// any kind of data needed by providers.
 	ExtraSpecs        datatypes.JSON
 	GitHubRunnerGroup string
+	EnableShell       bool
 
 	RepoID     *uuid.UUID `gorm:"index"`
 	Repository Repository `gorm:"foreignKey:RepoID;"`
@@ -163,7 +164,8 @@ type ScaleSet struct {
 	// ExtraSpecs is an opaque json that gets sent to the provider
 	// as part of the bootstrap params for instances. It can contain
 	// any kind of data needed by providers.
-	ExtraSpecs datatypes.JSON
+	ExtraSpecs  datatypes.JSON
+	EnableShell bool
 
 	RepoID     *uuid.UUID `gorm:"index"`
 	Repository Repository `gorm:"foreignKey:RepoID;"`

@@ -293,6 +293,7 @@ func (s *sqlDatabase) CreateEntityPool(ctx context.Context, entity params.ForgeE
 		GitHubRunnerGroup:      param.GitHubRunnerGroup,
 		Priority:               param.Priority,
 		TemplateID:             param.TemplateID,
+		EnableShell:            param.EnableShell,
 	}
 	if len(param.ExtraSpecs) > 0 {
 		newPool.ExtraSpecs = datatypes.JSON(param.ExtraSpecs)

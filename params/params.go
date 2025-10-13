@@ -467,6 +467,7 @@ type Pool struct {
 	Tags           []Tag               `json:"tags,omitempty"`
 	Enabled        bool                `json:"enabled,omitempty"`
 	Instances      []Instance          `json:"instances,omitempty"`
+	EnableShell    bool                `json:"enable_shell"`
 
 	RepoID   string `json:"repo_id,omitempty"`
 	RepoName string `json:"repo_name,omitempty"`
@@ -619,6 +620,7 @@ type ScaleSet struct {
 	Enabled            bool                `json:"enabled,omitempty"`
 	Instances          []Instance          `json:"instances,omitempty"`
 	DesiredRunnerCount int                 `json:"desired_runner_count,omitempty"`
+	EnableShell        bool                `json:"enable_shell"`
 
 	Endpoint ForgeEndpoint `json:"endpoint,omitempty"`
 
@@ -1462,6 +1464,7 @@ type GARMAgentToolsPaginatedResponse = PaginatedResponse[GARMAgentTool]
 type MetadataServiceAccessDetails struct {
 	CallbackURL string `json:"callback_url"`
 	MetadataURL string `json:"metadata_url"`
+	AgentURL    string `json:"agent_url"`
 }
 
 // swagger:model InstanceMetadata
@@ -1484,9 +1487,11 @@ type InstanceMetadata struct {
 	// Agent mode indicates whether or not we need to install the GARM agent on the runner.
 	AgentMode bool `json:"agent_mode"`
 	// AgentTools represents the garm agent download details.
-	AgentTools  GARMAgentTool                          `json:"agent_tools,omitempty"`
-	JITEnabled  bool                                   `json:"jit_enabled"`
-	RunnerTools commonParams.RunnerApplicationDownload `json:"runner_tools"`
+	AgentTools        *GARMAgentTool                         `json:"agent_tools,omitempty"`
+	AgentToken        string                                 `json:"agent_token,omitempty"`
+	AgentShellEnabled bool                                   `json:"agent_shell_enabled,omitempty"`
+	JITEnabled        bool                                   `json:"jit_enabled"`
+	RunnerTools       commonParams.RunnerApplicationDownload `json:"runner_tools"`
 }
 
 // swagger:model AgentCapabilities

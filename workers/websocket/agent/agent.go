@@ -255,6 +255,7 @@ func (a *Agent) messageHandler(msg []byte) (err error) {
 		if a.instance.AgentID != int64(heartbeatMsg.AgentID) {
 			slog.WarnContext(a.ctx, "missmatching agent ID", "instance_agent_id", a.instance.AgentID, "status_update_agent_id", heartbeatMsg.AgentID)
 		}
+		slog.DebugContext(a.ctx, "message heartbeat received", "payload", heartbeatMsg.Payload)
 		if len(heartbeatMsg.Payload) > 0 {
 			var caps params.AgentCapabilities
 			if err := json.Unmarshal(heartbeatMsg.Payload, &caps); err != nil {

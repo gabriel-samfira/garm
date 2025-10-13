@@ -8,7 +8,7 @@
 	$: baseUrl = item?.endpoint?.base_url;
 	$: variant = getForgeVariant(forgeType);
 
-	function getForgeVariant(type: string) {
+	function getForgeVariant(type: string): 'gray' | 'green' | 'secondary' {
 		switch (type?.toLowerCase()) {
 			case 'github':
 				return 'gray';

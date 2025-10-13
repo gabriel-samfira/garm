@@ -337,6 +337,14 @@
 							<dd class="mt-1 text-sm text-gray-900 dark:text-white">{scaleSet.os_type} / {scaleSet.os_arch}</dd>
 						</div>
 						<div>
+							<dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Shell Access</dt>
+							<dd class="mt-1">
+								<span class="inline-flex px-2 py-1 text-xs font-medium rounded-full {scaleSet.enable_shell ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'}">
+									{scaleSet.enable_shell ? 'Enabled' : 'Disabled'}
+								</span>
+							</dd>
+						</div>
+						<div>
 							<dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Runner Install Template</dt>
 							<dd class="mt-1">
 								{#if (scaleSet as any).template_name}

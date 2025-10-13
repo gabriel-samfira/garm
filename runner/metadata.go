@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
+	"io"
 	"log/slog"
 	"net/url"
 	"strings"
@@ -151,7 +152,6 @@ func (r *Runner) getRunnerInstallTemplateContext(instance params.Instance, entit
 	if err != nil {
 		return cloudconfig.InstallRunnerParams{}, fmt.Errorf("failed to find tools: %w", err)
 	}
-	extraContext["AgentURL"] = cache.ControllerInfo().AgentURL
 
 	installRunnerParams := cloudconfig.InstallRunnerParams{
 		FileName:          foundTools.GetFilename(),
@@ -181,6 +181,7 @@ func (r *Runner) GetInstanceMetadata(ctx context.Context) (params.InstanceMetada
 
 	var entityGetter params.EntityGetter
 	var extraSpecs json.RawMessage
+	var enableShell bool
 	switch {
 	case instance.PoolID != "":
 		pool, err := r.store.GetPoolByID(r.ctx, instance.PoolID)
@@ -189,6 +190,7 @@ func (r *Runner) GetInstanceMetadata(ctx context.Context) (params.InstanceMetada
 		}
 		entityGetter = pool
 		extraSpecs = pool.ExtraSpecs
+		enableShell = pool.EnableShell
 	case instance.ScaleSetID != 0:
 		scaleSet, err := r.store.GetScaleSetByID(r.ctx, instance.ScaleSetID)
 		if err != nil {
@@ -196,6 +198,7 @@ func (r *Runner) GetInstanceMetadata(ctx context.Context) (params.InstanceMetada
 		}
 		entityGetter = scaleSet
 		extraSpecs = scaleSet.ExtraSpecs
+		enableShell = scaleSet.EnableShell
 	default:
 		// This is not actually an unauthorized scenario. This case means that an
 		// instance was created but it does not belong to any pool or scale set.
@@ -222,10 +225,12 @@ func (r *Runner) GetInstanceMetadata(ctx context.Context) (params.InstanceMetada
 		MetadataAccess: params.MetadataServiceAccessDetails{
 			CallbackURL: instance.CallbackURL,
 			MetadataURL: instance.MetadataURL,
+			AgentURL:    cache.ControllerInfo().AgentURL,
 		},
-		ForgeType:  dbEntity.Credentials.ForgeType,
-		JITEnabled: len(instance.JitConfiguration) > 0,
-		AgentMode:  dbEntity.AgentMode,
+		ForgeType:         dbEntity.Credentials.ForgeType,
+		JITEnabled:        len(instance.JitConfiguration) > 0,
+		AgentMode:         dbEntity.AgentMode,
+		AgentShellEnabled: enableShell,
 	}
 
 	if dbEntity.AgentMode {
@@ -236,7 +241,12 @@ func (r *Runner) GetInstanceMetadata(ctx context.Context) (params.InstanceMetada
 		if agentTools.TotalCount == 0 {
 			return params.InstanceMetadata{}, runnerErrors.NewConflictError("agent mode is enabled, but agent tools not available")
 		}
-		ret.AgentTools = agentTools.Results[0]
+		ret.AgentTools = &agentTools.Results[0]
+		agentToken, err := r.GetAgentJWTToken(r.ctx, instance.Name)
+		if err != nil {
+			return params.InstanceMetadata{}, fmt.Errorf("failed to get agent token: %w", err)
+		}
+		ret.AgentToken = agentToken
 	}
 
 	if len(dbEntity.Credentials.Endpoint.CACertBundle) > 0 {
@@ -290,11 +300,6 @@ func (r *Runner) GetRunnerInstallScript(ctx context.Context) ([]byte, error) {
 		return nil, fmt.Errorf("failed to get instance token: %w", err)
 	}
 
-	agentToken, err := r.GetAgentJWTToken(r.ctx, instance.Name)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get agent token: %w", err)
-	}
-
 	var templateID uint
 	var specs cloudconfig.CloudConfigSpec
 	var extraSpecs json.RawMessage
@@ -332,7 +337,6 @@ func (r *Runner) GetRunnerInstallScript(ctx context.Context) ([]byte, error) {
 	if specs.ExtraContext == nil {
 		specs.ExtraContext = map[string]string{}
 	}
-	specs.ExtraContext["AgentToken"] = agentToken
 	installCtx, err := r.getRunnerInstallTemplateContext(instance, entity, token, specs.ExtraContext)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get runner install context: %w", err)
@@ -580,4 +584,82 @@ func (r *Runner) GetGARMTools(ctx context.Context, page, pageSize uint64) (param
 		PreviousPage: files.PreviousPage,
 		Results:      tools,
 	}, nil
+}
+
+func (r *Runner) ShowGARMTools(ctx context.Context, toolsID uint) (params.GARMAgentTool, error) {
+	instance, err := validateInstanceState(ctx)
+	if err != nil {
+		if !auth.IsAdmin(ctx) {
+			return params.GARMAgentTool{}, runnerErrors.ErrUnauthorized
+		}
+	}
+
+	tools, err := r.store.GetFileObject(r.ctx, toolsID)
+	if err != nil {
+		return params.GARMAgentTool{}, fmt.Errorf("failed to list files: %w", err)
+	}
+
+	var version string
+	var osType string
+	var osArch string
+	var category string
+	for _, val := range tools.Tags {
+		if strings.HasPrefix(val, "version=") {
+			version = val[8:]
+		}
+		if strings.HasPrefix(val, "os_arch=") {
+			osArch = val[8:]
+		}
+		if strings.HasPrefix(val, "os_type=") {
+			osType = val[8:]
+		}
+		if strings.HasPrefix(val, "category=") {
+			category = val[9:]
+		}
+	}
+	if category != "garm-agent" {
+		slog.InfoContext(ctx, "selected object is not marked as garm-agent", "object_id", toolsID, "instance", instance.Name)
+		return params.GARMAgentTool{}, runnerErrors.ErrUnauthorized
+	}
+	if osType != string(instance.OSType) {
+		return params.GARMAgentTool{}, runnerErrors.NewBadRequestError("requested tools OS type (%s) does not match instance OS type (%s)", osType, instance.OSType)
+	}
+	if osArch != string(instance.OSArch) {
+		return params.GARMAgentTool{}, runnerErrors.NewBadRequestError("requested tools OS arch (%s) does not match instance OS arch (%s)", osArch, instance.OSArch)
+	}
+	agentIDAsString := fmt.Sprintf("%d", tools.ID)
+	downloadURL, err := url.JoinPath(instance.MetadataURL, "tools/garm-agent", agentIDAsString, "download")
+	if err != nil {
+		return params.GARMAgentTool{}, fmt.Errorf("failed to construct agent tools download URL: %w", err)
+	}
+	res := params.GARMAgentTool{
+		ID:          tools.ID,
+		Name:        tools.Name,
+		Size:        tools.Size,
+		SHA256SUM:   tools.SHA256,
+		Description: tools.Description,
+		CreatedAt:   tools.CreatedAt,
+		UpdatedAt:   tools.UpdatedAt,
+		FileType:    tools.FileType,
+		OSType:      commonParams.OSType(osType),
+		OSArch:      commonParams.OSArch(osArch),
+		DownloadURL: downloadURL,
+	}
+	if version != "" {
+		res.Version = version
+	}
+	return res, nil
+}
+
+func (r *Runner) GetGARMToolsReadHandler(ctx context.Context, toolsID uint) (io.ReadCloser, error) {
+	toolsDetails, err := r.ShowGARMTools(ctx, toolsID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to validate tools request: %w", err)
+	}
+
+	readCloser, err := r.store.OpenFileObjectContent(ctx, toolsDetails.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open file object: %w", err)
+	}
+	return readCloser, nil
 }

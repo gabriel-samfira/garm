@@ -169,7 +169,7 @@ func (s *WatcherStoreTestSuite) TestInstanceWatcher() {
 	creds := garmTesting.CreateTestGithubCredentials(s.ctx, "test-creds", s.store, s.T(), ep)
 	s.T().Cleanup(func() { s.store.DeleteGithubCredentials(s.ctx, creds.ID) })
 
-	repo, err := s.store.CreateRepository(s.ctx, "test-owner", "test-repo", creds, "test-secret", params.PoolBalancerTypeRoundRobin)
+	repo, err := s.store.CreateRepository(s.ctx, "test-owner", "test-repo", creds, "test-secret", params.PoolBalancerTypeRoundRobin, false)
 	s.Require().NoError(err)
 	s.Require().NotEmpty(repo.ID)
 	s.T().Cleanup(func() { s.store.DeleteRepository(s.ctx, repo.ID) })
@@ -275,7 +275,7 @@ func (s *WatcherStoreTestSuite) TestScaleSetInstanceWatcher() {
 	creds := garmTesting.CreateTestGithubCredentials(s.ctx, "test-creds", s.store, s.T(), ep)
 	s.T().Cleanup(func() { s.store.DeleteGithubCredentials(s.ctx, creds.ID) })
 
-	repo, err := s.store.CreateRepository(s.ctx, "test-owner", "test-repo", creds, "test-secret", params.PoolBalancerTypeRoundRobin)
+	repo, err := s.store.CreateRepository(s.ctx, "test-owner", "test-repo", creds, "test-secret", params.PoolBalancerTypeRoundRobin, false)
 	s.Require().NoError(err)
 	s.Require().NotEmpty(repo.ID)
 	s.T().Cleanup(func() { s.store.DeleteRepository(s.ctx, repo.ID) })
@@ -386,7 +386,7 @@ func (s *WatcherStoreTestSuite) TestPoolWatcher() {
 		}
 	})
 
-	repo, err := s.store.CreateRepository(s.ctx, "test-owner", "test-repo", creds, "test-secret", params.PoolBalancerTypeRoundRobin)
+	repo, err := s.store.CreateRepository(s.ctx, "test-owner", "test-repo", creds, "test-secret", params.PoolBalancerTypeRoundRobin, false)
 	s.Require().NoError(err)
 	s.Require().NotEmpty(repo.ID)
 	s.T().Cleanup(func() { s.store.DeleteRepository(s.ctx, repo.ID) })
@@ -508,7 +508,7 @@ func (s *WatcherStoreTestSuite) TestScaleSetWatcher() {
 		}
 	})
 
-	repo, err := s.store.CreateRepository(s.ctx, "test-owner", "test-repo", creds, "test-secret", params.PoolBalancerTypeRoundRobin)
+	repo, err := s.store.CreateRepository(s.ctx, "test-owner", "test-repo", creds, "test-secret", params.PoolBalancerTypeRoundRobin, false)
 	s.Require().NoError(err)
 	s.Require().NotEmpty(repo.ID)
 	s.T().Cleanup(func() { s.store.DeleteRepository(s.ctx, repo.ID) })
@@ -669,7 +669,7 @@ func (s *WatcherStoreTestSuite) TestEnterpriseWatcher() {
 	creds := garmTesting.CreateTestGithubCredentials(s.ctx, "test-creds", s.store, s.T(), ep)
 	s.T().Cleanup(func() { s.store.DeleteGithubCredentials(s.ctx, creds.ID) })
 
-	ent, err := s.store.CreateEnterprise(s.ctx, "test-enterprise", creds, "test-secret", params.PoolBalancerTypeRoundRobin)
+	ent, err := s.store.CreateEnterprise(s.ctx, "test-enterprise", creds, "test-secret", params.PoolBalancerTypeRoundRobin, false)
 	s.Require().NoError(err)
 	s.Require().NotEmpty(ent.ID)
 
@@ -736,7 +736,7 @@ func (s *WatcherStoreTestSuite) TestOrgWatcher() {
 	creds := garmTesting.CreateTestGithubCredentials(s.ctx, "test-creds", s.store, s.T(), ep)
 	s.T().Cleanup(func() { s.store.DeleteGithubCredentials(s.ctx, creds.ID) })
 
-	org, err := s.store.CreateOrganization(s.ctx, "test-org", creds, "test-secret", params.PoolBalancerTypeRoundRobin)
+	org, err := s.store.CreateOrganization(s.ctx, "test-org", creds, "test-secret", params.PoolBalancerTypeRoundRobin, false)
 	s.Require().NoError(err)
 	s.Require().NotEmpty(org.ID)
 
@@ -803,7 +803,7 @@ func (s *WatcherStoreTestSuite) TestRepoWatcher() {
 	creds := garmTesting.CreateTestGithubCredentials(s.ctx, "test-creds", s.store, s.T(), ep)
 	s.T().Cleanup(func() { s.store.DeleteGithubCredentials(s.ctx, creds.ID) })
 
-	repo, err := s.store.CreateRepository(s.ctx, "test-owner", "test-repo", creds, "test-secret", params.PoolBalancerTypeRoundRobin)
+	repo, err := s.store.CreateRepository(s.ctx, "test-owner", "test-repo", creds, "test-secret", params.PoolBalancerTypeRoundRobin, false)
 	s.Require().NoError(err)
 	s.Require().NotEmpty(repo.ID)
 

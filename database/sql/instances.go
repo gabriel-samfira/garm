@@ -395,6 +395,7 @@ func (s *sqlDatabase) applyInstanceUpdates(instance *Instance, param params.Upda
 }
 
 func (s *sqlDatabase) UpdateInstance(ctx context.Context, instanceName string, param params.UpdateInstanceParams) (params.Instance, error) {
+	var rowsAffected int64
 	err := s.conn.Transaction(func(tx *gorm.DB) error {
 		instance, err := s.getInstance(ctx, tx, instanceName, "Pool", "ScaleSet")
 		if err != nil {
@@ -418,9 +419,11 @@ func (s *sqlDatabase) UpdateInstance(ctx context.Context, instanceName string, p
 		}
 
 		// Save instance
-		if err := tx.Save(&instance).Error; err != nil {
-			return fmt.Errorf("error updating instance: %w", err)
+		result := tx.Save(&instance)
+		if result.Error != nil {
+			return fmt.Errorf("error updating instance: %w", result.Error)
 		}
+		rowsAffected = result.RowsAffected
 
 		// Update addresses if provided
 		if len(param.Addresses) > 0 {
@@ -450,7 +453,9 @@ func (s *sqlDatabase) UpdateInstance(ctx context.Context, instanceName string, p
 	if err != nil {
 		return params.Instance{}, fmt.Errorf("error converting instance: %w", err)
 	}
-	s.sendNotify(common.InstanceEntityType, common.UpdateOperation, inst)
+	if rowsAffected > 0 {
+		s.sendNotify(common.InstanceEntityType, common.UpdateOperation, inst)
+	}
 	return inst, nil
 }
 

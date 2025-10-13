@@ -298,6 +298,7 @@ func (s *sqlDatabase) sqlToCommonPool(pool Pool) (params.Pool, error) {
 		Priority:               pool.Priority,
 		CreatedAt:              pool.CreatedAt,
 		UpdatedAt:              pool.UpdatedAt,
+		EnableShell:            pool.EnableShell,
 	}
 
 	if pool.TemplateID != nil && *pool.TemplateID != 0 {
@@ -374,6 +375,7 @@ func (s *sqlDatabase) sqlToCommonScaleSet(scaleSet ScaleSet) (params.ScaleSet, e
 		ExtendedState:          scaleSet.ExtendedState,
 		LastMessageID:          scaleSet.LastMessageID,
 		DesiredRunnerCount:     scaleSet.DesiredRunnerCount,
+		EnableShell:            scaleSet.EnableShell,
 	}
 
 	if scaleSet.TemplateID != nil && *scaleSet.TemplateID != 0 {
@@ -543,6 +545,10 @@ func (s *sqlDatabase) updatePool(tx *gorm.DB, pool Pool, param params.UpdatePool
 
 	if param.Flavor != "" {
 		pool.Flavor = param.Flavor
+	}
+
+	if param.EnableShell != nil {
+		pool.EnableShell = *param.EnableShell
 	}
 
 	if param.Image != "" {
