@@ -1409,7 +1409,6 @@ type Template struct {
 	ForgeType   EndpointType        `json:"forge_type,omitempty"`
 	Data        []byte              `json:"data"`
 	Owner       string              `json:"owner_id,omitempty"`
-	AgentMode   bool                `json:"agent_mode"`
 }
 
 // used by swagger client generated code

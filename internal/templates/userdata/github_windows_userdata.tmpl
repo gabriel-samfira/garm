@@ -382,7 +382,6 @@ if (!($CallbackURL -match "^(.*)/status(/)?$")) {
 	$CallbackURL = "$CallbackURL/status"
 }
 $GHRunnerGroup = "{{.GitHubRunnerGroup}}"
-$metadata = @{}
 try {
     $instanceMetadata = (wget -UseBasicParsing -Headers @{"Accept"="application/json"; "Authorization"="Bearer $Token"} -Uri {{.MetadataURL}}/runner-metadata)
     $metadata = ConvertFrom-Json $instanceMetadata.Content
@@ -423,6 +422,46 @@ function Get-AgentShellEnabled {
     $shellEnabled = $metadata.agent_shell_enabled
     if ($shellEnabled) {return "true"}
     return "false"
+}
+
+function Install-GarmAgent {
+    [CmdletBinding()]
+    param (
+        [parameter(Mandatory=$true)]
+        [System.Management.Automation.PSCredential]$pscreds
+    )
+    Update-GarmStatus -Message "Agent mode is enabled" -CallbackURL $CallbackURL | Out-Null
+    $agentDir = "C:\garm-agent"
+    mkdir -Force $agentDir
+    $agentURL = Get-AgentURL
+    $agentDownloadURL = Get-AgentDownloadURL
+    $agentToken = Get-AgentToken
+    $agentDownloadHeaders=@{
+        "Authorization"="Bearer $Token"
+    }
+    $shellEnabled = Get-AgentShellEnabled
+    Set-Content "$agentDir\garm-agent.toml" @"
+server_url = "$agentURL"
+log_file = "C:/garm-agent/garm-agent.log"
+shell = "cmd.exe"
+enable_shell = $shellEnabled
+work_dir = "C:/actions-runner/"
+token = "$agentToken"
+runner_cmdline = ["C:\\Windows\\system32\\cmd.exe", "/C", "C:\\actions-runner\\run.cmd"]
+state_db_path = "C:/garm-agent/agent-state.db"
+"@
+
+    Update-GarmStatus -Message "Downloading agent from: $agentDownloadURL" -CallbackURL $CallbackURL | Out-Null
+    Start-ExecuteWithRetry -ScriptBlock {
+        Invoke-FastWebRequest -Headers $agentDownloadHeaders -Uri "$agentDownloadURL" -OutFile $agentDir\garm-agent.exe
+    } -MaxRetryCount 5 -RetryInterval 5 -RetryMessage "Retrying download of runner..."
+
+    try {
+        New-Service -Name garm-agent -BinaryPathName "$agentDir\garm-agent.exe daemon --config $agentDir\garm-agent.toml" -DisplayName "garm-agent" -Description "GARM agent" -StartupType Automatic -Credential $pscreds
+    } catch {
+        Invoke-GarmFailure -CallbackURL $CallbackURL -Message "failed to set up garm agent $_"
+    }
+    Start-Service garm-agent
 }
 
 function Install-Runner() {
@@ -468,35 +507,6 @@ function Install-Runner() {
 			Import-Certificate -CertificateData $data -StoreName Root -StoreLocation LocalMachine
 		}
 
-        if ((Get-IsAgentMode)) {
-	        Update-GarmStatus -Message "Agent mode is enabled" -CallbackURL $CallbackURL | Out-Null
-            $agentDir = "C:\garm-agent"
-            mkdir -Force $agentDir
-            cd $agentDir
-            $agentURL = Get-AgentURL
-            $agentDownloadURL = Get-AgentDownloadURL
-            $agentToken = Get-AgentToken
-            $agentDownloadHeaders=@{
-				"Authorization"="Bearer $Token"
-			}
-            $shellEnabled = Get-AgentShellEnabled
-            Set-Content garm-agent.toml @"
-server_url = "$agentURL"
-log_file = "C:/garm-agent/garm-agent.log"
-shell = "cmd.exe"
-enable_shell = $shellEnabled
-work_dir = "C:/actions-runner/"
-token = "$agentToken"
-runner_cmdline = ["C:\\Windows\\system32\\cmd.exe", "/C", "C:\\actions-runner\\run.cmd"]
-state_db_path = "C:/garm-agent/agent-state.db"
-"@
-
-            Update-GarmStatus -Message "Downloading agent from: $agentDownloadURL" -CallbackURL $CallbackURL | Out-Null
-            Start-ExecuteWithRetry -ScriptBlock {
-			    Invoke-FastWebRequest -Headers $agentDownloadHeaders -Uri "$agentDownloadURL" -OutFile $agentDir\garm-agent.exe
-		    } -MaxRetryCount 5 -RetryInterval 5 -RetryMessage "Retrying download of runner..."
-        }
-
 		$runnerDir = "C:\actions-runner"
 		# Check if a cached runner is available
 		if (-not (Test-Path $runnerDir)) {
@@ -523,12 +533,6 @@ state_db_path = "C:/garm-agent/agent-state.db"
 		} else {
 			Update-GarmStatus -CallbackURL $CallbackURL -Message "using cached runner found at $runnerDir"
 		}
-
-		try {
-        	New-Service -Name garm-agent -BinaryPathName "$agentDir\garm-agent.exe daemon --config $agentDir\garm-agent.toml" -DisplayName "garm-agent" -Description "GARM agent" -StartupType Automatic -Credential $pscreds
-        } catch {
-        	Update-GarmStatus -CallbackURL $CallbackURL -Message "failed to set up garm agent $_"
-        }
 
 		# Ensure runner has full access to actions-runner folder
 		$runnerACL = Get-Acl $runnerDir
@@ -560,7 +564,7 @@ state_db_path = "C:/garm-agent/agent-state.db"
 		    New-Service -Name "$SVC_NAME" -BinaryPathName "C:\actions-runner\bin\RunnerService.exe" -DisplayName "$SVC_NAME" -Description "GitHub Actions Runner ($SVC_NAME)" -StartupType Automatic -Credential $pscreds
 		    Start-Service "$SVC_NAME"
         } else {
-            Start-Service garm-agent
+            Install-GarmAgent $pscreds
         }
 		Set-SystemInfo -CallbackURL $CallbackURL -RunnerDir $runnerDir -BearerToken $Token
 		Update-GarmStatus -Message "runner successfully installed" -CallbackURL $CallbackURL -Status "idle" | Out-Null
@@ -595,7 +599,7 @@ state_db_path = "C:/garm-agent/agent-state.db"
 		$agentInfo = ConvertFrom-Json (gc -raw $agentInfoFile)
 		Set-SystemInfo -CallbackURL $CallbackURL -RunnerDir $runnerDir -BearerToken $Token
         if ((Get-IsAgentMode)) {
-            Start-Service garm-agent
+            Install-GarmAgent $pscreds
         }
 		Invoke-GarmSuccess -CallbackURL $CallbackURL -Message "runner successfully installed" -AgentID $agentInfo.agentId
 		{{- end }}

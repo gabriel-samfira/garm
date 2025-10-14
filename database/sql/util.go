@@ -1066,6 +1066,5 @@ func (s *sqlDatabase) sqlToParamTemplate(template Template) (params.Template, er
 		ForgeType:   template.ForgeType,
 		Owner:       owner,
 		OSType:      template.OSType,
-		AgentMode:   template.AgentMode,
 	}, nil
 }

@@ -89,6 +89,7 @@ func NewRunnerCommand(ctx context.Context, cmdParams []string, workdir string, f
 		runnerCfg: runCfg,
 		done:      doneChan,
 		st:        st,
+		cmdParams: cmdParams, // Store for recreating command on restart
 	}
 
 	return ret, nil
@@ -101,10 +102,11 @@ type runnerCmd struct {
 	runnerCfg Config
 	st        StateManager
 
-	done     chan struct{}
-	running  bool
-	mux      sync.Mutex
-	executor *platformExecutor
+	done      chan struct{}
+	running   bool
+	mux       sync.Mutex
+	executor  *platformExecutor
+	cmdParams []string // Store command parameters for recreating the command
 
 	cmd    *exec.Cmd
 	cmdErr error
@@ -129,6 +131,17 @@ func (r *runnerCmd) Start() error {
 	if r.running {
 		return nil
 	}
+
+	// Recreate the command to avoid "Stdout already set" errors on retry
+	// #nosec G204 - cmdParams validated during NewRunnerCommand
+	r.cmd = exec.Command(r.cmdParams[0], r.cmdParams[1:]...)
+
+	// Set up platform-specific process management
+	executor, err := setupCommand(r.cmd)
+	if err != nil {
+		return fmt.Errorf("failed to setup command: %w", err)
+	}
+	r.executor = executor
 
 	r.done = make(chan struct{})
 	r.running = true

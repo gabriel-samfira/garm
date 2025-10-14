@@ -591,7 +591,9 @@ func NewAPIRouter(han *controllers.APIController, authMiddleware, initMiddleware
 	// Update template
 	apiRouter.Handle("/templates/{templateID}/", http.HandlerFunc(han.UpdateTemplateHandler)).Methods("PUT", "OPTIONS")
 	apiRouter.Handle("/templates/{templateID}", http.HandlerFunc(han.UpdateTemplateHandler)).Methods("PUT", "OPTIONS")
-
+	// Restore templates
+	apiRouter.Handle("/templates/restore/", http.HandlerFunc(han.RestoreTemplatesHandler)).Methods("POST", "OPTIONS")
+	apiRouter.Handle("/templates/restore", http.HandlerFunc(han.RestoreTemplatesHandler)).Methods("POST", "OPTIONS")
 	/////////////////////////
 	// Websocket endpoints //
 	/////////////////////////

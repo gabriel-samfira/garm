@@ -293,6 +293,13 @@ definitions:
                 alias: garm_params
                 package: github.com/cloudbase/garm/params
             type: Repository
+    RestoreTemplateRequest:
+        type: object
+        x-go-type:
+            import:
+                alias: garm_params
+                package: github.com/cloudbase/garm/params
+            type: RestoreTemplateRequest
     ScaleSet:
         type: object
         x-go-type:
@@ -2553,6 +2560,26 @@ paths:
                     schema:
                         $ref: '#/definitions/APIErrorResponse'
             summary: Update template with the parameters given.
+            tags:
+                - templates
+    /templates/restore:
+        post:
+            operationId: RestoreTemplates
+            parameters:
+                - description: Parameters used when restoring the templates.
+                  in: body
+                  name: Body
+                  required: true
+                  schema:
+                    $ref: '#/definitions/RestoreTemplateRequest'
+                    description: Parameters used when restoring the templates.
+                    type: object
+            responses:
+                default:
+                    description: APIErrorResponse
+                    schema:
+                        $ref: '#/definitions/APIErrorResponse'
+            summary: Create template with the parameters given.
             tags:
                 - templates
 produces:

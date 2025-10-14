@@ -320,12 +320,13 @@ func (s *TemplatesTestSuite) TestCreateTemplateSystemAndUserConflict() {
 	// Now try to create a system template with the same name using direct access to createSystemTemplate
 	// This should succeed since the unique constraint is on (name, user_id) and system templates have user_id = NULL
 	sqlDB := s.Store.(*sqlDatabase)
-	_, err = sqlDB.createSystemTemplate(s.adminCtx, params.CreateTemplateParams{
+	_, err = sqlDB.CreateTemplate(s.adminCtx, params.CreateTemplateParams{
 		Name:        templateName,
 		Description: "System template with same name",
 		OSType:      commonParams.Windows,
 		ForgeType:   params.GithubEndpointType,
 		Data:        []byte(`{"provider": "azure", "image": "windows-2022"}`),
+		IsSystem:    true,
 	})
 
 	// This should succeed because system templates (user_id = NULL) and user templates

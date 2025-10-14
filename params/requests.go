@@ -846,6 +846,7 @@ type CreateTemplateParams struct {
 	Data        []byte              `json:"data"`
 	OSType      commonParams.OSType `json:"os_type"`
 	ForgeType   EndpointType        `json:"forge_type,omitempty"`
+	IsSystem    bool                `json:"-"`
 }
 
 func (c *CreateTemplateParams) Validate() error {
@@ -907,4 +908,14 @@ type CreateFileObjectParams struct {
 	Description string   `json:"description"`
 	Size        int64    `json:"size"`
 	Tags        []string `json:"tags"`
+}
+
+// swagger:model RestoreTemplateRequest
+type RestoreTemplateRequest struct {
+	Forge  EndpointType        `json:"forge"`
+	OSType commonParams.OSType `json:"os_type"`
+	// RestoreAll indicates whether or not to restore all known
+	// system owned templates. If set, the Forge and OSType params
+	// are ignored.
+	RestoreAll bool `json:"restore_all"`
 }

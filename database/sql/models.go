@@ -81,9 +81,6 @@ type Template struct {
 	OSType      commonParams.OSType `gorm:"type:varchar(32);index:idx_tpl_os_type"`
 	ForgeType   params.EndpointType `gorm:"type:varchar(32);index:idx_tpl_forge_type"`
 	Data        []byte              `gorm:"type:longblob"`
-	// AgentMode marks a template as being compatible with agent mode.
-	// Templates marked as agent mode compatible, must install the GARM agent.
-	AgentMode bool
 
 	ScaleSets []ScaleSet `gorm:"foreignKey:TemplateID"`
 	Pools     []Pool     `gorm:"foreignKey:TemplateID"`

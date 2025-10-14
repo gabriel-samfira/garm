@@ -65,6 +65,7 @@ docs/Provider.md
 docs/ProvidersApi.md
 docs/RepositoriesApi.md
 docs/Repository.md
+docs/RestoreTemplateRequest.md
 docs/RunnerApplicationDownload.md
 docs/RunnerPrefix.md
 docs/ScaleSet.md

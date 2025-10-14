@@ -2431,6 +2431,31 @@ export interface Repository {
     'updated_at'?: string;
 }
 /**
+ * 
+ * @export
+ * @interface RestoreTemplateRequest
+ */
+export interface RestoreTemplateRequest {
+    /**
+     * 
+     * @type {string}
+     * @memberof RestoreTemplateRequest
+     */
+    'forge'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof RestoreTemplateRequest
+     */
+    'os_type'?: string;
+    /**
+     * RestoreAll indicates whether or not to restore all known system owned templates. If set, the Forge and OSType params are ignored.
+     * @type {boolean}
+     * @memberof RestoreTemplateRequest
+     */
+    'restore_all'?: boolean;
+}
+/**
  * This is copied from the go-github package. It does not make sense to create a dependency on go-github just for this struct.
  * @export
  * @interface RunnerApplicationDownload
@@ -2747,12 +2772,6 @@ export interface Tag {
  * @interface Template
  */
 export interface Template {
-    /**
-     * 
-     * @type {boolean}
-     * @memberof Template
-     */
-    'agent_mode'?: boolean;
     /**
      * 
      * @type {string}
@@ -13254,6 +13273,45 @@ export const TemplatesApiAxiosParamCreator = function (configuration?: Configura
         },
         /**
          * 
+         * @summary Create template with the parameters given.
+         * @param {RestoreTemplateRequest} body Parameters used when restoring the templates.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        restoreTemplates: async (body: RestoreTemplateRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'body' is not null or undefined
+            assertParamExists('restoreTemplates', 'body', body)
+            const localVarPath = `/templates/restore`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication Bearer required
+            await setApiKeyToObject(localVarHeaderParameter, "Authorization", configuration)
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(body, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
          * @summary Update template with the parameters given.
          * @param {string} templateID ID of the template to update.
          * @param {UpdateTemplateParams} body Parameters used when updating the template.
@@ -13361,6 +13419,19 @@ export const TemplatesApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
+         * @summary Create template with the parameters given.
+         * @param {RestoreTemplateRequest} body Parameters used when restoring the templates.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async restoreTemplates(body: RestoreTemplateRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<APIErrorResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.restoreTemplates(body, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['TemplatesApi.restoreTemplates']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
          * @summary Update template with the parameters given.
          * @param {string} templateID ID of the template to update.
          * @param {UpdateTemplateParams} body Parameters used when updating the template.
@@ -13424,6 +13495,16 @@ export const TemplatesApiFactory = function (configuration?: Configuration, base
          */
         listTemplates(osType?: string, partialName?: string, forgeType?: string, options?: RawAxiosRequestConfig): AxiosPromise<Array<Template>> {
             return localVarFp.listTemplates(osType, partialName, forgeType, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @summary Create template with the parameters given.
+         * @param {RestoreTemplateRequest} body Parameters used when restoring the templates.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        restoreTemplates(body: RestoreTemplateRequest, options?: RawAxiosRequestConfig): AxiosPromise<APIErrorResponse> {
+            return localVarFp.restoreTemplates(body, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -13494,6 +13575,18 @@ export class TemplatesApi extends BaseAPI {
      */
     public listTemplates(osType?: string, partialName?: string, forgeType?: string, options?: RawAxiosRequestConfig) {
         return TemplatesApiFp(this.configuration).listTemplates(osType, partialName, forgeType, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Create template with the parameters given.
+     * @param {RestoreTemplateRequest} body Parameters used when restoring the templates.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof TemplatesApi
+     */
+    public restoreTemplates(body: RestoreTemplateRequest, options?: RawAxiosRequestConfig) {
+        return TemplatesApiFp(this.configuration).restoreTemplates(body, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**

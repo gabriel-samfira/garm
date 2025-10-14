@@ -1561,6 +1561,21 @@ definitions:
                 x-go-name: UpdatedAt
         type: object
         x-go-package: github.com/cloudbase/garm/params
+    RestoreTemplateRequest:
+        properties:
+            forge:
+                $ref: '#/definitions/EndpointType'
+            os_type:
+                $ref: '#/definitions/OSType'
+            restore_all:
+                description: |-
+                    RestoreAll indicates whether or not to restore all known
+                    system owned templates. If set, the Forge and OSType params
+                    are ignored.
+                type: boolean
+                x-go-name: RestoreAll
+        type: object
+        x-go-package: github.com/cloudbase/garm/params
     RunnerApplicationDownload:
         description: |-
             This is copied from the go-github package. It does not make sense to create a dependency on go-github just
@@ -1754,9 +1769,6 @@ definitions:
         x-go-package: github.com/cloudbase/garm/params
     Template:
         properties:
-            agent_mode:
-                type: boolean
-                x-go-name: AgentMode
             created_at:
                 format: date-time
                 type: string
@@ -4235,6 +4247,26 @@ paths:
                     schema:
                         $ref: '#/definitions/APIErrorResponse'
             summary: Update template with the parameters given.
+            tags:
+                - templates
+    /templates/restore:
+        post:
+            operationId: RestoreTemplates
+            parameters:
+                - description: Parameters used when restoring the templates.
+                  in: body
+                  name: Body
+                  required: true
+                  schema:
+                    $ref: '#/definitions/RestoreTemplateRequest'
+                    description: Parameters used when restoring the templates.
+                    type: object
+            responses:
+                default:
+                    description: APIErrorResponse
+                    schema:
+                        $ref: '#/definitions/APIErrorResponse'
+            summary: Create template with the parameters given.
             tags:
                 - templates
 produces:
