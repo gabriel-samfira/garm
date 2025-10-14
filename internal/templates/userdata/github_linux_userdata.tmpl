@@ -71,7 +71,7 @@ INSTANCE_METADATA=$(curl \
     --fail -s \
     -H 'Accept: application/json' \
     -H "Authorization: Bearer ${BEARER_TOKEN}" \
-    "$METADATA_URL/runner-metadata" || echo "")
+    "$METADATA_URL/runner-metadata" 2>&1) || fail "failed to get instance metadata: $INSTANCE_METADATA"
 
 AGENT_MODE=$(echo "$INSTANCE_METADATA" | jq -r '.agent_mode // empty')
 if [ "$AGENT_MODE" == "true" ]; then

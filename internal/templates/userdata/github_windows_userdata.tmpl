@@ -386,8 +386,7 @@ try {
     $instanceMetadata = (wget -UseBasicParsing -Headers @{"Accept"="application/json"; "Authorization"="Bearer $Token"} -Uri {{.MetadataURL}}/runner-metadata)
     $metadata = ConvertFrom-Json $instanceMetadata.Content
 } catch {
-	Update-GarmStatus -Message "failed to get runner metadata: $_" -CallbackURL "{{.CallbackURL}}" | Out-Null
-    $metadata = @{}
+	Invoke-GarmFailure -Message "failed to get runner metadata: $_" -CallbackURL "{{.CallbackURL}}" | Out-Null
 }
 
 function Get-IsAgentMode {
