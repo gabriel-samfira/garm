@@ -51,10 +51,20 @@ type ControllerInfo struct {
 
 	ControllerID uuid.UUID
 
-	CallbackURL    string
-	MetadataURL    string
+	// CallbackURL is the URL where userdata scripts call back into, to send status updates
+	// and installation progress.
+	CallbackURL string
+	// MetadataURL is the base URL from which runners can get their installation metadata.
+	MetadataURL string
+	// WebhookBaseURL is the base URL used to construct the controller webhook URL.
 	WebhookBaseURL string
-	AgentURL       string
+	// AgentURL is the websocket enabled URL whenre garm agents connect to.
+	AgentURL string
+	// GARMAgentReleasesURL is the URL from which GARM can sync garm-agent binaries. Alternatively
+	// the user can manually upload binaries.
+	GARMAgentReleasesURL string
+	// SyncGARMAgentTools enables or disables automatic sync of garm-agent tools.
+	SyncGARMAgentTools bool
 	// MinimumJobAgeBackoff is the minimum time that a job must be in the queue
 	// before GARM will attempt to allocate a runner to service it. This backoff
 	// is useful if you have idle runners in various pools that could potentially
@@ -206,7 +216,7 @@ type Repository struct {
 	ScaleSets        []ScaleSet              `gorm:"foreignKey:RepoID"`
 	Jobs             []WorkflowJob           `gorm:"foreignKey:RepoID;constraint:OnDelete:SET NULL"`
 	PoolBalancerType params.PoolBalancerType `gorm:"type:varchar(64)"`
-	AgentMode        bool
+	AgentMode        bool                    `gorm:"index:repo_agent_idx"`
 
 	EndpointName *string        `gorm:"index:idx_owner_nocase,unique,collate:nocase"`
 	Endpoint     GithubEndpoint `gorm:"foreignKey:EndpointName;constraint:OnDelete:SET NULL"`
@@ -239,7 +249,7 @@ type Organization struct {
 	ScaleSet         []ScaleSet              `gorm:"foreignKey:OrgID"`
 	Jobs             []WorkflowJob           `gorm:"foreignKey:OrgID;constraint:OnDelete:SET NULL"`
 	PoolBalancerType params.PoolBalancerType `gorm:"type:varchar(64)"`
-	AgentMode        bool
+	AgentMode        bool                    `gorm:"index:org_agent_idx"`
 
 	EndpointName *string        `gorm:"index:idx_org_name_nocase,collate:nocase"`
 	Endpoint     GithubEndpoint `gorm:"foreignKey:EndpointName;constraint:OnDelete:SET NULL"`
@@ -270,7 +280,7 @@ type Enterprise struct {
 	ScaleSet         []ScaleSet              `gorm:"foreignKey:EnterpriseID"`
 	Jobs             []WorkflowJob           `gorm:"foreignKey:EnterpriseID;constraint:OnDelete:SET NULL"`
 	PoolBalancerType params.PoolBalancerType `gorm:"type:varchar(64)"`
-	AgentMode        bool
+	AgentMode        bool                    `gorm:"index:enterprise_agent_idx"`
 
 	EndpointName *string        `gorm:"index:idx_ent_name_nocase,collate:nocase"`
 	Endpoint     GithubEndpoint `gorm:"foreignKey:EndpointName;constraint:OnDelete:SET NULL"`

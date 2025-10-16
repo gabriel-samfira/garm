@@ -266,9 +266,9 @@ func NewAPIRouter(han *controllers.APIController, authMiddleware, initMiddleware
 	///////////////////////////////////////////////////////
 	apiRouter.Handle("/tools/garm-agent/", http.HandlerFunc(han.InstanceGARMToolsHandler)).Methods("GET", "OPTIONS")
 	apiRouter.Handle("/tools/garm-agent", http.HandlerFunc(han.InstanceGARMToolsHandler)).Methods("GET", "OPTIONS")
-	// Agent token
-	apiRouter.Handle("/agent/{agentName}/token/", http.HandlerFunc(han.AgentTokenHandler)).Methods("GET", "OPTIONS")
-	apiRouter.Handle("/agent/{agentName}/token", http.HandlerFunc(han.AgentTokenHandler)).Methods("GET", "OPTIONS")
+	// Download garm agent
+	apiRouter.Handle("/tools/garm-agent/{objectID}/download/", http.HandlerFunc(han.InstanceGARMToolDownloadHandler)).Methods("GET", "OPTIONS")
+	apiRouter.Handle("/tools/garm-agent/{objectID}/download", http.HandlerFunc(han.InstanceGARMToolDownloadHandler)).Methods("GET", "OPTIONS")
 
 	//////////
 	// Jobs //

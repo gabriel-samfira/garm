@@ -972,6 +972,12 @@ type ControllerInfo struct {
 	// AgentURL is the URL where the GARM agent will connect. If set behind a reverse proxy, this
 	// URL must be configured to allow websocket connections.
 	AgentURL string `json:"agent_url,omitempty"`
+	// GARMAgentReleasesURL is the URL from where GARM can fetch garm-agent binaries. This URL must
+	// have an API response compatible with the github releases API.
+	// The default value for this field is: https://api.github.com/repos/cloudbase/garm-agent/releases
+	GARMAgentReleasesURL string `json:"garm_agent_releases_url"`
+	// SyncGARMAgentTools enables or disables automatic sync of garm-agent tools.
+	SyncGARMAgentTools bool `json:"enable_agent_tools_sync"`
 	// MinimumJobAgeBackoff is the minimum time in seconds that a job must be in queued state
 	// before GARM will attempt to allocate a runner for it. When set to a non zero value,
 	// GARM will ignore the job until the job's age is greater than this value. When using

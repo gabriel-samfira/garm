@@ -135,6 +135,7 @@ type ControllerStore interface {
 	ControllerInfo() (params.ControllerInfo, error)
 	InitController() (params.ControllerInfo, error)
 	UpdateController(info params.UpdateControllerParams) (params.ControllerInfo, error)
+	HasEntitiesWithAgentModeEnabled() (bool, error)
 }
 
 type ScaleSetsStore interface {
@@ -186,6 +187,7 @@ type FileObjectStore interface {
 	CreateFileObject(ctx context.Context, param params.CreateFileObjectParams, reader io.Reader) (fileObjParam params.FileObject, err error)
 	UpdateFileObject(ctx context.Context, objID uint, param params.UpdateFileObjectParams) (params.FileObject, error)
 	DeleteFileObject(ctx context.Context, objID uint) error
+	DeleteFileObjectsByTags(ctx context.Context, tags []string) (int64, error)
 	OpenFileObjectContent(ctx context.Context, objID uint) (io.ReadCloser, error)
 }
 

@@ -36,6 +36,8 @@ var (
 	metadataURL          string
 	webhookURL           string
 	agentURL             string
+	garmToolsReleasesURL string
+	enableToolsSync      bool
 	minimumJobAgeBackoff uint
 )
 

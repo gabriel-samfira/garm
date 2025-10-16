@@ -162,6 +162,20 @@ definitions:
                 alias: garm_params
                 package: github.com/cloudbase/garm/params
             type: ForgeEndpoints
+    GARMAgentTool:
+        type: object
+        x-go-type:
+            import:
+                alias: garm_params
+                package: github.com/cloudbase/garm/params
+            type: GARMAgentTool
+    GARMAgentToolsPaginatedResponse:
+        type: object
+        x-go-type:
+            import:
+                alias: garm_params
+                package: github.com/cloudbase/garm/params
+            type: GARMAgentToolsPaginatedResponse
     HookInfo:
         type: object
         x-go-type:
@@ -417,27 +431,6 @@ info:
     title: Garm API.
     version: 1.0.0
 paths:
-    /agent/{agentName}/token:
-        get:
-            operationId: GetAgentJWTToken
-            parameters:
-                - description: Runner Name.
-                  in: path
-                  name: agentName
-                  required: true
-                  type: string
-            responses:
-                "200":
-                    description: JWTResponse
-                    schema:
-                        $ref: '#/definitions/JWTResponse'
-                "401":
-                    description: APIErrorResponse
-                    schema:
-                        $ref: '#/definitions/APIErrorResponse'
-            summary: Returns a JWT token that can be used by an agent to access the websocket handler.
-            tags:
-                - agent
     /auth/login:
         post:
             operationId: Login
@@ -2582,6 +2575,30 @@ paths:
             summary: Create template with the parameters given.
             tags:
                 - templates
+    /tools/garm-agent:
+        get:
+            operationId: GarmAgentList
+            parameters:
+                - description: The page at which to list.
+                  in: query
+                  name: page
+                  type: integer
+                - description: Number of items per page.
+                  in: query
+                  name: pageSize
+                  type: integer
+            responses:
+                "200":
+                    description: GARMAgentToolsPaginatedResponse
+                    schema:
+                        $ref: '#/definitions/GARMAgentToolsPaginatedResponse'
+                "400":
+                    description: APIErrorResponse
+                    schema:
+                        $ref: '#/definitions/APIErrorResponse'
+            summary: List GARM agent tools.
+            tags:
+                - tools
 produces:
     - application/json
 security:

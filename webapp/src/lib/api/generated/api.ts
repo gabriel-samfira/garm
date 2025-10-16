@@ -105,6 +105,18 @@ export interface ControllerInfo {
      */
     'controller_webhook_url'?: string;
     /**
+     * SyncGARMAgentTools enables or disables automatic sync of garm-agent tools.
+     * @type {boolean}
+     * @memberof ControllerInfo
+     */
+    'enable_agent_tools_sync'?: boolean;
+    /**
+     * GARMAgentReleasesURL is the URL from where GARM can fetch garm-agent binaries. This URL must have an API response compatible with the github releases API. The default value for this field is: https://api.github.com/repos/cloudbase/garm-agent/releases
+     * @type {string}
+     * @memberof ControllerInfo
+     */
+    'garm_agent_releases_url'?: string;
+    /**
      * Hostname is the hostname of the machine that runs this controller. In the future, this field will be migrated to a separate table that will keep track of each the controller nodes that are part of a cluster. This will happen when we implement controller scale-out capability.
      * @type {string}
      * @memberof ControllerInfo
@@ -2847,6 +2859,18 @@ export interface UpdateControllerParams {
     'callback_url'?: string;
     /**
      * 
+     * @type {boolean}
+     * @memberof UpdateControllerParams
+     */
+    'enable_agent_tools_sync'?: boolean;
+    /**
+     * 
+     * @type {string}
+     * @memberof UpdateControllerParams
+     */
+    'garm_agent_releases_url'?: string;
+    /**
+     * 
      * @type {string}
      * @memberof UpdateControllerParams
      */
@@ -3336,117 +3360,6 @@ export interface User {
      */
     'username'?: string;
 }
-
-/**
- * AgentApi - axios parameter creator
- * @export
- */
-export const AgentApiAxiosParamCreator = function (configuration?: Configuration) {
-    return {
-        /**
-         * 
-         * @summary Returns a JWT token that can be used by an agent to access the websocket handler.
-         * @param {string} agentName Runner Name.
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        getAgentJWTToken: async (agentName: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'agentName' is not null or undefined
-            assertParamExists('getAgentJWTToken', 'agentName', agentName)
-            const localVarPath = `/agent/{agentName}/token`
-                .replace(`{${"agentName"}}`, encodeURIComponent(String(agentName)));
-            // use dummy base URL string because the URL constructor only accepts absolute URLs.
-            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
-            let baseOptions;
-            if (configuration) {
-                baseOptions = configuration.baseOptions;
-            }
-
-            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
-            const localVarHeaderParameter = {} as any;
-            const localVarQueryParameter = {} as any;
-
-            // authentication Bearer required
-            await setApiKeyToObject(localVarHeaderParameter, "Authorization", configuration)
-
-
-    
-            setSearchParams(localVarUrlObj, localVarQueryParameter);
-            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
-            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
-
-            return {
-                url: toPathString(localVarUrlObj),
-                options: localVarRequestOptions,
-            };
-        },
-    }
-};
-
-/**
- * AgentApi - functional programming interface
- * @export
- */
-export const AgentApiFp = function(configuration?: Configuration) {
-    const localVarAxiosParamCreator = AgentApiAxiosParamCreator(configuration)
-    return {
-        /**
-         * 
-         * @summary Returns a JWT token that can be used by an agent to access the websocket handler.
-         * @param {string} agentName Runner Name.
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        async getAgentJWTToken(agentName: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<JWTResponse>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.getAgentJWTToken(agentName, options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['AgentApi.getAgentJWTToken']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
-        },
-    }
-};
-
-/**
- * AgentApi - factory interface
- * @export
- */
-export const AgentApiFactory = function (configuration?: Configuration, basePath?: string, axios?: AxiosInstance) {
-    const localVarFp = AgentApiFp(configuration)
-    return {
-        /**
-         * 
-         * @summary Returns a JWT token that can be used by an agent to access the websocket handler.
-         * @param {string} agentName Runner Name.
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        getAgentJWTToken(agentName: string, options?: RawAxiosRequestConfig): AxiosPromise<JWTResponse> {
-            return localVarFp.getAgentJWTToken(agentName, options).then((request) => request(axios, basePath));
-        },
-    };
-};
-
-/**
- * AgentApi - object-oriented interface
- * @export
- * @class AgentApi
- * @extends {BaseAPI}
- */
-export class AgentApi extends BaseAPI {
-    /**
-     * 
-     * @summary Returns a JWT token that can be used by an agent to access the websocket handler.
-     * @param {string} agentName Runner Name.
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     * @memberof AgentApi
-     */
-    public getAgentJWTToken(agentName: string, options?: RawAxiosRequestConfig) {
-        return AgentApiFp(this.configuration).getAgentJWTToken(agentName, options).then((request) => request(this.axios, this.basePath));
-    }
-}
-
-
 
 /**
  * ControllerApi - axios parameter creator
@@ -13600,6 +13513,126 @@ export class TemplatesApi extends BaseAPI {
      */
     public updateTemplate(templateID: string, body: UpdateTemplateParams, options?: RawAxiosRequestConfig) {
         return TemplatesApiFp(this.configuration).updateTemplate(templateID, body, options).then((request) => request(this.axios, this.basePath));
+    }
+}
+
+
+
+/**
+ * ToolsApi - axios parameter creator
+ * @export
+ */
+export const ToolsApiAxiosParamCreator = function (configuration?: Configuration) {
+    return {
+        /**
+         * 
+         * @summary List GARM agent tools.
+         * @param {number} [page] The page at which to list.
+         * @param {number} [pageSize] Number of items per page.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        garmAgentList: async (page?: number, pageSize?: number, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/tools/garm-agent`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication Bearer required
+            await setApiKeyToObject(localVarHeaderParameter, "Authorization", configuration)
+
+            if (page !== undefined) {
+                localVarQueryParameter['page'] = page;
+            }
+
+            if (pageSize !== undefined) {
+                localVarQueryParameter['pageSize'] = pageSize;
+            }
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+    }
+};
+
+/**
+ * ToolsApi - functional programming interface
+ * @export
+ */
+export const ToolsApiFp = function(configuration?: Configuration) {
+    const localVarAxiosParamCreator = ToolsApiAxiosParamCreator(configuration)
+    return {
+        /**
+         * 
+         * @summary List GARM agent tools.
+         * @param {number} [page] The page at which to list.
+         * @param {number} [pageSize] Number of items per page.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async garmAgentList(page?: number, pageSize?: number, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<GARMAgentToolsPaginatedResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.garmAgentList(page, pageSize, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ToolsApi.garmAgentList']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+    }
+};
+
+/**
+ * ToolsApi - factory interface
+ * @export
+ */
+export const ToolsApiFactory = function (configuration?: Configuration, basePath?: string, axios?: AxiosInstance) {
+    const localVarFp = ToolsApiFp(configuration)
+    return {
+        /**
+         * 
+         * @summary List GARM agent tools.
+         * @param {number} [page] The page at which to list.
+         * @param {number} [pageSize] Number of items per page.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        garmAgentList(page?: number, pageSize?: number, options?: RawAxiosRequestConfig): AxiosPromise<GARMAgentToolsPaginatedResponse> {
+            return localVarFp.garmAgentList(page, pageSize, options).then((request) => request(axios, basePath));
+        },
+    };
+};
+
+/**
+ * ToolsApi - object-oriented interface
+ * @export
+ * @class ToolsApi
+ * @extends {BaseAPI}
+ */
+export class ToolsApi extends BaseAPI {
+    /**
+     * 
+     * @summary List GARM agent tools.
+     * @param {number} [page] The page at which to list.
+     * @param {number} [pageSize] Number of items per page.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof ToolsApi
+     */
+    public garmAgentList(page?: number, pageSize?: number, options?: RawAxiosRequestConfig) {
+        return ToolsApiFp(this.configuration).garmAgentList(page, pageSize, options).then((request) => request(this.axios, this.basePath));
     }
 }
 

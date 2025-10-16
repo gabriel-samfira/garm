@@ -43,6 +43,25 @@ func (a *APIController) InstanceMetadataHandler(w http.ResponseWriter, r *http.R
 	}
 }
 
+// swagger:route GET /tools/garm-agent tools GarmAgentList
+//
+// List GARM agent tools.
+//
+//	Parameters:
+//	  + name: page
+//	    description: The page at which to list.
+//	    type: integer
+//	    in: query
+//	    required: false
+//	  + name: pageSize
+//	    description: Number of items per page.
+//	    type: integer
+//	    in: query
+//	    required: false
+//
+//	Responses:
+//	  200: GARMAgentToolsPaginatedResponse
+//	  400: APIErrorResponse
 func (a *APIController) InstanceGARMToolsHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 

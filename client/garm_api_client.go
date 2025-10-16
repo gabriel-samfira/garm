@@ -10,7 +10,6 @@ import (
 	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
 
-	"github.com/cloudbase/garm/client/agent"
 	"github.com/cloudbase/garm/client/controller"
 	"github.com/cloudbase/garm/client/controller_info"
 	"github.com/cloudbase/garm/client/credentials"
@@ -28,6 +27,7 @@ import (
 	"github.com/cloudbase/garm/client/repositories"
 	"github.com/cloudbase/garm/client/scalesets"
 	"github.com/cloudbase/garm/client/templates"
+	"github.com/cloudbase/garm/client/tools"
 )
 
 // Default garm API HTTP client.
@@ -72,7 +72,6 @@ func New(transport runtime.ClientTransport, formats strfmt.Registry) *GarmAPI {
 
 	cli := new(GarmAPI)
 	cli.Transport = transport
-	cli.Agent = agent.New(transport, formats)
 	cli.Controller = controller.New(transport, formats)
 	cli.ControllerInfo = controller_info.New(transport, formats)
 	cli.Credentials = credentials.New(transport, formats)
@@ -90,6 +89,7 @@ func New(transport runtime.ClientTransport, formats strfmt.Registry) *GarmAPI {
 	cli.Repositories = repositories.New(transport, formats)
 	cli.Scalesets = scalesets.New(transport, formats)
 	cli.Templates = templates.New(transport, formats)
+	cli.Tools = tools.New(transport, formats)
 	return cli
 }
 
@@ -134,8 +134,6 @@ func (cfg *TransportConfig) WithSchemes(schemes []string) *TransportConfig {
 
 // GarmAPI is a client for garm API
 type GarmAPI struct {
-	Agent agent.ClientService
-
 	Controller controller.ClientService
 
 	ControllerInfo controller_info.ClientService
@@ -170,13 +168,14 @@ type GarmAPI struct {
 
 	Templates templates.ClientService
 
+	Tools tools.ClientService
+
 	Transport runtime.ClientTransport
 }
 
 // SetTransport changes the transport on the client and all its subresources
 func (c *GarmAPI) SetTransport(transport runtime.ClientTransport) {
 	c.Transport = transport
-	c.Agent.SetTransport(transport)
 	c.Controller.SetTransport(transport)
 	c.ControllerInfo.SetTransport(transport)
 	c.Credentials.SetTransport(transport)
@@ -194,4 +193,5 @@ func (c *GarmAPI) SetTransport(transport runtime.ClientTransport) {
 	c.Repositories.SetTransport(transport)
 	c.Scalesets.SetTransport(transport)
 	c.Templates.SetTransport(transport)
+	c.Tools.SetTransport(transport)
 }

@@ -22,6 +22,8 @@
 	let webhookUrl = '';
 	let agentUrl = '';
 	let minimumJobAgeBackoff: number | null = null;
+	let garmAgentReleasesUrl = '';
+	let syncGarmAgentTools = false;
 
 
 	function openSettingsModal() {
@@ -31,17 +33,19 @@
 		webhookUrl = controllerInfo.webhook_url || '';
 		agentUrl = controllerInfo.agent_url || '';
 		minimumJobAgeBackoff = controllerInfo.minimum_job_age_backoff || null;
-		
+		garmAgentReleasesUrl = controllerInfo.garm_agent_releases_url || '';
+		syncGarmAgentTools = controllerInfo.enable_agent_tools_sync ?? false;
+
 		showSettingsModal = true;
 	}
 
 	async function saveSettings() {
 		try {
 			saving = true;
-			
+
 			// Build update params - only include non-empty values
 			const updateParams: UpdateControllerParams = {};
-			
+
 			if (metadataUrl.trim()) {
 				updateParams.metadata_url = metadataUrl.trim();
 			}
@@ -57,6 +61,11 @@
 			if (minimumJobAgeBackoff !== null && minimumJobAgeBackoff >= 0) {
 				updateParams.minimum_job_age_backoff = minimumJobAgeBackoff;
 			}
+			if (garmAgentReleasesUrl.trim()) {
+				updateParams.garm_agent_releases_url = garmAgentReleasesUrl.trim();
+			}
+			// Always send the boolean value
+			updateParams.enable_agent_tools_sync = syncGarmAgentTools;
 
 			// Update controller settings
 			const updatedInfo = await garmApi.updateController(updateParams);
@@ -89,6 +98,8 @@
 		webhookUrl = '';
 		agentUrl = '';
 		minimumJobAgeBackoff = null;
+		garmAgentReleasesUrl = '';
+		syncGarmAgentTools = false;
 	}
 
 	// Form validation
@@ -102,11 +113,12 @@
 		}
 	};
 
-	$: isFormValid = 
+	$: isFormValid =
 		isValidUrl(metadataUrl) &&
 		isValidUrl(callbackUrl) &&
 		isValidUrl(webhookUrl) &&
 		isValidUrl(agentUrl) &&
+		isValidUrl(garmAgentReleasesUrl) &&
 		(minimumJobAgeBackoff === null || minimumJobAgeBackoff >= 0);
 </script>
 
@@ -181,6 +193,48 @@
 								{controllerInfo.minimum_job_age_backoff || 30}s
 							</div>
 						</div>
+
+						<!-- Agent Tools Sync -->
+						<div>
+							<div class="flex items-center">
+								<div class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide font-medium">Agent Tools Sync</div>
+								<div class="ml-2">
+									<Tooltip
+										title="Agent Tools Sync"
+										content="When enabled, GARM will automatically synchronize garm-agent tools from the configured releases URL. This ensures agents are up-to-date with the latest versions."
+									/>
+								</div>
+							</div>
+							<div class="mt-1 p-2 bg-gray-50 dark:bg-gray-700 rounded text-sm font-mono text-gray-600 dark:text-gray-300 min-h-[38px] flex items-center">
+								{#if controllerInfo.enable_agent_tools_sync}
+									<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+										Enabled
+									</span>
+								{:else}
+									<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+										Disabled
+									</span>
+								{/if}
+							</div>
+						</div>
+
+						<!-- Agent Releases URL -->
+						{#if controllerInfo.garm_agent_releases_url}
+							<div>
+								<div class="flex items-center">
+									<div class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide font-medium">Agent Releases URL</div>
+									<div class="ml-2">
+										<Tooltip
+											title="Agent Releases URL"
+											content="URL from where GARM fetches garm-agent binaries. Must be compatible with the GitHub releases API format. Defaults to the official garm-agent releases repository."
+										/>
+									</div>
+								</div>
+								<div class="mt-1 p-2 bg-gray-50 dark:bg-gray-700 rounded text-sm font-mono text-gray-600 dark:text-gray-300 break-all min-h-[38px] flex items-center">
+									{controllerInfo.garm_agent_releases_url}
+								</div>
+							</div>
+						{/if}
 					</div>
 				</div>
 			</div>
@@ -422,6 +476,45 @@
 					/>
 					<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
 						Time to wait before spinning up a runner for a new job (0 = immediate)
+					</p>
+				</div>
+
+				<!-- Agent Releases URL -->
+				<div>
+					<label for="garmAgentReleasesUrl" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+						Agent Releases URL
+					</label>
+					<input
+						id="garmAgentReleasesUrl"
+						type="url"
+						bind:value={garmAgentReleasesUrl}
+						placeholder="https://api.github.com/repos/cloudbase/garm-agent/releases"
+						class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white sm:text-sm"
+						class:border-red-300={!isValidUrl(garmAgentReleasesUrl)}
+					/>
+					{#if !isValidUrl(garmAgentReleasesUrl)}
+						<p class="mt-1 text-sm text-red-600">Please enter a valid URL</p>
+					{/if}
+					<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+						URL where GARM fetches garm-agent binaries (must be compatible with GitHub releases API)
+					</p>
+				</div>
+
+				<!-- Sync Agent Tools -->
+				<div>
+					<label class="flex items-center cursor-pointer">
+						<input
+							id="syncGarmAgentTools"
+							type="checkbox"
+							bind:checked={syncGarmAgentTools}
+							class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer"
+						/>
+						<span class="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+							Enable Agent Tools Sync
+						</span>
+					</label>
+					<p class="mt-1 text-xs text-gray-500 dark:text-gray-400 ml-6">
+						Automatically synchronize garm-agent tools from the configured releases URL
 					</p>
 				</div>
 

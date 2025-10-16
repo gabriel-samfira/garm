@@ -679,6 +679,10 @@ func (s *sqlDatabase) migrateControllerInfo(hasMinAgeField, hasAgentURL bool) er
 		controller.MinimumJobAgeBackoff = 30
 	}
 
+	if controller.GARMAgentReleasesURL == "" {
+		controller.GARMAgentReleasesURL = appdefaults.GARMAgentDefaultReleasesURL
+	}
+
 	if !hasAgentURL && controller.WebhookBaseURL != "" {
 		matchWebhooksPath := regexp.MustCompile(`/webhooks(/)?$`)
 		controller.AgentURL = matchWebhooksPath.ReplaceAllLiteralString(controller.WebhookBaseURL, `/agent`)

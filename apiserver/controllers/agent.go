@@ -12,7 +12,6 @@ import (
 	gErrors "github.com/cloudbase/garm-provider-common/errors"
 	"github.com/cloudbase/garm/apiserver/params"
 	"github.com/cloudbase/garm/auth"
-	runnerParams "github.com/cloudbase/garm/params"
 	"github.com/cloudbase/garm/workers/websocket/agent"
 )
 
@@ -114,51 +113,4 @@ func (a *APIController) AgentShellHandler(w http.ResponseWriter, r *http.Request
 	case <-ctx.Done():
 	}
 	slog.InfoContext(ctx, "connection closed", "session_id", sessionID, "agent_name", agentName)
-}
-
-// swagger:route GET /agent/{agentName}/token agent GetAgentJWTToken
-//
-// Returns a JWT token that can be used by an agent to access the websocket handler.
-//
-//	Parameters:
-//	  + name: agentName
-//	    description: Runner Name.
-//	    type: string
-//	    in: path
-//	    required: true
-//
-//	Responses:
-//	  200: JWTResponse
-//	  401: APIErrorResponse
-func (a *APIController) AgentTokenHandler(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	if !auth.IsAdmin(ctx) {
-		handleError(ctx, w, gErrors.ErrUnauthorized)
-		return
-	}
-
-	vars := mux.Vars(r)
-	agentName, ok := vars["agentName"]
-	if !ok {
-		w.WriteHeader(http.StatusBadRequest)
-		if err := json.NewEncoder(w).Encode(params.APIErrorResponse{
-			Error:   "Bad Request",
-			Details: "No agent name specified",
-		}); err != nil {
-			slog.With(slog.Any("error", err)).ErrorContext(ctx, "failed to encode response")
-		}
-		return
-	}
-
-	token, err := a.r.GetAgentJWTToken(ctx, agentName)
-	if err != nil {
-		handleError(ctx, w, err)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	err = json.NewEncoder(w).Encode(runnerParams.JWTResponse{Token: token})
-	if err != nil {
-		slog.With(slog.Any("error", err)).ErrorContext(ctx, "failed to encode response")
-	}
 }

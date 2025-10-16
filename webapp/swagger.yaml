@@ -63,6 +63,17 @@ definitions:
                     from GARM without accidentally removing webhooks from other services or GARM controllers.
                 type: string
                 x-go-name: ControllerWebhookURL
+            enable_agent_tools_sync:
+                description: SyncGARMAgentTools enables or disables automatic sync of garm-agent tools.
+                type: boolean
+                x-go-name: SyncGARMAgentTools
+            garm_agent_releases_url:
+                description: |-
+                    GARMAgentReleasesURL is the URL from where GARM can fetch garm-agent binaries. This URL must
+                    have an API response compatible with the github releases API.
+                    The default value for this field is: https://api.github.com/repos/cloudbase/garm-agent/releases
+                type: string
+                x-go-name: GARMAgentReleasesURL
             hostname:
                 description: |-
                     Hostname is the hostname of the machine that runs this controller. In the
@@ -1816,6 +1827,12 @@ definitions:
             callback_url:
                 type: string
                 x-go-name: CallbackURL
+            enable_agent_tools_sync:
+                type: boolean
+                x-go-name: SyncGARMAgentTools
+            garm_agent_releases_url:
+                type: string
+                x-go-name: GARMAgentReleasesURL
             metadata_url:
                 type: string
                 x-go-name: MetadataURL
@@ -2104,27 +2121,6 @@ info:
     title: Garm API.
     version: 1.0.0
 paths:
-    /agent/{agentName}/token:
-        get:
-            operationId: GetAgentJWTToken
-            parameters:
-                - description: Runner Name.
-                  in: path
-                  name: agentName
-                  required: true
-                  type: string
-            responses:
-                "200":
-                    description: JWTResponse
-                    schema:
-                        $ref: '#/definitions/JWTResponse'
-                "401":
-                    description: APIErrorResponse
-                    schema:
-                        $ref: '#/definitions/APIErrorResponse'
-            summary: Returns a JWT token that can be used by an agent to access the websocket handler.
-            tags:
-                - agent
     /auth/login:
         post:
             operationId: Login
@@ -4269,6 +4265,30 @@ paths:
             summary: Create template with the parameters given.
             tags:
                 - templates
+    /tools/garm-agent:
+        get:
+            operationId: GarmAgentList
+            parameters:
+                - description: The page at which to list.
+                  in: query
+                  name: page
+                  type: integer
+                - description: Number of items per page.
+                  in: query
+                  name: pageSize
+                  type: integer
+            responses:
+                "200":
+                    description: GARMAgentToolsPaginatedResponse
+                    schema:
+                        $ref: '#/definitions/GARMAgentToolsPaginatedResponse'
+                "400":
+                    description: APIErrorResponse
+                    schema:
+                        $ref: '#/definitions/APIErrorResponse'
+            summary: List GARM agent tools.
+            tags:
+                - tools
 produces:
     - application/json
 security:

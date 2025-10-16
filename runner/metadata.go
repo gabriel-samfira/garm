@@ -517,9 +517,49 @@ func (r *Runner) GetRootCertificateBundle(ctx context.Context) (params.Certifica
 	return bundle, nil
 }
 
+func fileObjectToGARMTool(obj params.FileObject, downloadURL string) (params.GARMAgentTool, error) {
+	var version string
+	var osType string
+	var osArch string
+	for _, val := range obj.Tags {
+		if strings.HasPrefix(val, "version=") {
+			version = val[8:]
+		}
+		if strings.HasPrefix(val, "os_arch=") {
+			osArch = val[8:]
+		}
+		if strings.HasPrefix(val, "os_type=") {
+			osType = val[8:]
+		}
+	}
+	switch {
+	case version == "":
+		return params.GARMAgentTool{}, runnerErrors.NewConflictError("missing version for tools %d", obj.ID)
+	case osType == "":
+		return params.GARMAgentTool{}, runnerErrors.NewConflictError("missing os_type for tools %d", obj.ID)
+	case osArch == "":
+		return params.GARMAgentTool{}, runnerErrors.NewConflictError("missing os_arch for tools %d", obj.ID)
+	}
+	res := params.GARMAgentTool{
+		ID:          obj.ID,
+		Name:        obj.Name,
+		Size:        obj.Size,
+		SHA256SUM:   obj.SHA256,
+		Description: obj.Description,
+		CreatedAt:   obj.CreatedAt,
+		UpdatedAt:   obj.UpdatedAt,
+		FileType:    obj.FileType,
+		OSType:      commonParams.OSType(osType),
+		OSArch:      commonParams.OSArch(osArch),
+		DownloadURL: downloadURL,
+		Version:     version,
+	}
+	return res, nil
+}
+
 func (r *Runner) GetGARMTools(ctx context.Context, page, pageSize uint64) (params.GARMAgentToolsPaginatedResponse, error) {
 	tags := []string{
-		"category=garm-agent",
+		garmAgentFileTag,
 	}
 	instance, err := validateInstanceState(ctx)
 	if err != nil {
@@ -538,41 +578,14 @@ func (r *Runner) GetGARMTools(ctx context.Context, page, pageSize uint64) (param
 
 	var tools []params.GARMAgentTool
 	for _, val := range files.Results {
-		tags := val.Tags
-		var version string
-		var osType string
-		var osArch string
-		for _, val := range tags {
-			if strings.HasPrefix(val, "version=") {
-				version = val[8:]
-			}
-			if strings.HasPrefix(val, "os_arch=") {
-				osArch = val[8:]
-			}
-			if strings.HasPrefix(val, "os_type=") {
-				osType = val[8:]
-			}
-		}
-		agentIDAsString := fmt.Sprintf("%d", val.ID)
-		downloadURL, err := url.JoinPath(instance.MetadataURL, "tools/garm-agent", agentIDAsString, "download")
+		objectIDAsString := fmt.Sprintf("%d", val.ID)
+		downloadURL, err := url.JoinPath(instance.MetadataURL, "tools/garm-agent", objectIDAsString, "download")
 		if err != nil {
 			return params.GARMAgentToolsPaginatedResponse{}, fmt.Errorf("failed to construct agent tools download URL: %w", err)
 		}
-		res := params.GARMAgentTool{
-			ID:          val.ID,
-			Name:        val.Name,
-			Size:        val.Size,
-			SHA256SUM:   val.SHA256,
-			Description: val.Description,
-			CreatedAt:   val.CreatedAt,
-			UpdatedAt:   val.UpdatedAt,
-			FileType:    val.FileType,
-			OSType:      commonParams.OSType(osType),
-			OSArch:      commonParams.OSArch(osArch),
-			DownloadURL: downloadURL,
-		}
-		if version != "" {
-			res.Version = version
+		res, err := fileObjectToGARMTool(val, downloadURL)
+		if err != nil {
+			return params.GARMAgentToolsPaginatedResponse{}, fmt.Errorf("failed parse tools object: %w", err)
 		}
 		tools = append(tools, res)
 	}

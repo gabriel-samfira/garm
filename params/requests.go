@@ -547,6 +547,8 @@ type UpdateControllerParams struct {
 	CallbackURL          *string `json:"callback_url,omitempty"`
 	WebhookURL           *string `json:"webhook_url,omitempty"`
 	AgentURL             *string `json:"agent_url,omitempty"`
+	GARMAgentReleasesURL *string `json:"garm_agent_releases_url,omitempty"`
+	SyncGARMAgentTools   *bool   `json:"enable_agent_tools_sync,omitempty"`
 	MinimumJobAgeBackoff *uint   `json:"minimum_job_age_backoff,omitempty"`
 }
 
@@ -908,6 +910,16 @@ type CreateFileObjectParams struct {
 	Description string   `json:"description"`
 	Size        int64    `json:"size"`
 	Tags        []string `json:"tags"`
+}
+
+// swagger:model CreateGARMToolParams
+type CreateGARMToolParams struct {
+	Name        string              `json:"name"`
+	Description string              `json:"description"`
+	Size        int64               `json:"size"`
+	OSType      commonParams.OSType `json:"os_type"`
+	OSArch      commonParams.OSArch `json:"os_arch"`
+	Version     string              `json:"version"`
 }
 
 // swagger:model RestoreTemplateRequest

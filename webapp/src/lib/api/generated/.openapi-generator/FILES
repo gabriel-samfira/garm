@@ -7,7 +7,6 @@ common.ts
 configuration.ts
 docs/APIErrorResponse.md
 docs/Address.md
-docs/AgentApi.md
 docs/AgentCapabilities.md
 docs/ControllerApi.md
 docs/ControllerInfo.md
@@ -74,6 +73,7 @@ docs/StatusMessage.md
 docs/Tag.md
 docs/Template.md
 docs/TemplatesApi.md
+docs/ToolsApi.md
 docs/UpdateControllerParams.md
 docs/UpdateEntityParams.md
 docs/UpdateFileObjectParams.md
